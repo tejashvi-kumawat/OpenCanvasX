@@ -1,0 +1,15 @@
+[package]
+name = "ods_native"
+description = "Native Rust core for Open Design Studio (performance-critical paths)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+flutter_rust_bridge = "=2.9.0"
+
+[lints]
+workspace = true

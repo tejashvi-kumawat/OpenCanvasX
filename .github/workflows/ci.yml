@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  dart:
+    name: Dart (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: |
+          dart pub global activate melos
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap
+        run: |
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Analyze
+        run: dart run melos run analyze
+
+      - name: Test
+        run: |
+          melos run test:packages --no-select
+          melos run test --no-select
+
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all --manifest-path rust/Cargo.toml -- --check
+      - run: cargo clippy --workspace --manifest-path rust/Cargo.toml -- -D warnings
+      - run: cargo test --workspace --manifest-path rust/Cargo.toml
+
+  desktop-build:
+    name: Desktop build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Bootstrap
+        run: |
+          dart pub global activate melos
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Enable desktop
+        run: flutter config --enable-windows-desktop --enable-macos-desktop --enable-linux-desktop
+
+      - name: Build
+        working-directory: apps/desktop
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+            flutter build linux --debug
+          elif [ "${{ runner.os }}" = "Windows" ]; then
+            flutter build windows --debug
+          else
+            flutter build macos --debug
+          fi
+        shell: bash

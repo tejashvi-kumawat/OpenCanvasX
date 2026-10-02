@@ -1,0 +1,7 @@
+# Dependency manifest (Phase 0 seed)
+# Format: name | version | license | source | notes
+
+flutter | SDK | BSD-3-Clause | https://flutter.dev | build tool
+dart | SDK | BSD-3-Clause | https://dart.dev | build tool
+melos | 6.x | Apache-2.0 | https://melos.invertase.dev | dev tool
+flutter_rust_bridge | 2.9.0 | MIT | https://github.com/fzyzcjy/flutter_rust_bridge | Rust↔Dart bridge

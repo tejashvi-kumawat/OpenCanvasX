@@ -1,0 +1,10 @@
+name: open_design_studio_workspace
+description: Melos workspace root for Open Design Studio.
+publish_to: none
+
+environment:
+  sdk: ^3.7.0
+
+dev_dependencies:
+  melos: ^6.3.0
+  very_good_analysis: ^7.0.0

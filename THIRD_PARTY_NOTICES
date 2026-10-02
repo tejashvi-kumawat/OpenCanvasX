@@ -1,0 +1,15 @@
+Open Design Studio — Third-Party Notices
+=========================================
+
+This file lists third-party components shipped with or used to build the
+application. Full license texts for bundled components belong in LICENSES/
+as they are added.
+
+Build-time / runtime dependencies (Phase 0):
+
+- Flutter SDK — BSD-3-Clause (https://flutter.dev)
+- Dart SDK — BSD-3-Clause
+- flutter_rust_bridge — MIT (https://github.com/fzyzcjy/flutter_rust_bridge)
+- Rust crates: see rust/Cargo.lock and https://crates.io per crate
+
+Update this file and DEPENDENCIES when adding bundled assets, fonts, or libraries.

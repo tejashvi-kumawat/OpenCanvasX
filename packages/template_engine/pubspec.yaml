@@ -1,0 +1,11 @@
+name: template_engine
+description: Open Design Studio — template_engine (skeleton).
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.7.0
+
+dev_dependencies:
+  test: ^1.25.0
+  very_good_analysis: ^7.0.0

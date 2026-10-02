@@ -1,0 +1,11 @@
+name: ods_native_bridge
+description: Open Design Studio — ods_native_bridge (skeleton).
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.7.0
+
+dev_dependencies:
+  test: ^1.25.0
+  very_good_analysis: ^7.0.0

@@ -1,0 +1,8 @@
+# melos_managed_dependency_overrides: design_engine,ods_logging,ods_native_bridge
+dependency_overrides:
+  design_engine:
+    path: ../../packages/design_engine
+  ods_logging:
+    path: ../../packages/ods_logging
+  ods_native_bridge:
+    path: ../../packages/ods_native_bridge

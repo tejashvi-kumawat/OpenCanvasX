@@ -1,0 +1,10 @@
+rust_input: crate::ods_native
+rust_root: rust/ods_native/
+dart_output: packages/ods_native_bridge/lib/src/frb_generated.dart
+dart_entrypoint_class_name: OdsNativeBridge
+llvm_path:
+  - /usr/lib/llvm-14/lib
+  - /usr/lib/llvm-15/lib
+  - /usr/lib/llvm-16/lib
+  - /usr/lib/llvm-17/lib
+  - /usr/lib/llvm-18/lib

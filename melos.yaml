@@ -1,0 +1,49 @@
+name: open_design_studio
+repository: https://github.com/open-design-studio/open-design-studio
+
+packages:
+  - apps/**
+  - packages/**
+
+command:
+  bootstrap:
+    runPubGetInParallel: true
+  version:
+    linkToCommits: true
+
+scripts:
+  analyze:
+    run: dart analyze
+    description: Run dart analyze in all packages.
+    exec:
+      concurrency: 4
+  test:
+    run: flutter test
+    description: Run Flutter tests (desktop app).
+    exec:
+      concurrency: 1
+    packageFilters:
+      scope: open_design_studio
+  test:packages:
+    run: dart test
+    description: Run Dart VM tests in engine packages.
+    exec:
+      concurrency: 4
+    packageFilters:
+      ignore: open_design_studio
+  format:
+    run: dart format .
+    description: Format all Dart code.
+    exec:
+      concurrency: 4
+  format:check:
+    run: dart format --output=none --set-exit-if-changed .
+    description: Check Dart formatting.
+    exec:
+      concurrency: 4
+  rust:test:
+    run: cargo test --workspace --manifest-path rust/Cargo.toml
+    description: Run Rust workspace tests.
+  rust:fmt:
+    run: cargo fmt --all --manifest-path rust/Cargo.toml -- --check
+    description: Check Rust formatting.

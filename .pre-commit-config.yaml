@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=5120]
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: dart-format
+        name: dart format
+        entry: bash -c 'export PATH="$PWD/.toolchain/flutter/bin:$PATH"; dart format --output=none --set-exit-if-changed $(git diff --cached --name-only --diff-filter=ACM | grep -E "\.dart$" || true)'
+        language: system
+        files: \.dart$
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all --manifest-path rust/Cargo.toml -- --check
+        language: system
+        files: ^rust/
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --workspace --manifest-path rust/Cargo.toml -- -D warnings
+        language: system
+        files: ^rust/
+        pass_filenames: false

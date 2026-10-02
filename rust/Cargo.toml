@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["ods_native"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/open-design-studio/open-design-studio"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

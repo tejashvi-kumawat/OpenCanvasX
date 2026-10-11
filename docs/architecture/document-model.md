@@ -22,7 +22,7 @@ The document model is the **single in-memory source of truth** while the app is 
 | `styles` | Shared fills, strokes, text styles |
 | `assets` | Map of hash → asset reference (bytes on disk) |
 
-Pages may share a global object map or partition by page — **pick one in Phase 1 and document in an ADR**. Recommendation: one global map with `page_id` on root-level objects for simpler multi-page drag.
+**Decided in [ADR-0003](../adr/0003-global-object-map.md):** one global object map. Root-level objects carry `page_id`; nested objects carry only `parent_id`. Exactly one of the two is set on every object.
 
 ## Page
 
@@ -48,9 +48,12 @@ Each object carries:
 
 | Field | Purpose |
 |-------|---------|
+| `id` | Stable UUID v4 |
 | `type` | Discriminator |
+| `page_id` | Page of a root object (`null` when nested) |
 | `parent_id` | Layer tree parent (`null` = page root) |
-| `child_ids` | Optional ordered children (groups) |
+| `child_ids` | Ordered children, groups only, back-to-front (index 0 drawn first) |
+| `name` | Optional user layer name (`null` = UI default label) |
 | `transform` | See below |
 | `opacity` | 0–1 |
 | `blend_mode` | Normal, multiply, … |
@@ -67,7 +70,9 @@ Stored as:
 - Rotation (degrees)
 - Scale `scale_x`, `scale_y` (default 1)
 - Skew optional (post-MVP)
-- **Anchor** `(anchor_x, anchor_y)` in 0–1 local space
+- **Anchor** `(anchor_x, anchor_y)` in 0–1 local space (default `0.5, 0.5`, the centre)
+- **Flip** is a negative `scale_x` / `scale_y`; zero scale is invalid
+- `width` and `height` may be `0` (e.g. a horizontal line) but never negative
 
 Apply order for rendering and export must match: **translate → rotate → scale → skew** around anchor. `design_engine` and `renderer` share one module for matrix composition.
 
@@ -100,8 +105,24 @@ Local commands generate **operations** with new ids:
 
 The document model applies remote ops through the same validation paths as local commands.
 
+## Implementation (`packages/document_model`)
+
+| Concept | Dart type | Since |
+|---------|-----------|-------|
+| Object / page ids | `ObjectId`, `PageId` (extension types over `String`; `.generate()` makes UUID v4) | P1.1.1 |
+| Object | `DesignObject` (validates its own invariants; `copyWith` can clear nullable fields) | P1.1.1 |
+| Kind / blend | `ObjectType`, `ObjectBlendMode` | P1.1.1 |
+| Transform | `ObjectTransform` | P1.1.1 |
+| Style | `ObjectStyle` (`SolidFill`, `Stroke`, `cornerRadius`); gradients P1.7.3, dashes P1.3.5 | P1.1.1 |
+| Payload | `NoPayload`, `TextPayload` (plain text until P1.5), `ImagePayload` (SHA-256 hex), `PathPayload` (`MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath` in object-local coordinates) | P1.1.1 |
+| Colour | `ArgbColor` (`0xAARRGGBB`, pure Dart, no `dart:ui`) | P1.1.1 |
+| Tree checks | `validateObjectGraph` → `List<ModelIssue>` | P1.1.1 |
+
+All types are immutable values with value equality. Constructors throw `ArgumentError` for invalid input (non-finite numbers, negative sizes, payload not matching type, …). Cross-object problems are reported by validators, not thrown, so a damaged file can be repaired rather than rejected outright.
+
 ## Related
 
+- [ADR-0003](../adr/0003-global-object-map.md) — global object map and ordering
 - [file-format.md](file-format.md) — on-disk encoding
 - [rendering-architecture.md](rendering-architecture.md) — how objects become pixels
 - [export-architecture.md](export-architecture.md) — export walk of the tree

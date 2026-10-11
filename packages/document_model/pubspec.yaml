@@ -1,10 +1,13 @@
 name: document_model
-description: Open Design Studio — document_model (skeleton).
+description: OpenCanvasX — in-memory design document model.
 version: 0.0.1
 publish_to: none
 
 environment:
   sdk: ^3.7.0
+
+dependencies:
+  meta: ^1.11.0
 
 dev_dependencies:
   test: ^1.25.0

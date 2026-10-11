@@ -94,7 +94,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 # PHASE 1 — Core Editor (Necessary Foundation)
 
 ## P1.1 Document Model & Storage
-- [ ] P1.1.1 Implement object model (id, type, transform, style, children)
+- [x] P1.1.1 Implement object model (id, type, transform, style, children)
 - [ ] P1.1.2 Page model (size, background, margins, bleed, guides)
 - [ ] P1.1.3 Units & conversion (px, mm, cm, in, pt) + DPI
 - [ ] P1.1.4 Serialization to `.designstudio` + versioned migration framework

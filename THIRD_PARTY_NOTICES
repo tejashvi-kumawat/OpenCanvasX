@@ -10,6 +10,7 @@ Build-time / runtime dependencies (Phase 0):
 - Flutter SDK — BSD-3-Clause (https://flutter.dev)
 - Dart SDK — BSD-3-Clause
 - flutter_rust_bridge — MIT (https://github.com/fzyzcjy/flutter_rust_bridge)
+- meta (Dart package) — BSD-3-Clause (https://pub.dev/packages/meta)
 - Rust crates: see rust/Cargo.lock and https://crates.io per crate
 
 Update this file and DEPENDENCIES when adding bundled assets, fonts, or libraries.

@@ -129,7 +129,9 @@ void paintObject(
     );
   }
 
-  if (object.type == ObjectType.group) {
+  if (object.payload is MaskPayload) {
+    _paintMaskGroup(canvas, document, object, depth, media);
+  } else if (object.type == ObjectType.group) {
     _paintChildren(canvas, document, object, depth, media);
   } else if (object.type == ObjectType.frame) {
     _paintFrame(canvas, document, object, depth, media);
@@ -144,6 +146,7 @@ void paintObject(
         assetHash,
         currentColor: object.style?.fill?.representative.value,
       ),
+      adjust: (object.payload as ImagePayload).adjust,
     );
   } else {
     _paintShape(canvas, object, effectiveStyle(object, document.styles));
@@ -166,6 +169,40 @@ void _paintChildren(
       paintObject(canvas, document, child, depth: depth + 1, media: media);
     }
   }
+}
+
+/// A mask group (P3.1.4): the first child's shape clips the others. With
+/// only the mask (an empty image frame) the shape itself is drawn as a
+/// placeholder.
+void _paintMaskGroup(
+  ui.Canvas canvas,
+  DesignDocument document,
+  DesignObject group,
+  int depth,
+  MediaCache? media,
+) {
+  final children = [
+    for (final id in group.childIds)
+      if (document.objects[id] case final o?) o,
+  ];
+  if (children.isEmpty) return;
+  final mask = children.first;
+  if (children.length == 1) {
+    paintObject(canvas, document, mask, depth: depth + 1, media: media);
+    return;
+  }
+  final style = effectiveStyle(mask, document.styles);
+  final mt = mask.transform;
+  final outline =
+      shapePath(mask, style) ??
+      (ui.Path()..addRect(ui.Rect.fromLTWH(0, 0, mt.width, mt.height)));
+  canvas
+    ..save()
+    ..clipPath(outline.transform(toUiMatrix(localToParent(mt))));
+  for (final child in children.skip(1)) {
+    paintObject(canvas, document, child, depth: depth + 1, media: media);
+  }
+  canvas.restore();
 }
 
 /// An instance draws its main component scaled to its own box; a missing
@@ -564,8 +601,9 @@ void _paintImage(
   ui.Canvas canvas,
   DesignObject object,
   ObjectStyle style,
-  MediaDrawable? drawable,
-) {
+  MediaDrawable? drawable, {
+  ImageAdjustments adjust = ImageAdjustments.none,
+}) {
   final t = object.transform;
   final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
   if (box.isEmpty) return;
@@ -573,6 +611,20 @@ void _paintImage(
   final rounded = ui.RRect.fromRectAndRadius(box, ui.Radius.circular(radius));
   canvas.save();
   if (radius > 0) canvas.clipRRect(rounded);
+  // Adjustments (P3.3) apply to the image through a layer.
+  final adjusted = !adjust.isNone && drawable != null;
+  if (adjusted) {
+    final sigma = adjust.blur / 100 * math.min(t.width, t.height) / 20;
+    canvas.saveLayer(
+      box,
+      ui.Paint()
+        ..colorFilter = ui.ColorFilter.matrix(colorMatrixFor(adjust))
+        ..imageFilter =
+            sigma > 0
+                ? ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma)
+                : null,
+    );
+  }
   switch (drawable) {
     case RasterMedia(:final image):
       canvas.drawImageRect(
@@ -590,6 +642,7 @@ void _paintImage(
     case null:
       _paintImagePlaceholder(canvas, box);
   }
+  if (adjusted) canvas.restore();
   canvas.restore();
   final stroke = style.stroke;
   if (stroke != null && stroke.width > 0) {

@@ -191,6 +191,19 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
           _ComponentSection(session: widget.session, object: single),
         if (single?.payload case final FramePayload frame)
           _frameSection(single!, frame),
+        if (single != null && isMaskGroup(single))
+          _ImageFrameNote(object: single, document: widget.session.document),
+        if (objects.every(
+          (o) =>
+              o.payload is ImagePayload &&
+              widget
+                      .session
+                      .document
+                      .assets[(o.payload as ImagePayload).assetHash]
+                      ?.mime !=
+                  'image/svg+xml',
+        ))
+          _AdjustSection(objects: objects),
         if (allText) _TextSection(texts: texts, unit: unit),
         if (allText && single != null)
           _ContrastNote(
@@ -1386,6 +1399,167 @@ class _ComponentSection extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Image adjustments (P3.3.1, P3.3.2): one-click looks and sliders,
+/// previewed live while dragging and recorded as one undo step.
+class _AdjustSection extends ConsumerWidget {
+  const _AdjustSection({required this.objects});
+
+  final List<DesignObject> objects;
+
+  static const _sliders = [
+    ('brightness', 'Brightness', -100.0, 100.0),
+    ('contrast', 'Contrast', -100.0, 100.0),
+    ('saturation', 'Saturation', -100.0, 100.0),
+    ('exposure', 'Exposure', -100.0, 100.0),
+    ('temperature', 'Temperature', -100.0, 100.0),
+    ('tint', 'Tint', -100.0, 100.0),
+    ('hue', 'Hue', -180.0, 180.0),
+    ('sepia', 'Sepia', 0.0, 100.0),
+    ('blur', 'Blur', 0.0, 100.0),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final editor = ref.read(editorProvider.notifier);
+    final c = context.ocx;
+    final first = (objects.first.payload as ImagePayload).adjust;
+    final values = first.toMap();
+    return PanelSection(
+      title: 'Adjust',
+      trailing: [
+        if (!first.isNone)
+          OcxIconButton(
+            icon: Icons.restart_alt,
+            tooltip: 'Reset adjustments',
+            onPressed:
+                () => editor.commitAdjust(
+                  (_) => ImageAdjustments.none,
+                  label: 'Reset adjustments',
+                ),
+          ),
+      ],
+      child: FieldColumn(
+        children: [
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final MapEntry(key: name, value: preset)
+                  in imageFilterPresets.entries)
+                ActionChip(
+                  label: Text(name),
+                  labelStyle: OcxText.caption(context),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor:
+                      ImageAdjustments.fromMap(preset) == first
+                          ? c.accentSubtle
+                          : null,
+                  onPressed:
+                      () => editor.commitAdjust(
+                        (_) => ImageAdjustments.fromMap(preset),
+                        label: 'Filter $name',
+                      ),
+                ),
+            ],
+          ),
+          for (final (key, label, min, max) in _sliders)
+            Row(
+              children: [
+                SizedBox(
+                  width: 72,
+                  child: Text(
+                    label,
+                    style: OcxText.caption(
+                      context,
+                    ).copyWith(color: c.textSecondary),
+                  ),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 2,
+                      overlayShape: SliderComponentShape.noOverlay,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
+                      ),
+                    ),
+                    child: Slider(
+                      value: values[key]!.clamp(min, max),
+                      min: min,
+                      max: max,
+                      onChanged:
+                          (v) => editor.previewAdjust(
+                            (a) => a.withValue(key, v.roundToDouble()),
+                          ),
+                      onChangeEnd:
+                          (v) => editor.commitAdjust(
+                            (a) => a.withValue(key, v.roundToDouble()),
+                          ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 30,
+                  child: Text(
+                    values[key]!.round().toString(),
+                    textAlign: TextAlign.right,
+                    style: OcxText.caption(context),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Hints for an image frame (mask group) and replacing its photo.
+class _ImageFrameNote extends ConsumerWidget {
+  const _ImageFrameNote({required this.object, required this.document});
+
+  final DesignObject object;
+  final DesignDocument document;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ocx;
+    final empty = object.childIds.length < 2;
+    return PanelSection(
+      title: 'Image frame',
+      child: FieldColumn(
+        children: [
+          Text(
+            empty
+                ? 'Drop a photo from Uploads or Elements on this frame, or '
+                    'upload one while it is selected.'
+                : 'Double-click the photo to move or resize it inside the '
+                    'frame. Upload or drop another to replace it.',
+            style: OcxText.caption(
+              context,
+            ).copyWith(color: c.textSecondary, fontWeight: FontWeight.w400),
+          ),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final files = await ref.read(imagePickerProvider)();
+              if (files.isEmpty) return;
+              ref
+                  .read(editorProvider.notifier)
+                  .insertImage(
+                    files.first.bytes,
+                    name: files.first.name,
+                    intoFrame: object.id,
+                  );
+            },
+            icon: const Icon(Icons.upload_outlined, size: 16),
+            label: Text(empty ? 'Upload a photo' : 'Replace photo'),
           ),
         ],
       ),

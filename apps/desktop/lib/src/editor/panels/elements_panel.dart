@@ -41,6 +41,17 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
   ];
   static const _lines = [ObjectType.line, ObjectType.arrow];
 
+  static const _frameShapes = [
+    (ImageFrameShape.square, Icons.crop_square, 'Square'),
+    (ImageFrameShape.rounded, Icons.rounded_corner, 'Rounded'),
+    (ImageFrameShape.circle, Icons.circle_outlined, 'Circle'),
+    (ImageFrameShape.arch, Icons.crop_portrait, 'Arch'),
+    (ImageFrameShape.blob, Icons.bubble_chart_outlined, 'Blob'),
+    (ImageFrameShape.heart, Icons.favorite_border, 'Heart'),
+    (ImageFrameShape.star, Icons.star_border, 'Star'),
+    (ImageFrameShape.hexagon, Icons.hexagon_outlined, 'Hexagon'),
+  ];
+
   /// Popular picks shown before searching.
   static const _featuredIcons = [
     'lucide/heart',
@@ -202,6 +213,43 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
               children: [
                 for (final type in [...shapes, ...lines])
                   _ShapeTile(type: type, onTap: () => editor.insertShape(type)),
+              ],
+            ),
+          ),
+        ],
+        if (_matches('image photo frame')) ...[
+          const SectionHeader(title: 'Image frames'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.md),
+            child: Wrap(
+              spacing: Space.sm,
+              runSpacing: Space.sm,
+              children: [
+                for (final (shape, icon, label) in _frameShapes)
+                  Draggable<ElementDrag>(
+                    data: ImageFrameDrag(shape),
+                    dragAnchorStrategy: pointerDragAnchorStrategy,
+                    feedback: Icon(icon, size: 32),
+                    child: Tooltip(
+                      message: '$label frame: drop a photo in it',
+                      child: Material(
+                        color: context.ocx.surfaceSunken,
+                        borderRadius: BorderRadius.circular(Radii.sm),
+                        child: InkWell(
+                          onTap: () => editor.insertImageFrame(shape),
+                          borderRadius: BorderRadius.circular(Radii.sm),
+                          child: SizedBox.square(
+                            dimension: 48,
+                            child: Icon(
+                              icon,
+                              size: 22,
+                              color: context.ocx.textTertiary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

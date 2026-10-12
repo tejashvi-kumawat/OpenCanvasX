@@ -431,6 +431,7 @@ class EditorController extends Notifier<EditorSession?> {
     double? size,
     double? sizePx,
     PageId? pageId,
+    ObjectId? intoFrame,
   }) {
     final check = checkMedia(bytes);
     if (!check.isOk) throw FormatException(check.error!);
@@ -470,6 +471,32 @@ class EditorController extends Notifier<EditorSession?> {
       name: name,
       tint: tint,
     );
+    // Into an image frame: given, or the single selected one (P1.6.4).
+    final frameId =
+        intoFrame ??
+        (_editor.selection.length == 1 &&
+                isMaskGroup(document.objects[_editor.selection.single])
+            ? _editor.selection.single
+            : null);
+    if (frameId != null && isMaskGroup(document.objects[frameId])) {
+      _commit(
+        placeImageInFrame(
+          document,
+          frameId,
+          image,
+          assets: {
+            if (!document.assets.containsKey(hash))
+              hash: AssetInfo(
+                mime: check.mime!,
+                byteLength: bytes.length,
+                licenseRef: licenseRef,
+              ),
+          },
+        ),
+        select: {frameId},
+      );
+      return image.id;
+    }
     final insert = insertObjects(document, page.id, [
       image,
     ], label: 'Add image');
@@ -582,6 +609,84 @@ class EditorController extends Notifier<EditorSession?> {
       select: effect.created.isEmpty ? null : effect.created.toSet(),
     );
   }
+
+  /// Masks the selection with its bottom-most object (Ctrl+Alt+M).
+  void useSelectionAsMask() {
+    final selected = _editor.selectedObjects;
+    if (selected.length < 2 ||
+        selected.any((o) => o.parentId != selected.first.parentId)) {
+      return;
+    }
+    final (change, id) = useAsMask(_editor.document, _editor.selection);
+    if (id != null) _commit(change, select: {id});
+  }
+
+  /// Adds an empty image frame of [shape] (Canva "Frames"); drop or upload
+  /// an image while it is selected to fill it.
+  ObjectId insertImageFrame(
+    ImageFrameShape shape, {
+    Point2D? at,
+    PageId? pageId,
+  }) {
+    final page =
+        pageId == null
+            ? _editor.activePage
+            : _editor.document.pages.firstWhere((p) => p.id == pageId);
+    final center =
+        at ?? _boardCenter(page) ?? Point2D(page.width / 2, page.height / 2);
+    final objects = newImageFrame(
+      id: ObjectId.generate(),
+      maskId: ObjectId.generate(),
+      pageId: page.id,
+      shape: shape,
+      center: center,
+      size: math.min(page.width, page.height) * (page.isBoard ? 0.25 : 0.4),
+    );
+    _commit(
+      _intoFrame(
+        insertObjects(
+          _editor.document,
+          page.id,
+          [objects.first],
+          descendants: [objects.last],
+          label: 'Add image frame',
+        ),
+        [objects.first.id],
+        page.id,
+        center,
+      ),
+      activePage: page.id,
+      select: {objects.first.id},
+    );
+    return objects.first.id;
+  }
+
+  /// Previews image adjustments on the selected images (live while a
+  /// slider moves); [commitAdjust] records them.
+  void previewAdjust(ImageAdjustments Function(ImageAdjustments) change) {
+    if (!isGestureActive) beginGesture();
+    previewObjects(_adjusted(change));
+  }
+
+  void commitAdjust(
+    ImageAdjustments Function(ImageAdjustments) change, {
+    String label = 'Adjust image',
+  }) {
+    if (isGestureActive) {
+      previewObjects(_adjusted(change));
+      endGesture(label);
+    } else {
+      _commit(updateObjects(_editor.document, _adjusted(change), label: label));
+    }
+  }
+
+  List<DesignObject> _adjusted(
+    ImageAdjustments Function(ImageAdjustments) change,
+  ) => [
+    for (final o in _editor.selectedObjects)
+      if (o.payload case final ImagePayload p)
+        o.copyWith(payload: p.copyWith(adjust: change(p.adjust))),
+  ];
 
   /// Turns the selection into a main component (Ctrl+Alt+K).
   void createComponent() {

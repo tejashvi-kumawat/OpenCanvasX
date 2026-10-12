@@ -96,6 +96,8 @@ class _SvgWriter {
     final style = effectiveStyleOf(o);
     out.writeln('<g$attrs>');
     switch (o.type) {
+      case ObjectType.group when o.payload is MaskPayload:
+        _maskGroup(out, o, depth);
       case ObjectType.group:
         for (final id in o.childIds) {
           if (document.objects[id] case final child?) {
@@ -210,6 +212,56 @@ class _SvgWriter {
     out.writeln('</g>');
   }
 
+  /// A mask group: the first child's shape becomes a clip path for the
+  /// rest (empty frames draw their placeholder shape).
+  void _maskGroup(StringBuffer out, DesignObject group, int depth) {
+    final children = [
+      for (final id in group.childIds)
+        if (document.objects[id] case final o?) o,
+    ];
+    if (children.isEmpty) return;
+    final mask = children.first;
+    if (children.length == 1) {
+      object(out, mask, depth + 1);
+      return;
+    }
+    final id = 'clip${_clips++}';
+    final shape = StringBuffer();
+    // The clip path holds the mask drawn as usual (its fill is irrelevant).
+    object(shape, mask, depth + 1);
+    defs
+      ..writeln('<clipPath id="$id">')
+      ..write(shape)
+      ..writeln('</clipPath>');
+    out.writeln('<g clip-path="url(#$id)">');
+    for (final child in children.skip(1)) {
+      object(out, child, depth + 1);
+    }
+    out.writeln('</g>');
+  }
+
+  int _filters = 0;
+
+  /// An SVG filter applying [adjust] (colour matrix + blur); returns its
+  /// `filter` attribute, or an empty string.
+  String _adjustFilter(ImageAdjustments adjust, ObjectTransform t) {
+    if (adjust.isNone) return '';
+    final m = colorMatrixFor(adjust);
+    final values = [
+      for (var i = 0; i < 20; i++) _n(i % 5 == 4 ? m[i] / 255 : m[i]),
+    ].join(' ');
+    final id = 'adjust${_filters++}';
+    final sigma = adjust.blur / 100 * math.min(t.width, t.height) / 20;
+    defs
+      ..writeln('<filter id="$id" color-interpolation-filters="sRGB">')
+      ..writeln('<feColorMatrix type="matrix" values="$values"/>')
+      ..writeln(
+        sigma > 0 ? '<feGaussianBlur stdDeviation="${_n(sigma)}"/>' : '',
+      )
+      ..writeln('</filter>');
+    return ' filter="url(#$id)"';
+  }
+
   /// Shared style with inline fields taking precedence (as the renderer).
   ObjectStyle effectiveStyleOf(DesignObject o) {
     final shared = o.styleId == null ? null : document.styles[o.styleId];
@@ -316,9 +368,10 @@ class _SvgWriter {
       );
       clipAttr = ' clip-path="url(#$id)"';
     }
+    final filter = _adjustFilter(payload.adjust, t);
     out.writeln(
       '<image width="${_n(t.width)}" height="${_n(t.height)}" '
-      'preserveAspectRatio="none"$clipAttr '
+      'preserveAspectRatio="none"$clipAttr$filter '
       'xlink:href="data:${info.mime};base64,${base64Encode(bytes)}"/>',
     );
     if (style.stroke case final stroke? when stroke.width > 0) {

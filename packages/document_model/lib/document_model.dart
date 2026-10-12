@@ -4,6 +4,7 @@
 library;
 
 export 'src/color.dart';
+export 'src/color_matrix.dart';
 export 'src/design_object.dart';
 export 'src/document.dart';
 export 'src/document_json.dart';

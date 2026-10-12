@@ -128,4 +128,54 @@ void main() {
       expect(rgba[at(18)], lessThan(60));
     });
   });
+
+  testWidgets('mask groups clip their content to the mask shape', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final mask = DesignObject(
+        id: const ObjectId('m'),
+        type: ObjectType.ellipse,
+        parentId: const ObjectId('g'),
+        transform: ObjectTransform(width: 100, height: 100),
+      );
+      final red = DesignObject(
+        id: const ObjectId('r'),
+        type: ObjectType.rect,
+        parentId: const ObjectId('g'),
+        transform: ObjectTransform(width: 100, height: 100),
+        style: ObjectStyle(fill: SolidFill(ArgbColor(0xFFFF0000))),
+      );
+      final group = DesignObject(
+        id: const ObjectId('g'),
+        type: ObjectType.group,
+        pageId: pageId,
+        childIds: const [ObjectId('m'), ObjectId('r')],
+        transform: ObjectTransform(width: 100, height: 100),
+        payload: const MaskPayload(),
+      );
+      final md = DesignDocument(
+        id: const DocumentId('m'),
+        metadata: const DocumentMetadata(title: 'm'),
+        pages: [
+          doc.pages.single.copyWith(objectIds: [group.id]),
+        ],
+        objects: {group.id: group, mask.id: mask, red.id: red},
+      );
+      final rgba = await imageRgba(
+        await renderRegion(
+          md,
+          md.pages.single,
+          region: Rect2D.fromLTWH(0, 0, 100, 100),
+          roots: [group.id],
+          background: false,
+          width: 20,
+          height: 20,
+        ),
+      );
+      int at(int x, int y) => (y * 20 + x) * 4;
+      expect(rgba[at(10, 10)], 255); // centre: red shows
+      expect(rgba[at(0, 0) + 3], 0); // corner: outside the circle
+    });
+  });
 }

@@ -23,7 +23,7 @@ sealed class ObjectPayload {
     ObjectType.ellipse ||
     ObjectType.line ||
     ObjectType.arrow ||
-    ObjectType.group => this is NoPayload,
+    ObjectType.group => this is NoPayload || this is MaskPayload,
   };
 }
 
@@ -280,24 +280,191 @@ final class StarPayload extends ObjectPayload {
 
 /// Reference to image bytes stored under `assets/sha256/<assetHash>`.
 final class ImagePayload extends ObjectPayload {
-  factory ImagePayload(String assetHash) {
+  factory ImagePayload(
+    String assetHash, {
+    ImageAdjustments adjust = ImageAdjustments.none,
+  }) {
     checkSha256Hex(assetHash, 'assetHash');
-    return ImagePayload._(assetHash);
+    return ImagePayload._(assetHash, adjust);
   }
 
-  const ImagePayload._(this.assetHash);
+  const ImagePayload._(this.assetHash, this.adjust);
 
   final String assetHash;
 
-  @override
-  bool operator ==(Object other) =>
-      other is ImagePayload && other.assetHash == assetHash;
+  /// Non-destructive colour adjustments and blur (P3.3.1, P3.3.2).
+  final ImageAdjustments adjust;
+
+  ImagePayload copyWith({ImageAdjustments? adjust}) =>
+      ImagePayload._(assetHash, adjust ?? this.adjust);
 
   @override
-  int get hashCode => assetHash.hashCode;
+  bool operator ==(Object other) =>
+      other is ImagePayload &&
+      other.assetHash == assetHash &&
+      other.adjust == adjust;
+
+  @override
+  int get hashCode => Object.hash(assetHash, adjust);
 
   @override
   String toString() => 'ImagePayload($assetHash)';
+}
+
+/// Image adjustments (P3.3.1, P3.3.2). Each slider is −100…100 (0 = none)
+/// except [hue] (−180…180 degrees) and [blur] (0…100, % of the shorter
+/// side / 20) and [grayscale] (0…100).
+@immutable
+final class ImageAdjustments {
+  factory ImageAdjustments({
+    double brightness = 0,
+    double contrast = 0,
+    double saturation = 0,
+    double exposure = 0,
+    double temperature = 0,
+    double tint = 0,
+    double hue = 0,
+    double grayscale = 0,
+    double sepia = 0,
+    double blur = 0,
+  }) {
+    void range(double v, double min, double max, String name) {
+      if (!v.isFinite || v < min || v > max) {
+        throw ArgumentError.value(v, name, 'must be within $min…$max');
+      }
+    }
+
+    for (final (v, n) in [
+      (brightness, 'brightness'),
+      (contrast, 'contrast'),
+      (saturation, 'saturation'),
+      (exposure, 'exposure'),
+      (temperature, 'temperature'),
+      (tint, 'tint'),
+    ]) {
+      range(v, -100, 100, n);
+    }
+    range(hue, -180, 180, 'hue');
+    range(grayscale, 0, 100, 'grayscale');
+    range(sepia, 0, 100, 'sepia');
+    range(blur, 0, 100, 'blur');
+    return ImageAdjustments._(
+      brightness,
+      contrast,
+      saturation,
+      exposure,
+      temperature,
+      tint,
+      hue,
+      grayscale,
+      sepia,
+      blur,
+    );
+  }
+
+  const ImageAdjustments._(
+    this.brightness,
+    this.contrast,
+    this.saturation,
+    this.exposure,
+    this.temperature,
+    this.tint,
+    this.hue,
+    this.grayscale,
+    this.sepia,
+    this.blur,
+  );
+
+  /// From [values] (missing keys are 0).
+  factory ImageAdjustments.fromMap(Map<String, double> values) =>
+      ImageAdjustments(
+        brightness: values['brightness'] ?? 0,
+        contrast: values['contrast'] ?? 0,
+        saturation: values['saturation'] ?? 0,
+        exposure: values['exposure'] ?? 0,
+        temperature: values['temperature'] ?? 0,
+        tint: values['tint'] ?? 0,
+        hue: values['hue'] ?? 0,
+        grayscale: values['grayscale'] ?? 0,
+        sepia: values['sepia'] ?? 0,
+        blur: values['blur'] ?? 0,
+      );
+
+  static const none = ImageAdjustments._(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  final double brightness;
+  final double contrast;
+  final double saturation;
+  final double exposure;
+  final double temperature;
+  final double tint;
+  final double hue;
+  final double grayscale;
+  final double sepia;
+  final double blur;
+
+  bool get isNone => this == none;
+
+  /// Every value by name (for JSON and the inspector).
+  Map<String, double> toMap() => {
+    'brightness': brightness,
+    'contrast': contrast,
+    'saturation': saturation,
+    'exposure': exposure,
+    'temperature': temperature,
+    'tint': tint,
+    'hue': hue,
+    'grayscale': grayscale,
+    'sepia': sepia,
+    'blur': blur,
+  };
+
+  /// A copy with [name] set to [value].
+  ImageAdjustments withValue(String name, double value) =>
+      ImageAdjustments.fromMap({...toMap(), name: value});
+
+  @override
+  bool operator ==(Object other) =>
+      other is ImageAdjustments &&
+      other.brightness == brightness &&
+      other.contrast == contrast &&
+      other.saturation == saturation &&
+      other.exposure == exposure &&
+      other.temperature == temperature &&
+      other.tint == tint &&
+      other.hue == hue &&
+      other.grayscale == grayscale &&
+      other.sepia == sepia &&
+      other.blur == blur;
+
+  @override
+  int get hashCode => Object.hash(
+    brightness,
+    contrast,
+    saturation,
+    exposure,
+    temperature,
+    tint,
+    hue,
+    grayscale,
+    sepia,
+    blur,
+  );
+}
+
+/// A mask group (P3.1.4): its first child is the mask shape; the other
+/// children show only inside it. Also the basis of image frames.
+final class MaskPayload extends ObjectPayload {
+  const MaskPayload();
+
+  @override
+  bool operator ==(Object other) => other is MaskPayload;
+
+  @override
+  int get hashCode => (MaskPayload).hashCode;
+
+  @override
+  String toString() => 'MaskPayload()';
 }
 
 /// Vector path as SVG-compatible segments in the object's local space.

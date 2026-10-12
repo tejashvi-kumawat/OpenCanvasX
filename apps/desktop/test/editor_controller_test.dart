@@ -514,6 +514,56 @@ void main() {
     });
   });
 
+  group('masks and image frames', () {
+    // A PNG header is enough for import checks (decoding is not needed).
+    final png = Uint8List.fromList([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, //
+      0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52,
+      0, 0, 0x02, 0x00, 0, 0, 0x01, 0x00, // 512 × 256
+    ]);
+
+    test('a selected image frame takes the next image', () {
+      final frame = editor().insertImageFrame(ImageFrameShape.circle);
+      expect(isMaskGroup(doc().objects[frame]), isTrue);
+      final image = editor().insertImage(png);
+      final group = doc().objects[frame]!;
+      expect(group.childIds, hasLength(2));
+      expect(group.childIds.last, image);
+      expect(doc().objects[image]!.parentId, frame);
+      // Cover: the wide image is as tall as the frame.
+      final mask = doc().objects[group.childIds.first]!;
+      expect(
+        doc().objects[image]!.transform.height,
+        closeTo(mask.transform.height, 1e-9),
+      );
+      expect(roots(), [frame]);
+    });
+
+    test('use as mask and adjustments as one undo step each', () {
+      editor()
+        ..insertShape(ObjectType.ellipse)
+        ..insertImage(png)
+        ..selectAll()
+        ..useSelectionAsMask();
+      final group = session().selection.single;
+      expect(isMaskGroup(doc().objects[group]), isTrue);
+      final image = doc().objects[group]!.childIds.last;
+      editor()
+        ..select({image})
+        ..previewAdjust((a) => a.withValue('saturation', -50))
+        ..previewAdjust((a) => a.withValue('saturation', -80))
+        ..commitAdjust((a) => a.withValue('saturation', -80));
+      final adjust = (doc().objects[image]!.payload as ImagePayload).adjust;
+      expect(adjust.saturation, -80);
+      expect(session().undoLabel, 'Adjust image');
+      editor().undo();
+      expect(
+        (doc().objects[image]!.payload as ImagePayload).adjust.isNone,
+        isTrue,
+      );
+    });
+  });
+
   test('distribute needs three or more', () {
     editor()
       ..insertShape(ObjectType.rect, at: const Point2D(100, 100))

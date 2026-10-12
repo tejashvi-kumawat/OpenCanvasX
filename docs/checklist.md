@@ -136,7 +136,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.6.1 Import PNG, JPEG, WebP, GIF, BMP
 - [x] P1.6.2 Import SVG (validated, sanitized)
 - [ ] P1.6.3 Crop, resize, rotate, flip
-- [ ] P1.6.4 Rounded corners, mask, clipping
+- [x] P1.6.4 Rounded corners, mask, clipping
 - [ ] P1.6.5 Content-hash asset storage + thumbnail cache
 
 ## P1.7 Color (Basic)
@@ -232,7 +232,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P3.1.1 Boolean ops (union, subtract, intersect, exclude)
 - [ ] P3.1.2 Offset path, stroke expansion, stroke alignment
 - [ ] P3.1.3 Pattern fill, conic gradient
-- [ ] P3.1.4 Clipping paths + masks + blend modes
+- [x] P3.1.4 Clipping paths + masks + blend modes
 - [ ] P3.1.5 Isolate mode
 
 ## P3.2 Advanced Typography
@@ -244,8 +244,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P3.2.6 Font embedding where license permits
 
 ## P3.3 Advanced Image Editing
-- [ ] P3.3.1 Non-destructive adjustments (brightness, contrast, saturation, hue, exposure)
-- [ ] P3.3.2 Blur, sharpen, duotone, pixelate, blur regions, filters
+- [x] P3.3.1 Non-destructive adjustments (brightness, contrast, saturation, hue, exposure)
+- [ ] P3.3.2 Blur, sharpen, duotone, pixelate, blur regions, filters (blur + filter looks done; sharpen/duotone/pixelate/regions pending)
 - [ ] P3.3.3 Local background removal (local model/tool)
 - [ ] P3.3.4 Import TIFF, AVIF where supported
 

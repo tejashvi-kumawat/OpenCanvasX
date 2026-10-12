@@ -10,6 +10,7 @@ export 'src/editor_state.dart';
 export 'src/edits.dart';
 export 'src/groups.dart';
 export 'src/history.dart';
+export 'src/masks.dart';
 export 'src/paths.dart';
 export 'src/scene.dart';
 export 'src/snapping.dart';

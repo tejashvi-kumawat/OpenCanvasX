@@ -23,6 +23,7 @@ Future<void> insertAssetItem(
   AssetItem item, {
   Point2D? at,
   PageId? pageId,
+  ObjectId? intoFrame,
 }) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   try {
@@ -39,6 +40,7 @@ Future<void> insertAssetItem(
           sizePx: pack?.kind == AssetKind.sticker ? 200 : 160,
           at: at,
           pageId: pageId,
+          intoFrame: intoFrame,
         );
   } on Object catch (e) {
     messenger?.showSnackBar(

@@ -236,7 +236,15 @@ Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
     'points': points,
     'inner_ratio': innerRatio,
   },
-  ImagePayload(:final assetHash) => {'asset': assetHash},
+  ImagePayload(:final assetHash, :final adjust) => {
+    'asset': assetHash,
+    if (!adjust.isNone)
+      'adjust': {
+        for (final MapEntry(:key, :value) in adjust.toMap().entries)
+          if (value != 0) key: value,
+      },
+  },
+  MaskPayload() => {'mask': true},
   PathPayload(:final segments, :final viewWidth, :final viewHeight) => {
     'segments': [for (final s in segments) _encodeSegment(s)],
     if (viewWidth != null) 'view_width': viewWidth,
@@ -496,7 +504,26 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
       );
     case ObjectType.image:
       final p = object.object('payload');
-      return p.guard(() => ImagePayload(p.string('asset')));
+      return p.guard(() {
+        final adjust = p.child('adjust');
+        return ImagePayload(
+          p.string('asset'),
+          adjust:
+              adjust == null
+                  ? ImageAdjustments.none
+                  : adjust.guard(
+                    () => ImageAdjustments.fromMap({
+                      for (final key in ImageAdjustments.none.toMap().keys)
+                        if (adjust.optNumber(key) case final v?) key: v,
+                    }),
+                  ),
+        );
+      });
+    case ObjectType.group:
+      final p = object.child('payload');
+      return (p?.optBool('mask') ?? false)
+          ? const MaskPayload()
+          : const NoPayload();
     case ObjectType.path:
       final p = object.object('payload');
       return p.guard(
@@ -513,8 +540,7 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
         ObjectType.roundedRect ||
         ObjectType.ellipse ||
         ObjectType.line ||
-        ObjectType.arrow ||
-        ObjectType.group:
+        ObjectType.arrow:
       return const NoPayload();
   }
 }

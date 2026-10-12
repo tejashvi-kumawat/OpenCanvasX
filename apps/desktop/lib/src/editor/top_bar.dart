@@ -461,6 +461,11 @@ class _MainMenu extends ConsumerWidget {
               shortcut: EditorKeys.frameSelection,
             ),
             item(
+              'Use as mask',
+              sel.length >= 2 ? editor.useSelectionAsMask : null,
+              shortcut: EditorKeys.useAsMask,
+            ),
+            item(
               'Create component',
               hasSelection ? editor.createComponent : null,
               shortcut: EditorKeys.createComponent,

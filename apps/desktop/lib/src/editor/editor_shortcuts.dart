@@ -46,6 +46,12 @@ abstract final class EditorKeys {
   static final sendToBack = cmd(LogicalKeyboardKey.bracketLeft, shift: true);
   static final group = cmd(LogicalKeyboardKey.keyG);
   static final export = cmd(LogicalKeyboardKey.keyE, shift: true);
+  static final useAsMask = SingleActivator(
+    LogicalKeyboardKey.keyM,
+    control: !_isMac,
+    meta: _isMac,
+    alt: true,
+  );
   static final createComponent = SingleActivator(
     LogicalKeyboardKey.keyK,
     control: !_isMac,
@@ -151,6 +157,7 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     },
     EditorKeys.group: editor.groupSelection,
     EditorKeys.createComponent: editor.createComponent,
+    EditorKeys.useAsMask: editor.useSelectionAsMask,
     EditorKeys.detachInstance: editor.detachSelection,
     if (onExport != null) EditorKeys.export: onExport,
     if (onPresent != null) EditorKeys.present: onPresent,

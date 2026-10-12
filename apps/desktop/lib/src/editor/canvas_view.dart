@@ -45,6 +45,13 @@ class TextDrag extends ElementDrag {
   final TextPayload Function(TextPayload payload)? restyle;
 }
 
+/// An empty image frame shape (Canva "Frames").
+class ImageFrameDrag extends ElementDrag {
+  const ImageFrameDrag(this.shape);
+
+  final ImageFrameShape shape;
+}
+
 /// An icon or sticker from an asset pack.
 class AssetDrag extends ElementDrag {
   const AssetDrag(this.item);
@@ -1355,6 +1362,11 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           _editor.canUngroup ? _editor.ungroupSelection : null,
         ),
         item(
+          'Use as mask',
+          'Ctrl+Alt+M',
+          hasSelection ? _editor.useSelectionAsMask : null,
+        ),
+        item(
           'Create component',
           'Ctrl+Alt+K',
           hasSelection ? _editor.createComponent : null,
@@ -1414,7 +1426,18 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           restyle: restyle,
         );
       case AssetDrag(:final item):
-        insertAssetItem(context, ref, item, at: at, pageId: frame.pageId);
+        final document = ref.read(editorProvider)!.document;
+        final hit = hitTest(document, page, p);
+        insertAssetItem(
+          context,
+          ref,
+          item,
+          at: at,
+          pageId: frame.pageId,
+          intoFrame: isMaskGroup(document.objects[hit]) ? hit : null,
+        );
+      case ImageFrameDrag(:final shape):
+        _editor.insertImageFrame(shape, at: at, pageId: frame.pageId);
     }
     widget.focusNode.requestFocus();
   }

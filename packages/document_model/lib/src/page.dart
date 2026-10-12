@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:meta/meta.dart';
 
 import 'color.dart';
@@ -65,9 +67,6 @@ final class DesignPage {
     required this.objectIds,
   });
 
-  /// CSS reference resolution: 96 px per inch.
-  static const double defaultDpi = 96;
-
   final PageId id;
 
   /// User label, e.g. "Slide 3". Empty means the UI shows its position.
@@ -92,6 +91,23 @@ final class DesignPage {
 
   /// Root objects on this page, back-to-front.
   final List<ObjectId> objectIds;
+
+  /// Page size expressed in [target] units, using this page's [dpi].
+  ({double width, double height}) sizeIn(LengthUnit target) => (
+    width: convertLength(width, from: unit, to: target, dpi: dpi),
+    height: convertLength(height, from: unit, to: target, dpi: dpi),
+  );
+
+  /// Raster size in whole pixels when rendered at [exportDpi]
+  /// (e.g. PNG export at 300 DPI). Never smaller than 1×1.
+  ({int width, int height}) pixelSizeAt(double exportDpi) {
+    checkPositive(exportDpi, 'exportDpi');
+    final inches = sizeIn(LengthUnit.inch);
+    return (
+      width: max(1, (inches.width * exportDpi).round()),
+      height: max(1, (inches.height * exportDpi).round()),
+    );
+  }
 
   DesignPage copyWith({
     String? name,

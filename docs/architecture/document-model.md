@@ -38,6 +38,8 @@ The document model is the **single in-memory source of truth** while the app is 
 | `guides` | Vertical (fixed x) or horizontal (fixed y) lines; may sit outside the page |
 | `object_ids` | Root objects on this page, back-to-front ([ADR-0003](../adr/0003-global-object-map.md)) |
 
+**Units:** every length on a page — page size, insets, guides and the transforms of objects on it — is expressed in the page's `unit`. Physical units convert with fixed ratios (1 in = 72 pt = 25.4 mm = 2.54 cm); `px` converts through the page `dpi`. Raster export size is the page size in inches × export DPI, rounded to whole pixels.
+
 Supports **fixed page** mode first; infinite canvas (whiteboard) extends page bounds and pan limits later.
 
 ## Object types (phased)
@@ -120,7 +122,8 @@ The document model applies remote ops through the same validation paths as local
 | Colour | `ArgbColor` (`0xAARRGGBB`, pure Dart, no `dart:ui`) | P1.1.1 |
 | Tree checks | `validateObjectGraph` → `List<ModelIssue>` | P1.1.1 |
 | Page | `DesignPage`, `PageInsets`, `Guide` / `GuideAxis`, `PageBackground` (`SolidBackground`, `TransparentBackground`, `ImageBackground`) | P1.1.2 |
-| Unit | `LengthUnit` (symbols only; conversion P1.1.3) | P1.1.2 |
+| Unit | `LengthUnit` (symbols, `fromSymbol`) | P1.1.2 |
+| Conversion | `convertLength`, `defaultDpi`, `DesignPage.sizeIn`, `DesignPage.pixelSizeAt` | P1.1.3 |
 | Page checks | `validatePages` → `List<ModelIssue>` | P1.1.2 |
 
 All types are immutable values with value equality. Constructors throw `ArgumentError` for invalid input (non-finite numbers, negative sizes, payload not matching type, …). Cross-object problems are reported by validators, not thrown, so a damaged file can be repaired rather than rejected outright.

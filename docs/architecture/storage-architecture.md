@@ -45,6 +45,16 @@ Rebuild FTS on save or background job after idle.
 - Atomic write: temp file + rename, or write new ZIP to `.opencanvasx.tmp` then replace.
 - Crash recovery: open last good autosave if main file truncated.
 
+Implementation (`storage/lib/src/project_file.dart`, P1.1.5):
+
+| Piece | Behaviour |
+|-------|-----------|
+| `writeProjectFile` | Writes `<file>.tmp`, flushes, decodes it back to verify, then renames over `<file>`; on any failure the temp file is removed and the previous file is untouched |
+| `saveProject` | Explicit save: `writeProjectFile`, then deletes `<file>.autosave` |
+| `Autosaver` | Debounced (default 2 s quiet period, configurable); saves never overlap; edits during a save trigger another; failures stay dirty and are reported to `onError`; `flush()` before close |
+| Autosave target | `<file>.autosave` next to the project (`autosavePathFor`), a full `.opencanvasx` ZIP |
+| `openProject` | Opens `<file>`; if it is missing or unreadable, opens the autosave instead (`ProjectSource.autosave`). If both are readable and the autosave is newer, opens `<file>` and sets `newerAutosaveAvailable` so the UI asks — never picks silently |
+
 ## Snapshots and backup
 
 | Mechanism | Description |

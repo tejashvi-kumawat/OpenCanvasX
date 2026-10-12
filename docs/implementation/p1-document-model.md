@@ -29,6 +29,12 @@ Engineering log for checklist section P1.1. Normative design: [document-model.md
 - New dependencies: `archive` (MIT) for ZIP, `crypto` (BSD-3-Clause) for SHA-256.
 - Note: `package:archive` writes every entry as "made by MS-DOS" and normalises `\` to `/` on write only; tests patch raw bytes to simulate hostile ZIPs from other tools.
 
+## P1.1.5 Save, open, autosave
+
+- `storage/lib/src/project_file.dart`: `writeProjectFile` (atomic + verified), `readProjectFile`, `saveProject`, `openProject` (crash recovery, `newerAutosaveAvailable`), `Autosaver` (debounced, non-overlapping), `autosavePathFor`.
+- Behaviour table in [storage-architecture.md](../architecture/storage-architecture.md#autosave).
+- UI wiring (dialogs, "restore unsaved changes?" prompt) lands with the app shell (P1.10).
+
 ## Commands
 
 ```bash

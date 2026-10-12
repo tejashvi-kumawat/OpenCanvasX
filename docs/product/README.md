@@ -13,6 +13,7 @@ What we are building, for whom, and what “done” means at each stage.
 | 5 | [mvp-scope.md](mvp-scope.md) | Minimum shippable: editor, collab, AI |
 | 6 | [roadmap.md](roadmap.md) | Phased delivery and dependencies |
 | 7 | [ux-spec.md](ux-spec.md) | Shell layout, onboarding, commands |
+| 7a | [design-system.md](design-system.md) | Colour, type, spacing, components, layout rules (normative for all UI) |
 | 8 | [accessibility-spec.md](accessibility-spec.md) | A11y requirements for UI and export |
 | 9 | [telemetry-and-privacy-policy.md](telemetry-and-privacy-policy.md) | Telemetry off, AI and crash rules |
 | 10 | [legal-content-rules.md](legal-content-rules.md) | Assets, templates, no Canva copy |

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../theme/ocx_theme.dart';
 
-/// Compact numeric input for the inspector.
+/// 28 px numeric input with a short prefix label inside ("X", "W", "°").
 ///
 /// Commits on Enter or when focus leaves; ↑/↓ step by [step] (Shift ×10).
 /// While focused it never overwrites what the user is typing.
@@ -12,12 +12,13 @@ class NumberField extends StatefulWidget {
     required this.value,
     required this.onChanged,
     this.label,
+    this.icon,
     this.suffix,
     this.step = 1,
     this.min,
     this.max,
     this.decimals = 1,
-    this.enabled = true,
+    this.tooltip,
     super.key,
   });
 
@@ -27,13 +28,16 @@ class NumberField extends StatefulWidget {
   /// Short prefix such as "X" or "W".
   final String? label;
 
-  /// Unit after the number, e.g. "px" or "°".
+  /// Prefix icon instead of [label] (e.g. rotation, corner radius).
+  final IconData? icon;
+
+  /// Unit after the number, e.g. "px" or "%".
   final String? suffix;
   final double step;
   final double? min;
   final double? max;
   final int decimals;
-  final bool enabled;
+  final String? tooltip;
 
   @override
   State<NumberField> createState() => _NumberFieldState();
@@ -113,45 +117,50 @@ class _NumberFieldState extends State<NumberField> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final subtle = context.ocx.subtleText;
-    return Focus(
+    final c = context.ocx;
+    final prefix =
+        widget.icon != null
+            ? Icon(widget.icon, size: 14, color: c.textTertiary)
+            : (widget.label != null
+                ? Text(
+                  widget.label!,
+                  style: OcxText.caption(
+                    context,
+                  ).copyWith(color: c.textTertiary),
+                )
+                : null);
+    final field = Focus(
       onKeyEvent: _onKey,
       child: TextField(
         controller: _controller,
         focusNode: _focus,
-        enabled: widget.enabled,
-        textAlign: TextAlign.right,
-        style: theme.textTheme.bodyMedium,
+        style: OcxText.body(context),
         keyboardType: const TextInputType.numberWithOptions(
           decimal: true,
           signed: true,
         ),
         inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[-0-9.,]')),
+          FilteringTextInputFormatter.allow(RegExp('[-0-9.,]')),
         ],
         onSubmitted: (_) => _commit(),
         decoration: InputDecoration(
           prefixIcon:
-              widget.label == null
+              prefix == null
                   ? null
-                  : Padding(
-                    padding: const EdgeInsets.only(
-                      left: Space.md,
-                      right: Space.xs,
-                    ),
-                    child: Text(
-                      widget.label!,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: subtle,
-                      ),
-                    ),
-                  ),
-          prefixIconConstraints: const BoxConstraints(),
+                  : SizedBox(width: 24, child: Center(child: prefix)),
+          prefixIconConstraints: const BoxConstraints(minWidth: 24),
           suffixText: widget.suffix,
-          suffixStyle: theme.textTheme.bodySmall,
+          contentPadding: EdgeInsets.only(
+            left: prefix == null ? Space.sm : 0,
+            right: Space.sm,
+            top: 7,
+            bottom: 7,
+          ),
         ),
       ),
     );
+    return widget.tooltip == null
+        ? field
+        : Tooltip(message: widget.tooltip, child: field);
   }
 }

@@ -23,6 +23,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:storage/storage.dart';
 
+import 'package:renderer/renderer.dart' as renderer;
+
 import '../providers.dart';
 
 /// Where the open design stands relative to its file.
@@ -77,6 +79,26 @@ class EditorSession {
     undoLabel: clearUndo ? null : (undoLabel ?? this.undoLabel),
     redoLabel: clearRedo ? null : (redoLabel ?? this.redoLabel),
   );
+}
+
+/// Measures text boxes in page units; tests may replace it.
+typedef TextMeasurer = Point2D Function(TextPayload text, {double? width});
+
+final textMeasurerProvider = Provider<TextMeasurer>(
+  (ref) => renderer.measureText,
+);
+
+/// The text object being edited inline on the canvas, if any.
+final textEditingProvider = NotifierProvider<TextEditingTarget, ObjectId?>(
+  TextEditingTarget.new,
+);
+
+class TextEditingTarget extends Notifier<ObjectId?> {
+  @override
+  ObjectId? build() => null;
+
+  ObjectId? get id => state;
+  set id(ObjectId? value) => state = value;
 }
 
 /// Quiet period before autosave writes the design file.
@@ -156,6 +178,7 @@ class EditorController extends Notifier<EditorSession?> {
     _history.clear();
     _gestureBase = null;
     _gestureObjects.clear();
+    ref.read(textEditingProvider.notifier).id = null;
     _autosaver = Autosaver(
       delay: ref.read(autosaveDelayProvider),
       save: _save,
@@ -305,6 +328,138 @@ class EditorController extends Notifier<EditorSession?> {
       activePage: page.id,
       select: {shape.id},
     );
+  }
+
+  /// Adds a [type] shape with an explicit [transform] (drawn with a tool).
+  void insertDrawnShape(
+    ObjectType type,
+    ObjectTransform transform, {
+    required PageId pageId,
+  }) {
+    final page = _editor.document.pages.firstWhere((p) => p.id == pageId);
+    final shape = newShape(
+      type,
+      page,
+      id: ObjectId.generate(),
+    ).copyWith(transform: transform);
+    _commit(
+      insertObjects(_editor.document, pageId, [
+        shape,
+      ], label: 'Add ${typeLabel(type)}'),
+      activePage: pageId,
+      select: {shape.id},
+    );
+  }
+
+  /// Adds a text box for [role]. With [topLeft] the box starts there,
+  /// otherwise it is centred on the page. Returns the new id.
+  ObjectId insertText(
+    TextRole role, {
+    Point2D? topLeft,
+    Point2D? center,
+    PageId? pageId,
+    String? text,
+  }) {
+    final document = _editor.document;
+    final page =
+        pageId == null
+            ? _editor.activePage
+            : document.pages.firstWhere((p) => p.id == pageId);
+    final measure = ref.read(textMeasurerProvider);
+    var object = newText(
+      page,
+      id: ObjectId.generate(),
+      role: role,
+      text: text,
+      center: center,
+      measure: measure,
+    );
+    if (topLeft != null) {
+      object = object.copyWith(
+        transform: object.transform.copyWith(x: topLeft.x, y: topLeft.y),
+      );
+    }
+    _commit(
+      insertObjects(document, page.id, [object], label: 'Add text'),
+      activePage: page.id,
+      select: {object.id},
+    );
+    return object.id;
+  }
+
+  // --------------------------------------------------------- text editing
+
+  /// Starts inline editing of text object [id] (one undo step until
+  /// [finishTextEdit]).
+  void startTextEdit(ObjectId id) {
+    final object = _editor.document.objects[id];
+    if (object == null || object.payload is! TextPayload || object.locked) {
+      return;
+    }
+    if (_editor.selection.length != 1 || !_editor.selection.contains(id)) {
+      select({id});
+    }
+    beginGesture();
+    ref.read(textEditingProvider.notifier).id = id;
+  }
+
+  /// Live update while typing; resizes auto-sized boxes.
+  void updateEditedText(String text) {
+    final id = ref.read(textEditingProvider);
+    final object = id == null ? null : _editor.document.objects[id];
+    final payload = object?.payload;
+    if (object == null || payload is! TextPayload) return;
+    previewObjects([_withText(object, payload.copyWith(text: text))]);
+  }
+
+  /// Ends inline editing. Empty text boxes are removed.
+  void finishTextEdit() {
+    final id = ref.read(textEditingProvider);
+    if (id == null) return;
+    ref.read(textEditingProvider.notifier).id = null;
+    final payload = _editor.document.objects[id]?.payload;
+    endGesture('Edit text');
+    if (payload is TextPayload && payload.text.trim().isEmpty) {
+      _commit(
+        deleteObjects(_editor.document, [id], label: 'Delete text'),
+        select: const {},
+      );
+    }
+  }
+
+  /// Changes the formatting of every selected text object (P1.5.2–P1.5.3).
+  void updateSelectedText(
+    TextPayload Function(TextPayload text) update, {
+    required String label,
+  }) {
+    _commit(
+      updateObjects(_editor.document, [
+        for (final o in _editor.selectedObjects)
+          if (o.payload case final TextPayload payload)
+            _withText(o, update(payload)),
+      ], label: label),
+    );
+  }
+
+  /// [object] with [payload] and its box re-measured for its sizing mode.
+  DesignObject _withText(DesignObject object, TextPayload payload) {
+    final measure = ref.read(textMeasurerProvider);
+    final t = object.transform;
+    final size = switch (payload.sizing) {
+      TextSizing.autoWidth => measure(payload),
+      TextSizing.autoHeight => measure(payload, width: t.width),
+      TextSizing.fixed => Point2D(t.width, t.height),
+    };
+    return object.copyWith(
+      payload: payload,
+      transform: t.copyWith(width: size.x, height: size.y),
+    );
+  }
+
+  /// Spaces three or more selected objects evenly (P1.4.3).
+  void distribute(DistributeAxis axis) {
+    if (_editor.selection.length < 3) return;
+    _commit(distributeObjects(_editor.document, _editor.selection, axis));
   }
 
   void deleteSelection() {
@@ -485,6 +640,7 @@ class EditorController extends Notifier<EditorSession?> {
   }
 
   void _cancelGesture() {
+    ref.read(textEditingProvider.notifier).id = null;
     final base = _gestureBase;
     if (base == null) return;
     _gestureBase = null;
@@ -548,12 +704,14 @@ String typeLabel(ObjectType type) => switch (type) {
   ObjectType.text => 'Text',
   ObjectType.rect => 'Rectangle',
   ObjectType.roundedRect => 'Rounded rectangle',
-  ObjectType.ellipse => 'Circle',
+  ObjectType.ellipse => 'Ellipse',
   ObjectType.line => 'Line',
   ObjectType.arrow => 'Arrow',
   ObjectType.path => 'Shape',
   ObjectType.image => 'Image',
   ObjectType.group => 'Group',
+  ObjectType.polygon => 'Polygon',
+  ObjectType.star => 'Star',
 };
 
 /// Layer name: the user's name, or "Rectangle 2" style numbering.

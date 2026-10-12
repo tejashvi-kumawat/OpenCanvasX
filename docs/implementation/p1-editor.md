@@ -1,14 +1,20 @@
 # Phase 1 editor and home (in progress)
 
+> UI follows [design-system.md](../product/design-system.md) (Cobalt accent, neutral chrome, 28 px controls, fixed inspector section order).
+
 Engineering log for the first usable editor. Normative design: [ux-spec.md](../product/ux-spec.md), [overview.md](../architecture/overview.md), [document-model.md](../architecture/document-model.md), [rendering-architecture.md](../architecture/rendering-architecture.md). Decisions: [ADR-0005](../adr/0005-riverpod-and-design-library.md), [ADR-0006](../adr/0006-invertible-changes-for-undo.md).
 
 ## What a user can do
 
 - **First run (P1.1.7, part of P1.10.6):** welcome screen with the privacy promise; one click uses `Documents/OpenCanvasX` (created if missing) or picks any folder.
 - **Home:** create from size presets or a custom size (P1.2.3), search and reopen designs from live thumbnails, change the projects folder, switch light/dark/system theme (P1.10.3).
-- **Editor layout (P1.10.1):** top bar (menus File/Edit/View/Insert/Arrange, undo/redo, save status, editable title), left rail with Elements / Layers / Pages panels, canvas, right inspector (P1.10.2), bottom bar (pages, zoom).
+- **Editor layout (P1.10.1):** toolbar (main menu with File/Edit/View/Insert/Arrange, tools Move · Shapes ▾ · Lines ▾ · Text · Hand, title + save state, undo/redo, zoom, theme), left sidebar (Layers tab: Pages + Layers; Elements tab: Text, Shapes, Lines), canvas, inspector (P1.10.2) in the order Alignment, Layout, Text, Appearance, Fill, Stroke.
 - **Canvas (P1.2.1, P1.2.2, P1.2.5):** pages stacked vertically; wheel/trackpad pan, Ctrl+wheel zoom at cursor, middle-button or Space+drag pan, zoom slider and menu, fit page (Ctrl+0), 100 % (Ctrl+1).
-- **Shapes (P1.3.1):** rectangle, rounded rectangle, circle/ellipse, line, arrow — click or drag from Elements, or the Insert menu.
+- **Shapes (P1.3.1, P1.3.2):** rectangle, rounded rectangle, ellipse, polygon, star, line, arrow — draw with a tool (drag; Shift = square / 45°), click or drag from Elements, or the Insert menu. Tool shortcuts V, H, R, O, L, Shift+L, T.
+- **Text (P1.5.1–P1.5.3):** heading/subheading/body from Elements or the Text tool (click to place); double-click or Enter edits inline; font, weight, size, italic, alignment, auto width / auto height / fixed, line height, letter spacing. Dragging a side handle of an auto-width text switches it to auto height.
+- **Strokes (P1.3.5):** colour, weight, solid/dashed/dotted; opacity and blend mode in Appearance.
+- **Distribute (P1.4.3):** equal spacing of 3+ elements horizontally or vertically.
+- **Context menu:** right-click on the canvas for clipboard and arrange commands.
 - **Selection and transforms (P1.3.3, P1.3.4):** click, Shift+click, marquee; move (Shift constrains axis), 8 resize handles (Shift keeps ratio; rotated objects keep the opposite corner fixed), rotation handle (Shift snaps 15°), flip from the inspector, arrow-key nudge.
 - **Inspector:** position, size with ratio lock, rotation, opacity, fill, border, corner radius, align (P1.4.2), arrange; page name, size, presets and background when nothing is selected.
 - **Clipboard (P1.3.7):** cut, copy, paste, duplicate (Ctrl+X/C/V/D).
@@ -30,7 +36,7 @@ Engineering log for the first usable editor. Normative design: [ux-spec.md](../p
 
 ## Not done yet (still open in the checklist)
 
-Rulers/grid/guides (P1.2.4), polygon/star (P1.3.2), dashed strokes (P1.3.5), groups (P1.3.6), distribute and snapping (P1.4.3, P1.4.4), text (P1.5), images/SVG (P1.6), full colour picker and gradients (P1.7), history panel and checkpoints (P1.8.2–3), export (P1.9), shortcut customisation and command palette (P1.10.4–5), identity in onboarding (P1.10.6), offline/telemetry verification (P1.11).
+Rulers/grid/guides (P1.2.4), groups (P1.3.6), snapping and smart guides (P1.4.4), character-level text formatting and local font discovery (P1.5.4–P1.5.6), images/SVG (P1.6), full colour picker and gradients (P1.7), history panel and checkpoints (P1.8.2–3), export (P1.9), shortcut customisation and command palette (P1.10.4–5), identity in onboarding (P1.10.6), offline/telemetry verification (P1.11).
 
 ## Testing
 

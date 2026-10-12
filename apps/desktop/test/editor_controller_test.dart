@@ -28,6 +28,7 @@ void main() {
         appIndexProvider.overrideWithValue(index),
         designLibraryProvider.overrideWithValue(library),
         autosaveDelayProvider.overrideWithValue(Duration.zero),
+        textMeasurerProvider.overrideWithValue(fakeMeasure),
       ],
     );
     await editor().open(path);
@@ -54,7 +55,7 @@ void main() {
     final shape = doc().objects[id]!;
     expect(shape.type, ObjectType.ellipse);
     expect(shape.transform.x + shape.transform.width / 2, 540);
-    expect(session().undoLabel, 'Add Circle');
+    expect(session().undoLabel, 'Add Ellipse');
   });
 
   test('undo and redo restore documents and labels', () {
@@ -228,6 +229,93 @@ void main() {
       for (final id in page.objectIds)
         layerName(doc(), page, doc().objects[id]!),
     ];
-    expect(names, ['Rectangle 1', 'Rectangle 2', 'Circle 1']);
+    expect(names, ['Rectangle 1', 'Rectangle 2', 'Ellipse 1']);
+  });
+
+  group('text', () {
+    TextPayload payloadOf(ObjectId id) =>
+        doc().objects[id]!.payload as TextPayload;
+
+    test('insertText measures and selects the new box', () {
+      final id = editor().insertText(TextRole.heading);
+      final payload = payloadOf(id);
+      expect(payload.text, 'Heading');
+      final t = doc().objects[id]!.transform;
+      expect(t.width, fakeMeasure(payload).x);
+      expect(session().selection, {id});
+      expect(session().undoLabel, 'Add text');
+    });
+
+    test('inline editing is one undo step and resizes auto-width text', () {
+      final id = editor().insertText(TextRole.body);
+      final before = doc().objects[id]!.transform.width;
+      editor()
+        ..startTextEdit(id)
+        ..updateEditedText('Hello')
+        ..updateEditedText('Hello world, longer');
+      expect(container.read(textEditingProvider), id);
+      expect(doc().objects[id]!.transform.width, greaterThan(before));
+      editor().finishTextEdit();
+      expect(container.read(textEditingProvider), isNull);
+      expect(payloadOf(id).text, 'Hello world, longer');
+      expect(session().undoLabel, 'Edit text');
+      editor().undo();
+      expect(payloadOf(id).text, 'Body text');
+    });
+
+    test('finishing with empty text removes the box', () {
+      final id = editor().insertText(TextRole.body);
+      editor()
+        ..startTextEdit(id)
+        ..updateEditedText('   ')
+        ..finishTextEdit();
+      expect(doc().objects.containsKey(id), isFalse);
+    });
+
+    test('formatting re-measures the box for its sizing mode', () {
+      final id = editor().insertText(TextRole.body);
+      final w = doc().objects[id]!.transform.width;
+      editor().updateSelectedText(
+        (t) => t.copyWith(fontSize: t.fontSize * 2),
+        label: 'Font size',
+      );
+      expect(doc().objects[id]!.transform.width, closeTo(w * 2, 0.01));
+      editor().updateSelectedText(
+        (t) => t.copyWith(sizing: TextSizing.fixed),
+        label: 'Text sizing',
+      );
+      final fixedWidth = doc().objects[id]!.transform.width;
+      editor().updateSelectedText(
+        (t) => t.copyWith(fontSize: t.fontSize * 2),
+        label: 'Font size',
+      );
+      expect(doc().objects[id]!.transform.width, fixedWidth);
+    });
+  });
+
+  test('insertDrawnShape uses the drawn transform', () {
+    final page = session().state.activePageId;
+    editor().insertDrawnShape(
+      ObjectType.star,
+      ObjectTransform(x: 10, y: 20, width: 30, height: 40),
+      pageId: page,
+    );
+    final star = doc().objects[roots().single]!;
+    expect(star.payload, StarPayload());
+    expect((star.transform.x, star.transform.width), (10.0, 30.0));
+  });
+
+  test('distribute needs three or more', () {
+    editor()
+      ..insertShape(ObjectType.rect, at: const Point2D(100, 100))
+      ..insertShape(ObjectType.rect, at: const Point2D(200, 100))
+      ..selectAll()
+      ..distribute(DistributeAxis.horizontal);
+    expect(session().undoLabel, 'Add Rectangle');
+    editor()
+      ..insertShape(ObjectType.rect, at: const Point2D(900, 100))
+      ..selectAll()
+      ..distribute(DistributeAxis.horizontal);
+    expect(session().undoLabel, 'Distribute');
   });
 }

@@ -1,11 +1,15 @@
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:opencanvasx/main.dart';
+import 'package:opencanvasx/src/editor/canvas_view.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
+import 'package:opencanvasx/src/editor/left_panel.dart';
+import 'package:opencanvasx/src/editor/tools.dart';
 import 'package:opencanvasx/src/editor/viewport.dart';
 import 'package:opencanvasx/src/providers.dart';
 import 'package:storage/storage.dart';
@@ -40,6 +44,7 @@ void main() {
         folderCheckerProvider.overrideWithValue((_) async => null),
         folderCreatorProvider.overrideWithValue((_) async {}),
         suggestedProjectsFolderProvider.overrideWith((ref) async => _folder),
+        textMeasurerProvider.overrideWithValue(fakeMeasure),
       ],
     );
     addTearDown(container.dispose);
@@ -53,11 +58,17 @@ void main() {
   }
 
   EditorSession session() => container.read(editorProvider)!;
+  List<ObjectId> roots() => session().activePage.objectIds;
 
   Future<void> openFirstDesign(WidgetTester tester) async {
     library.seed(_folder, 'Launch poster');
     await pumpApp(tester);
     await tester.tap(find.text('Launch poster'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> showElements(WidgetTester tester) async {
+    await tester.tap(find.text('Elements'));
     await tester.pumpAndSettle();
   }
 
@@ -75,33 +86,35 @@ void main() {
   }
 
   group('first run', () {
-    testWidgets('explains privacy and offers the suggested folder', (
+    testWidgets('explains the app and offers the suggested folder', (
       tester,
     ) async {
       await pumpApp(tester, withFolder: false);
       expect(find.text('Welcome to OpenCanvasX'), findsOneWidget);
       expect(find.text('Documents › OpenCanvasX'), findsOneWidget);
-      expect(find.textContaining('No account, no uploads'), findsOneWidget);
+      expect(find.text('No account, no uploads, no tracking'), findsOneWidget);
     });
 
-    testWidgets('using the suggested folder goes to home', (tester) async {
+    testWidgets('continue with the suggested folder goes home', (tester) async {
       await pumpApp(tester, withFolder: false);
-      await tester.tap(find.text('Use this folder'));
+      await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(find.text('What will you design today?'), findsOneWidget);
+      expect(find.text('Start a design'), findsOneWidget);
       expect(index.settings.get(AppSettings.projectsRootKey), _folder);
     });
   });
 
   group('home', () {
-    testWidgets('shows an inviting empty state', (tester) async {
+    testWidgets('shows an empty state with one primary action', (tester) async {
       await pumpApp(tester);
       expect(find.text('No designs yet'), findsOneWidget);
       expect(find.text('Create your first design'), findsOneWidget);
       expect(find.text('Instagram post'), findsOneWidget);
     });
 
-    testWidgets('lists designs as cards with their size', (tester) async {
+    testWidgets('lists designs as cards with their size and age', (
+      tester,
+    ) async {
       library
         ..seed(_folder, 'Menu')
         ..seed(_folder, 'Bakery flyer');
@@ -122,7 +135,7 @@ void main() {
       expect(find.text('Bakery flyer'), findsNothing);
     });
 
-    testWidgets('a preset tile creates a design and opens the editor', (
+    testWidgets('a preset creates a design and opens the editor', (
       tester,
     ) async {
       await pumpApp(tester);
@@ -131,37 +144,26 @@ void main() {
       expect(library.files, hasLength(1));
       final page = session().activePage;
       expect((page.width, page.height), (1080.0, 1920.0));
-      expect(find.text('Untitled Story'), findsOneWidget);
-      expect(find.text('Elements'), findsWidgets);
+      expect(find.text('Untitled story'), findsOneWidget);
     });
 
     testWidgets('the create dialog supports custom sizes', (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.text('Create a design'));
+      await tester.tap(find.text('Create design'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Custom size').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('mm'));
+      await tester.tap(find.text('Pixels (px)'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Create design'));
+      await tester.tap(find.text('Millimetres (mm)').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Create design').last);
       await tester.pumpAndSettle();
       expect(session().activePage.unit, LengthUnit.mm);
     });
   });
 
   group('editor', () {
-    testWidgets('adds a shape from the Elements panel and inspects it', (
-      tester,
-    ) async {
-      await openFirstDesign(tester);
-      await tester.tap(find.text('Rectangle'));
-      await tester.pumpAndSettle();
-      expect(session().activePage.objectIds, hasLength(1));
-      expect(find.text('Rectangle 1'), findsOneWidget);
-      expect(find.text('POSITION'), findsOneWidget);
-      expect(find.text('All changes saved'), findsOneWidget);
-    });
-
     testWidgets('opens with the first page fitted in view', (tester) async {
       await openFirstDesign(tester);
       final view = container.read(viewportProvider);
@@ -173,65 +175,133 @@ void main() {
       expect(canvas.contains(onScreen.bottomRight), isTrue);
     });
 
-    testWidgets('keyboard shortcuts: undo, redo, duplicate, delete', (
+    testWidgets('Elements adds shapes; layers and inspector follow', (
       tester,
     ) async {
       await openFirstDesign(tester);
-      await tester.tap(find.text('Circle'));
+      await showElements(tester);
+      await tester.tap(find.byTooltip('Rectangle'));
       await tester.pumpAndSettle();
-      await chord(tester, LogicalKeyboardKey.keyZ);
-      expect(session().activePage.objectIds, isEmpty);
-      await chord(tester, LogicalKeyboardKey.keyZ, shift: true);
-      expect(session().activePage.objectIds, hasLength(1));
-      await chord(tester, LogicalKeyboardKey.keyA);
-      await chord(tester, LogicalKeyboardKey.keyD);
-      expect(session().activePage.objectIds, hasLength(2));
-      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
-      await tester.pumpAndSettle();
-      expect(session().activePage.objectIds, hasLength(1));
+      expect(roots(), hasLength(1));
+      expect(find.text('Rectangle 1'), findsWidgets);
+      expect(find.text('Layout'), findsOneWidget);
+      expect(find.text('Fill'), findsOneWidget);
+      expect(find.text('Saved'), findsOneWidget);
     });
 
-    testWidgets('inspector edits are undoable', (tester) async {
+    testWidgets('Elements adds text with its own inspector section', (
+      tester,
+    ) async {
       await openFirstDesign(tester);
-      await tester.tap(find.text('Rectangle'));
+      await showElements(tester);
+      await tester.tap(find.text('Add heading'));
+      await tester.pumpAndSettle();
+      final text = session().document.objects[roots().single]!;
+      expect((text.payload as TextPayload).text, 'Heading');
+      expect(find.text('Text'), findsWidgets);
+      expect(find.text('Text colour'), findsOneWidget);
+    });
+
+    testWidgets('a drawing tool draws a shape by dragging and resets', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      await tester.tap(find.byTooltip('Rectangle  (R)'));
+      await tester.pumpAndSettle();
+      expect(container.read(toolProvider).active, EditorTool.rect);
+      final canvas = tester.getCenter(find.byType(DesignCanvas));
+      final gesture = await tester.startGesture(
+        canvas,
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(40, 30));
+      await gesture.moveBy(const Offset(40, 30));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(roots(), hasLength(1));
+      final t = session().document.objects[roots().single]!.transform;
+      expect(t.width, greaterThan(0));
+      expect(container.read(toolProvider).active, EditorTool.move);
+    });
+
+    testWidgets('tool shortcuts switch tools', (tester) async {
+      await openFirstDesign(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyT);
+      await tester.pumpAndSettle();
+      expect(container.read(toolProvider).active, EditorTool.text);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(container.read(toolProvider).active, EditorTool.move);
+    });
+
+    testWidgets('keyboard: undo, redo, select all, duplicate, delete', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      await showElements(tester);
+      await tester.tap(find.byTooltip('Ellipse'));
+      await tester.pumpAndSettle();
+      await chord(tester, LogicalKeyboardKey.keyZ);
+      expect(roots(), isEmpty);
+      await chord(tester, LogicalKeyboardKey.keyZ, shift: true);
+      expect(roots(), hasLength(1));
+      await chord(tester, LogicalKeyboardKey.keyA);
+      await chord(tester, LogicalKeyboardKey.keyD);
+      expect(roots(), hasLength(2));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+      await tester.pumpAndSettle();
+      expect(roots(), hasLength(1));
+    });
+
+    testWidgets('alignment buttons are undoable', (tester) async {
+      await openFirstDesign(tester);
+      await showElements(tester);
+      await tester.tap(find.byTooltip('Rectangle'));
       await tester.pumpAndSettle();
       final id = session().selection.single;
-      await tester.tap(find.byTooltip('Align Left'));
+      await tester.tap(find.byTooltip('Align left to page'));
       await tester.pumpAndSettle();
       expect(session().document.objects[id]!.transform.x, 0);
       expect(session().undoLabel, 'Align');
     });
 
-    testWidgets('layers panel lists elements and hides them', (tester) async {
+    testWidgets('layers: hovering a row reveals hide, which works', (
+      tester,
+    ) async {
       await openFirstDesign(tester);
-      await tester.tap(find.text('Rectangle'));
+      await showElements(tester);
+      await tester.tap(find.byTooltip('Rectangle'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Layers'));
+      container.read(leftTabProvider.notifier).tab = LeftTab.layers;
       await tester.pumpAndSettle();
-      expect(find.text('Rectangle 1'), findsWidgets);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(
+        location: tester.getCenter(find.text('Rectangle 1').first),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Hide'));
       await tester.pumpAndSettle();
-      final id = session().activePage.objectIds.single;
-      expect(session().document.objects[id]!.hidden, isTrue);
+      expect(session().document.objects[roots().single]!.hidden, isTrue);
+      await mouse.removePointer();
     });
 
-    testWidgets('pages can be added from the bottom bar', (tester) async {
+    testWidgets('pages: add from the Pages header', (tester) async {
       await openFirstDesign(tester);
-      expect(find.text('Page 1 of 1'), findsOneWidget);
-      await tester.tap(find.byTooltip('Add page').last);
+      await tester.tap(find.byTooltip('Add page  (Ctrl+Enter)'));
       await tester.pumpAndSettle();
-      expect(find.text('Page 2 of 2'), findsOneWidget);
+      expect(session().document.pages, hasLength(2));
+      expect(find.text('Page 2'), findsWidgets);
     });
 
-    testWidgets('page inspector changes the background', (tester) async {
+    testWidgets('page background can be made transparent', (tester) async {
       await openFirstDesign(tester);
-      expect(find.text('BACKGROUND'), findsOneWidget);
-      await tester.tap(find.byTooltip('None').first);
+      expect(find.text('Background'), findsOneWidget);
+      await tester.tap(find.byTooltip('Make transparent'));
       await tester.pumpAndSettle();
       expect(session().activePage.background, const TransparentBackground());
     });
 
-    testWidgets('renaming from the top bar updates the title', (tester) async {
+    testWidgets('renaming from the toolbar updates the title', (tester) async {
       await openFirstDesign(tester);
       await tester.tap(find.text('Launch poster'));
       await tester.pumpAndSettle();
@@ -244,16 +314,15 @@ void main() {
       expect(session().document.metadata.title, 'Launch poster v2');
     });
 
-    testWidgets('going home saves and shows the updated design', (
-      tester,
-    ) async {
+    testWidgets('going home saves and shows the design', (tester) async {
       await openFirstDesign(tester);
-      await tester.tap(find.text('Rectangle'));
+      await showElements(tester);
+      await tester.tap(find.byTooltip('Rectangle'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Back to home'));
+      await tester.tap(find.byTooltip('Home'));
       await tester.pumpAndSettle();
       expect(container.read(editorProvider), isNull);
-      expect(find.text('What will you design today?'), findsOneWidget);
+      expect(find.text('Start a design'), findsOneWidget);
       final saved = library.files.values.single;
       expect(saved.objects.values.single.type, ObjectType.rect);
       expect(defaultShapeFill, isNotNull);

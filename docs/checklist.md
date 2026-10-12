@@ -111,23 +111,23 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 
 ## P1.3 Objects & Transforms
 - [x] P1.3.1 Rectangle, rounded rectangle, ellipse/circle, line, arrow
-- [ ] P1.3.2 Polygon, star
+- [x] P1.3.2 Polygon, star
 - [x] P1.3.3 Selection (single, multi, marquee)
 - [x] P1.3.4 Move, resize, rotate, flip
-- [ ] P1.3.5 Opacity, fill, stroke, dashed stroke
+- [x] P1.3.5 Opacity, fill, stroke, dashed stroke
 - [ ] P1.3.6 Group / ungroup, nested groups
 - [x] P1.3.7 Copy / cut / paste / duplicate
 
 ## P1.4 Layers & Alignment
 - [x] P1.4.1 Layer tree panel (rename, lock, hide, reorder)
 - [x] P1.4.2 Align (left/center/right/top/middle/bottom)
-- [ ] P1.4.3 Distribute + equal spacing
+- [x] P1.4.3 Distribute + equal spacing
 - [ ] P1.4.4 Snap to page / object / grid + smart guides
 
 ## P1.5 Text (Basic)
-- [ ] P1.5.1 Text box (auto width/height, fixed)
-- [ ] P1.5.2 Font family/weight/style/size, color
-- [ ] P1.5.3 Letter spacing, line height, alignment
+- [x] P1.5.1 Text box (auto width/height, fixed)
+- [x] P1.5.2 Font family/weight/style/size, color
+- [x] P1.5.3 Letter spacing, line height, alignment
 - [ ] P1.5.4 Character-level formatting
 - [ ] P1.5.5 Local font discovery + fallback/substitution
 - [ ] P1.5.6 Font license metadata check (no unlicensed bundling)

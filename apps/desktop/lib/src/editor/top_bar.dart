@@ -5,180 +5,265 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
 import '../theme/ocx_theme.dart';
+import '../widgets/brand_mark.dart';
+import '../widgets/controls.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
+import 'tools.dart';
 import 'viewport.dart';
 
-/// Editor top bar (ux-spec.md "Top"): home, menus, history, save state,
-/// document title.
-class EditorTopBar extends ConsumerWidget {
-  const EditorTopBar({required this.onHome, super.key});
+/// Editor toolbar (design-system.md §5): menu and tools on the left, title
+/// and save state in the centre, history and zoom on the right.
+class EditorToolbar extends ConsumerWidget {
+  const EditorToolbar({required this.onHome, super.key});
 
   final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(editorProvider);
-    if (session == null) return const SizedBox(height: Chrome.topBarHeight);
+    if (session == null) return const SizedBox(height: Chrome.toolbar);
     final editor = ref.read(editorProvider.notifier);
-    final page = session.activePage;
+    final c = context.ocx;
     return Container(
-      height: Chrome.topBarHeight,
-      decoration: const BoxDecoration(gradient: Brand.gradient),
+      height: Chrome.toolbar,
+      color: c.surface,
       padding: const EdgeInsets.symmetric(horizontal: Space.sm),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Narrow windows keep the essentials: menus, history, title.
-          final compact = constraints.maxWidth < 1100;
-          return Row(
-            children: [
-              _BarIconButton(
-                icon: Icons.home_outlined,
-                tooltip: 'Back to home',
-                onPressed: onHome,
-              ),
-              const SizedBox(width: Space.xs),
-              _EditorMenuBar(onHome: onHome),
-              const _BarDivider(),
-              _BarIconButton(
-                icon: Icons.undo,
-                tooltip:
-                    session.canUndo
-                        ? 'Undo ${session.undoLabel!.toLowerCase()}'
-                        : 'Nothing to undo',
-                onPressed: session.canUndo ? editor.undo : null,
-              ),
-              _BarIconButton(
-                icon: Icons.redo,
-                tooltip:
-                    session.canRedo
-                        ? 'Redo ${session.redoLabel!.toLowerCase()}'
-                        : 'Nothing to redo',
-                onPressed: session.canRedo ? editor.redo : null,
-              ),
-              const SizedBox(width: Space.sm),
-              _SaveStatus(status: session.saveStatus, compact: compact),
-              Expanded(
-                child: Center(
-                  child: _TitleField(
-                    title: session.document.metadata.title,
-                    onSubmitted: editor.rename,
-                  ),
-                ),
-              ),
-              if (!compact) ...[
-                Text(
-                  '${_fmt(page.width)} × ${_fmt(page.height)} ${page.unit.symbol}',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(width: Space.md),
-              ],
-              const _ThemeToggle(),
-              const SizedBox(width: Space.xs),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-String _fmt(double v) =>
-    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
-
-class _BarIconButton extends StatelessWidget {
-  const _BarIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    icon: Icon(icon, size: 21),
-    tooltip: tooltip,
-    onPressed: onPressed,
-    color: Colors.white,
-    disabledColor: Colors.white.withValues(alpha: 0.4),
-    hoverColor: Colors.white.withValues(alpha: 0.12),
-  );
-}
-
-class _BarDivider extends StatelessWidget {
-  const _BarDivider();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 1,
-    height: 24,
-    margin: const EdgeInsets.symmetric(horizontal: Space.sm),
-    color: Colors.white.withValues(alpha: 0.25),
-  );
-}
-
-class _SaveStatus extends StatelessWidget {
-  const _SaveStatus({required this.status, this.compact = false});
-
-  final SaveStatus status;
-
-  /// Icon only; the text moves into the tooltip.
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final (icon, text) = switch (status) {
-      SaveStatus.saved => (Icons.check_circle_outline, 'All changes saved'),
-      SaveStatus.pending || SaveStatus.saving => (null, 'Saving…'),
-      SaveStatus.failed => (Icons.error_outline, 'Not saved — will retry'),
-    };
-    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: Colors.white.withValues(alpha: 0.85),
-    );
-    return Tooltip(
-      message:
-          compact
-              ? '$text — designs are saved automatically to this computer.'
-              : 'Designs are saved automatically to this computer.',
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null)
-            Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.85))
-          else
-            const SizedBox.square(
-              dimension: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.6,
-                color: Colors.white,
+          OcxIconButton(
+            icon: Icons.home_outlined,
+            tooltip: 'Home',
+            onPressed: onHome,
+            iconSize: Chrome.toolbarIcon,
+          ),
+          const SizedBox(width: Space.xs),
+          _MainMenu(onHome: onHome),
+          const _ToolbarDivider(),
+          const _ToolButtons(),
+          Expanded(
+            child: Center(
+              child: _TitleAndStatus(
+                title: session.document.metadata.title,
+                status: session.saveStatus,
+                onRename: editor.rename,
               ),
             ),
-          if (!compact) ...[const SizedBox(width: 6), Text(text, style: style)],
+          ),
+          OcxIconButton(
+            icon: Icons.undo,
+            iconSize: Chrome.toolbarIcon,
+            tooltip:
+                session.canUndo
+                    ? 'Undo ${session.undoLabel!.toLowerCase()}  (Ctrl+Z)'
+                    : 'Nothing to undo',
+            onPressed: session.canUndo ? editor.undo : null,
+          ),
+          OcxIconButton(
+            icon: Icons.redo,
+            iconSize: Chrome.toolbarIcon,
+            tooltip:
+                session.canRedo
+                    ? 'Redo ${session.redoLabel!.toLowerCase()}  (Ctrl+Shift+Z)'
+                    : 'Nothing to redo',
+            onPressed: session.canRedo ? editor.redo : null,
+          ),
+          const _ToolbarDivider(),
+          const _ZoomMenu(),
+          const SizedBox(width: Space.xs),
+          const _ThemeToggle(),
         ],
       ),
     );
   }
 }
 
-/// Document title that turns into a text field on click.
-class _TitleField extends StatefulWidget {
-  const _TitleField({required this.title, required this.onSubmitted});
-
-  final String title;
-  final ValueChanged<String> onSubmitted;
+class _ToolbarDivider extends StatelessWidget {
+  const _ToolbarDivider();
 
   @override
-  State<_TitleField> createState() => _TitleFieldState();
+  Widget build(BuildContext context) => Container(
+    width: 1,
+    height: 20,
+    margin: const EdgeInsets.symmetric(horizontal: Space.sm),
+    color: context.ocx.border,
+  );
 }
 
-class _TitleFieldState extends State<_TitleField> {
+// ----------------------------------------------------------------- tools
+
+class _ToolButtons extends ConsumerWidget {
+  const _ToolButtons();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tools = ref.watch(toolProvider);
+    final select = ref.read(toolProvider.notifier).select;
+    return Row(
+      children: [
+        _ToolButton(
+          tool: EditorTool.move,
+          selected: tools.active == EditorTool.move,
+          onTap: () => select(EditorTool.move),
+        ),
+        _ToolGroup(
+          tools: shapeTools,
+          current: tools.lastShape,
+          active: tools.active,
+          onSelect: select,
+        ),
+        _ToolGroup(
+          tools: lineTools,
+          current: tools.lastLine,
+          active: tools.active,
+          onSelect: select,
+        ),
+        _ToolButton(
+          tool: EditorTool.text,
+          selected: tools.active == EditorTool.text,
+          onTap: () => select(EditorTool.text),
+        ),
+        _ToolButton(
+          tool: EditorTool.hand,
+          selected: tools.active == EditorTool.hand,
+          onTap: () => select(EditorTool.hand),
+        ),
+      ],
+    );
+  }
+}
+
+class _ToolButton extends StatelessWidget {
+  const _ToolButton({
+    required this.tool,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final EditorTool tool;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 1),
+    child: OcxIconButton(
+      icon: tool.icon,
+      tooltip: tool.tooltip,
+      selected: selected,
+      iconSize: Chrome.toolbarIcon,
+      size: 32,
+      onPressed: onTap,
+    ),
+  );
+}
+
+/// One button for a family of tools (shapes, lines) with a chevron menu.
+class _ToolGroup extends StatelessWidget {
+  const _ToolGroup({
+    required this.tools,
+    required this.current,
+    required this.active,
+    required this.onSelect,
+  });
+
+  final List<EditorTool> tools;
+  final EditorTool current;
+  final EditorTool active;
+  final ValueChanged<EditorTool> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ocx;
+    final selected = tools.contains(active);
+    return MenuAnchor(
+      menuChildren: [
+        for (final tool in tools)
+          MenuItemButton(
+            onPressed: () => onSelect(tool),
+            leadingIcon: Icon(tool.icon),
+            trailingIcon:
+                tool.shortcutLabel == null
+                    ? null
+                    : Text(
+                      tool.shortcutLabel!,
+                      style: OcxText.caption(context),
+                    ),
+            child: Text(tool.label),
+          ),
+      ],
+      builder:
+          (context, controller, _) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Material(
+              color: selected ? c.accentSubtle : Colors.transparent,
+              borderRadius: BorderRadius.circular(Radii.xs),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Tooltip(
+                    message: current.tooltip,
+                    child: InkWell(
+                      onTap: () => onSelect(current),
+                      borderRadius: BorderRadius.circular(Radii.xs),
+                      child: SizedBox(
+                        width: 30,
+                        height: 32,
+                        child: Icon(
+                          current.icon,
+                          size: Chrome.toolbarIcon,
+                          color: selected ? c.accent : c.text,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Tooltip(
+                    message: 'More ${tools == shapeTools ? 'shapes' : 'lines'}',
+                    child: InkWell(
+                      onTap:
+                          () =>
+                              controller.isOpen
+                                  ? controller.close()
+                                  : controller.open(),
+                      borderRadius: BorderRadius.circular(Radii.xs),
+                      child: SizedBox(
+                        width: 14,
+                        height: 32,
+                        child: Icon(
+                          Icons.expand_more,
+                          size: 14,
+                          color: c.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+}
+
+// ------------------------------------------------------------ title/status
+
+class _TitleAndStatus extends StatefulWidget {
+  const _TitleAndStatus({
+    required this.title,
+    required this.status,
+    required this.onRename,
+  });
+
+  final String title;
+  final SaveStatus status;
+  final ValueChanged<String> onRename;
+
+  @override
+  State<_TitleAndStatus> createState() => _TitleAndStatusState();
+}
+
+class _TitleAndStatusState extends State<_TitleAndStatus> {
   bool _editing = false;
-  bool _hover = false;
   late final TextEditingController _controller = TextEditingController();
 
   @override
@@ -200,70 +285,142 @@ class _TitleFieldState extends State<_TitleField> {
   void _finish() {
     if (!_editing) return;
     setState(() => _editing = false);
-    widget.onSubmitted(_controller.text);
+    widget.onRename(_controller.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(
-      context,
-    ).textTheme.titleSmall?.copyWith(color: Colors.white);
-    if (_editing) {
-      return SizedBox(
-        width: 320,
-        child: TextField(
-          controller: _controller,
-          autofocus: true,
-          textAlign: TextAlign.center,
-          style: style,
-          cursorColor: Colors.white,
-          onSubmitted: (_) => _finish(),
-          onTapOutside: (_) => _finish(),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.16),
-            enabledBorder: InputBorder.none,
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(Radii.sm),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.6),
+    final c = context.ocx;
+    final (icon, text, color) = switch (widget.status) {
+      SaveStatus.saved => (Icons.check, 'Saved', c.textTertiary),
+      SaveStatus.pending ||
+      SaveStatus.saving => (Icons.sync, 'Saving…', c.textTertiary),
+      SaveStatus.failed => (Icons.error_outline, 'Not saved', c.danger),
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child:
+              _editing
+                  ? SizedBox(
+                    width: 260,
+                    child: TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      textAlign: TextAlign.center,
+                      style: OcxText.bodyStrong(context),
+                      onSubmitted: (_) => _finish(),
+                      onTapOutside: (_) => _finish(),
+                    ),
+                  )
+                  : Tooltip(
+                    message: 'Rename design',
+                    child: InkWell(
+                      onTap: _start,
+                      borderRadius: BorderRadius.circular(Radii.xs),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Space.sm,
+                          vertical: Space.xs,
+                        ),
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: OcxText.bodyStrong(context),
+                        ),
+                      ),
+                    ),
+                  ),
+        ),
+        Tooltip(
+          message:
+              widget.status == SaveStatus.failed
+                  ? 'The last save failed; OpenCanvasX keeps your changes and retries.'
+                  : 'Changes are saved automatically to this computer.',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: Space.xs),
+              Text(
+                text,
+                style: OcxText.caption(context).copyWith(color: color),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ------------------------------------------------------------- right side
+
+class _ZoomMenu extends ConsumerWidget {
+  const _ZoomMenu();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final zoom = ref.watch(viewportProvider.select((v) => v.zoom));
+    final view = ref.read(viewportProvider.notifier);
+    return MenuAnchor(
+      menuChildren: [
+        MenuItemButton(
+          onPressed: view.zoomIn,
+          shortcut: EditorKeys.zoomIn,
+          child: const Text('Zoom in'),
+        ),
+        MenuItemButton(
+          onPressed: view.zoomOut,
+          shortcut: EditorKeys.zoomOut,
+          child: const Text('Zoom out'),
+        ),
+        MenuItemButton(
+          onPressed: () => fitActivePage(ref),
+          shortcut: EditorKeys.fit,
+          child: const Text('Zoom to fit page'),
+        ),
+        const Divider(),
+        for (final level in const [0.5, 1.0, 2.0])
+          MenuItemButton(
+            onPressed: () => view.setZoom(level),
+            shortcut: level == 1 ? EditorKeys.actualSize : null,
+            child: Text('${(level * 100).round()}%'),
+          ),
+      ],
+      builder:
+          (context, controller, _) => Tooltip(
+            message: 'Zoom',
+            child: InkWell(
+              onTap:
+                  () =>
+                      controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
+              borderRadius: BorderRadius.circular(Radii.xs),
+              child: SizedBox(
+                height: Chrome.control,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${(zoom * 100).round()}%',
+                        style: OcxText.body(context),
+                      ),
+                      Icon(
+                        Icons.expand_more,
+                        size: 14,
+                        color: context.ocx.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      );
-    }
-    return MouseRegion(
-      cursor: SystemMouseCursors.text,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: GestureDetector(
-        onTap: _start,
-        child: Tooltip(
-          message: 'Rename design',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            constraints: const BoxConstraints(maxWidth: 360),
-            padding: const EdgeInsets.symmetric(
-              horizontal: Space.md,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color:
-                  _hover
-                      ? Colors.white.withValues(alpha: 0.14)
-                      : Colors.transparent,
-              borderRadius: BorderRadius.circular(Radii.sm),
-            ),
-            child: Text(
-              widget.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -274,9 +431,9 @@ class _ThemeToggle extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return _BarIconButton(
+    return OcxIconButton(
       icon: dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-      tooltip: dark ? 'Switch to light theme' : 'Switch to dark theme',
+      tooltip: dark ? 'Light theme' : 'Dark theme',
       onPressed:
           () => ref
               .read(themeModeProvider.notifier)
@@ -285,8 +442,10 @@ class _ThemeToggle extends ConsumerWidget {
   }
 }
 
-class _EditorMenuBar extends ConsumerWidget {
-  const _EditorMenuBar({required this.onHome});
+// --------------------------------------------------------------- main menu
+
+class _MainMenu extends ConsumerWidget {
+  const _MainMenu({required this.onHome});
 
   final VoidCallback onHome;
 
@@ -295,60 +454,31 @@ class _EditorMenuBar extends ConsumerWidget {
     final session = ref.watch(editorProvider)!;
     final editor = ref.read(editorProvider.notifier);
     final view = ref.read(viewportProvider.notifier);
-    final hasSelection = session.selection.isNotEmpty;
+    final sel = session.selection;
+    final hasSelection = sel.isNotEmpty;
     final themeMode = ref.watch(themeModeProvider);
 
-    Widget item(
+    MenuItemButton item(
       String label,
       VoidCallback? onPressed, {
       MenuSerializableShortcut? shortcut,
-      IconData? icon,
     }) => MenuItemButton(
       onPressed: onPressed,
       shortcut: shortcut,
-      leadingIcon:
-          icon == null ? const SizedBox(width: 18) : Icon(icon, size: 18),
       child: Text(label),
     );
 
-    final topStyle = ButtonStyle(
-      // The theme gives menu items a wide minimum; top-level titles hug text.
-      minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
-      foregroundColor: const WidgetStatePropertyAll(Colors.white),
-      overlayColor: WidgetStatePropertyAll(
-        Colors.white.withValues(alpha: 0.14),
-      ),
-      padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: Space.md),
-      ),
-      textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelLarge),
-    );
-
-    return MenuBar(
-      style: const MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(Colors.transparent),
-        elevation: WidgetStatePropertyAll(0),
-        shadowColor: WidgetStatePropertyAll(Colors.transparent),
-        surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
-        padding: WidgetStatePropertyAll(EdgeInsets.zero),
-      ),
-      children: [
+    return MenuAnchor(
+      menuChildren: [
         SubmenuButton(
-          style: topStyle,
           menuChildren: [
-            item(
-              'Save',
-              editor.saveNow,
-              shortcut: EditorKeys.save,
-              icon: Icons.save_outlined,
-            ),
+            item('Save', editor.saveNow, shortcut: EditorKeys.save),
             const Divider(),
-            item('Close design', onHome, icon: Icons.close),
+            item('Close design', onHome),
           ],
           child: const Text('File'),
         ),
         SubmenuButton(
-          style: topStyle,
           menuChildren: [
             item(
               session.canUndo
@@ -356,7 +486,6 @@ class _EditorMenuBar extends ConsumerWidget {
                   : 'Undo',
               session.canUndo ? editor.undo : null,
               shortcut: EditorKeys.undo,
-              icon: Icons.undo,
             ),
             item(
               session.canRedo
@@ -364,79 +493,58 @@ class _EditorMenuBar extends ConsumerWidget {
                   : 'Redo',
               session.canRedo ? editor.redo : null,
               shortcut: EditorKeys.redo,
-              icon: Icons.redo,
             ),
             const Divider(),
             item(
               'Cut',
               hasSelection ? editor.cutSelection : null,
               shortcut: EditorKeys.cut,
-              icon: Icons.content_cut,
             ),
             item(
               'Copy',
               hasSelection ? editor.copySelection : null,
               shortcut: EditorKeys.copy,
-              icon: Icons.content_copy,
             ),
             item(
               'Paste',
               ref.watch(clipboardProvider).isEmpty ? null : editor.paste,
               shortcut: EditorKeys.paste,
-              icon: Icons.content_paste,
             ),
             item(
               'Duplicate',
               hasSelection ? editor.duplicateSelection : null,
               shortcut: EditorKeys.duplicate,
-              icon: Icons.copy_all_outlined,
             ),
             item(
               'Delete',
               hasSelection ? editor.deleteSelection : null,
               shortcut: EditorKeys.delete,
-              icon: Icons.delete_outline,
             ),
             const Divider(),
             item(
               'Select all',
               editor.selectAll,
               shortcut: EditorKeys.selectAll,
-              icon: Icons.select_all,
             ),
           ],
           child: const Text('Edit'),
         ),
         SubmenuButton(
-          style: topStyle,
           menuChildren: [
+            item('Zoom in', view.zoomIn, shortcut: EditorKeys.zoomIn),
+            item('Zoom out', view.zoomOut, shortcut: EditorKeys.zoomOut),
             item(
-              'Zoom in',
-              view.zoomIn,
-              shortcut: EditorKeys.zoomIn,
-              icon: Icons.zoom_in,
-            ),
-            item(
-              'Zoom out',
-              view.zoomOut,
-              shortcut: EditorKeys.zoomOut,
-              icon: Icons.zoom_out,
-            ),
-            item(
-              'Fit page',
+              'Zoom to fit page',
               () => fitActivePage(ref),
               shortcut: EditorKeys.fit,
-              icon: Icons.fit_screen_outlined,
             ),
             item(
               'Actual size',
               () => view.setZoom(1),
               shortcut: EditorKeys.actualSize,
-              icon: Icons.crop_free,
             ),
             const Divider(),
             SubmenuButton(
-              leadingIcon: const Icon(Icons.contrast, size: 18),
               menuChildren: [
                 for (final (mode, label) in const [
                   (ThemeMode.system, 'Match system'),
@@ -448,7 +556,6 @@ class _EditorMenuBar extends ConsumerWidget {
                         () => ref.read(themeModeProvider.notifier).set(mode),
                     leadingIcon: Icon(
                       Icons.check,
-                      size: 18,
                       color: mode == themeMode ? null : Colors.transparent,
                     ),
                     child: Text(label),
@@ -460,86 +567,105 @@ class _EditorMenuBar extends ConsumerWidget {
           child: const Text('View'),
         ),
         SubmenuButton(
-          style: topStyle,
           menuChildren: [
-            for (final type in insertableShapes)
-              item(
-                typeLabel(type),
-                () => editor.insertShape(type),
-                icon: _insertIcon(type),
-              ),
+            for (final role in TextRole.values)
+              item(role.label, () => editor.insertText(role)),
             const Divider(),
-            item(
-              'Page',
-              editor.addPage,
-              shortcut: EditorKeys.addPage,
-              icon: Icons.note_add_outlined,
-            ),
+            for (final type in insertableShapes)
+              item(typeLabel(type), () => editor.insertShape(type)),
+            const Divider(),
+            item('Page', editor.addPage, shortcut: EditorKeys.addPage),
           ],
           child: const Text('Insert'),
         ),
         SubmenuButton(
-          style: topStyle,
           menuChildren: [
             item(
               'Bring to front',
               hasSelection ? () => editor.arrange(ZOrderMove.toFront) : null,
               shortcut: EditorKeys.bringToFront,
-              icon: Icons.vertical_align_top,
             ),
             item(
               'Bring forward',
               hasSelection ? () => editor.arrange(ZOrderMove.forward) : null,
               shortcut: EditorKeys.bringForward,
-              icon: Icons.arrow_upward,
             ),
             item(
               'Send backward',
               hasSelection ? () => editor.arrange(ZOrderMove.backward) : null,
               shortcut: EditorKeys.sendBackward,
-              icon: Icons.arrow_downward,
             ),
             item(
               'Send to back',
               hasSelection ? () => editor.arrange(ZOrderMove.toBack) : null,
               shortcut: EditorKeys.sendToBack,
-              icon: Icons.vertical_align_bottom,
             ),
             const Divider(),
-            SubmenuButton(
-              leadingIcon: const Icon(Icons.align_horizontal_center, size: 18),
-              menuChildren: [
-                for (final (edge, label) in const [
-                  (AlignEdge.left, 'Left'),
-                  (AlignEdge.centerHorizontal, 'Centre'),
-                  (AlignEdge.right, 'Right'),
-                  (AlignEdge.top, 'Top'),
-                  (AlignEdge.centerVertical, 'Middle'),
-                  (AlignEdge.bottom, 'Bottom'),
-                ])
-                  MenuItemButton(
-                    onPressed: hasSelection ? () => editor.align(edge) : null,
-                    child: Text(label),
-                  ),
-              ],
-              child: const Text('Align'),
+            for (final (edge, label) in const [
+              (AlignEdge.left, 'Align left'),
+              (AlignEdge.centerHorizontal, 'Align centre'),
+              (AlignEdge.right, 'Align right'),
+              (AlignEdge.top, 'Align top'),
+              (AlignEdge.centerVertical, 'Align middle'),
+              (AlignEdge.bottom, 'Align bottom'),
+            ])
+              item(label, hasSelection ? () => editor.align(edge) : null),
+            const Divider(),
+            item(
+              'Distribute horizontally',
+              sel.length >= 3
+                  ? () => editor.distribute(DistributeAxis.horizontal)
+                  : null,
+            ),
+            item(
+              'Distribute vertically',
+              sel.length >= 3
+                  ? () => editor.distribute(DistributeAxis.vertical)
+                  : null,
             ),
           ],
           child: const Text('Arrange'),
         ),
       ],
+      builder:
+          (context, controller, _) => Tooltip(
+            message: 'Menu',
+            child: InkWell(
+              onTap:
+                  () =>
+                      controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
+              borderRadius: BorderRadius.circular(Radii.xs),
+              child: SizedBox(
+                height: Chrome.control,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                  child: Row(
+                    children: [
+                      const BrandMark(size: 20),
+                      Icon(
+                        Icons.expand_more,
+                        size: 14,
+                        color: context.ocx.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
     );
   }
 }
 
-IconData _insertIcon(ObjectType type) => switch (type) {
-  ObjectType.rect => Icons.crop_square,
-  ObjectType.roundedRect => Icons.rounded_corner,
-  ObjectType.ellipse => Icons.circle_outlined,
-  ObjectType.line => Icons.horizontal_rule,
-  ObjectType.arrow => Icons.arrow_right_alt,
-  ObjectType.text => Icons.title,
-  ObjectType.image => Icons.image_outlined,
-  ObjectType.path => Icons.gesture,
-  ObjectType.group => Icons.folder_copy_outlined,
-};
+/// Shapes offered in the Insert menu and Elements panel, in order.
+const insertableShapes = [
+  ObjectType.rect,
+  ObjectType.roundedRect,
+  ObjectType.ellipse,
+  ObjectType.polygon,
+  ObjectType.star,
+  ObjectType.line,
+  ObjectType.arrow,
+];

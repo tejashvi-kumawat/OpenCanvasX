@@ -2,6 +2,7 @@ import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/ocx_theme.dart';
+import '../widgets/controls.dart';
 import '../widgets/number_field.dart';
 import 'preset_frame.dart';
 
@@ -37,14 +38,13 @@ class _CreateDesignDialog extends StatefulWidget {
 }
 
 class _CreateDesignDialogState extends State<_CreateDesignDialog> {
-  /// `null` = all sizes; the custom tab is tracked separately.
   PresetCategory? _category;
   late bool _custom = widget.customSize;
   late PagePreset _preset = widget.initial ?? pagePresets.first;
   final TextEditingController _title = TextEditingController();
-  double _customWidth = 1200;
-  double _customHeight = 800;
-  LengthUnit _customUnit = LengthUnit.px;
+  double _width = 1200;
+  double _height = 800;
+  LengthUnit _unit = LengthUnit.px;
 
   @override
   void dispose() {
@@ -53,12 +53,11 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
   }
 
   String? get _customError {
-    double px(double v) =>
-        convertLength(v, from: _customUnit, to: LengthUnit.px);
-    if (_customWidth <= 0 || _customHeight <= 0) {
+    double px(double v) => convertLength(v, from: _unit, to: LengthUnit.px);
+    if (_width <= 0 || _height <= 0) {
       return 'Width and height must be greater than zero.';
     }
-    if (px(_customWidth) > _maxSidePx || px(_customHeight) > _maxSidePx) {
+    if (px(_width) > _maxSidePx || px(_height) > _maxSidePx) {
       return 'That is larger than OpenCanvasX supports.';
     }
     return null;
@@ -71,10 +70,10 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
         _custom
             ? DesignPage(
               id: id,
-              width: _customWidth,
-              height: _customHeight,
-              unit: _customUnit,
-              dpi: _customUnit == LengthUnit.px ? defaultDpi : 300,
+              width: _width,
+              height: _height,
+              unit: _unit,
+              dpi: _unit == LengthUnit.px ? defaultDpi : 300,
             )
             : _preset.createPage(id);
     final typed = _title.text.trim();
@@ -82,9 +81,11 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
       context,
       NewDesignRequest(
         title:
-            typed.isEmpty
-                ? (_custom ? 'Untitled design' : 'Untitled ${_preset.name}')
-                : typed,
+            typed.isNotEmpty
+                ? typed
+                : (_custom
+                    ? 'Untitled design'
+                    : 'Untitled ${_preset.name.toLowerCase()}'),
         page: page,
       ),
     );
@@ -92,8 +93,7 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ocx = context.ocx;
+    final c = context.ocx;
     final presets =
         _category == null
             ? pagePresets
@@ -101,37 +101,27 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
     return Dialog(
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
-        width: 820,
-        height: 600,
+        width: 760,
+        height: 520,
         child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 Space.xl,
-                Space.xl,
+                Space.lg,
                 Space.md,
-                Space.md,
+                Space.lg,
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Create a design',
-                          style: theme.textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Pick a size to start with — you can change it later.',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
+                    child: Text(
+                      'Create design',
+                      style: OcxText.heading(context),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
+                  OcxIconButton(
+                    icon: Icons.close,
                     tooltip: 'Close',
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -144,15 +134,14 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    width: 200,
-                    color: theme.colorScheme.surfaceContainerLow,
-                    padding: const EdgeInsets.all(Space.md),
+                    width: 180,
+                    color: c.background,
+                    padding: const EdgeInsets.all(Space.sm),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _CategoryItem(
+                        _Category(
                           label: 'All sizes',
-                          icon: Icons.apps_rounded,
                           selected: !_custom && _category == null,
                           onTap:
                               () => setState(() {
@@ -161,9 +150,8 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
                               }),
                         ),
                         for (final category in PresetCategory.values)
-                          _CategoryItem(
+                          _Category(
                             label: category.label,
-                            icon: categoryIcon(category),
                             selected: !_custom && _category == category,
                             onTap:
                                 () => setState(() {
@@ -171,28 +159,27 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
                                   _category = category;
                                 }),
                           ),
-                        const Spacer(),
-                        _CategoryItem(
+                        const Divider(height: Space.lg),
+                        _Category(
                           label: 'Custom size',
-                          icon: Icons.crop_free_rounded,
                           selected: _custom,
                           onTap: () => setState(() => _custom = true),
                         ),
                       ],
                     ),
                   ),
-                  VerticalDivider(color: ocx.border),
+                  const VerticalDivider(width: 1),
                   Expanded(
                     child:
                         _custom
                             ? _customForm(context)
                             : GridView.builder(
-                              padding: const EdgeInsets.all(Space.xl),
+                              padding: const EdgeInsets.all(Space.lg),
                               gridDelegate:
                                   const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 170,
-                                    mainAxisSpacing: Space.md,
-                                    crossAxisSpacing: Space.md,
+                                    maxCrossAxisExtent: 140,
+                                    mainAxisSpacing: Space.sm,
+                                    crossAxisSpacing: Space.sm,
                                     childAspectRatio: 0.95,
                                   ),
                               itemCount: presets.length,
@@ -216,46 +203,44 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
             ),
             const Divider(),
             Padding(
-              padding: const EdgeInsets.all(Space.lg),
+              padding: const EdgeInsets.all(Space.md),
               child: Row(
                 children: [
-                  Flexible(
-                    flex: 3,
+                  SizedBox(
+                    width: 260,
                     child: TextField(
                       controller: _title,
+                      style: OcxText.body(context),
                       onSubmitted: (_) => _create(),
                       decoration: InputDecoration(
                         hintText:
                             _custom
-                                ? 'Design name (optional)'
-                                : 'Untitled ${_preset.name}',
-                        prefixIcon: const Icon(Icons.edit_outlined, size: 18),
+                                ? 'Design name'
+                                : 'Untitled ${_preset.name.toLowerCase()}',
                       ),
                     ),
                   ),
-                  const SizedBox(width: Space.lg),
-                  Flexible(
-                    flex: 2,
+                  const SizedBox(width: Space.md),
+                  Expanded(
                     child: Text(
                       _custom
-                          ? '${_fmt(_customWidth)} × ${_fmt(_customHeight)} ${_customUnit.symbol}'
+                          ? '${_fmt(_width)} × ${_fmt(_height)} ${_unit.symbol}'
                           : _preset.sizeLabel,
-                      style: theme.textTheme.bodySmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
+                      style: OcxText.caption(
+                        context,
+                      ).copyWith(color: c.textTertiary),
                     ),
                   ),
-                  const SizedBox(width: Space.lg),
-                  TextButton(
+                  OutlinedButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: Space.sm),
-                  FilledButton.icon(
+                  FilledButton(
                     onPressed: _custom && _customError != null ? null : _create,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                    label: const Text('Create design'),
+                    child: const Text('Create design'),
                   ),
                 ],
               ),
@@ -267,73 +252,69 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
   }
 
   Widget _customForm(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = context.ocx;
     final error = _customError;
     return Padding(
       padding: const EdgeInsets.all(Space.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Custom size', style: theme.textTheme.titleMedium),
+          Text('Custom size', style: OcxText.title(context)),
           const SizedBox(height: Space.xs),
           Text(
-            'Use pixels for screens, millimetres or inches for print.',
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: Space.xl),
-          Row(
-            children: [
-              SizedBox(
-                width: 160,
-                child: NumberField(
-                  label: 'Width',
-                  value: _customWidth,
-                  min: 0,
-                  decimals: 2,
-                  onChanged: (v) => setState(() => _customWidth = v),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: Space.md),
-                child: Icon(Icons.close, size: 16),
-              ),
-              SizedBox(
-                width: 160,
-                child: NumberField(
-                  label: 'Height',
-                  value: _customHeight,
-                  min: 0,
-                  decimals: 2,
-                  onChanged: (v) => setState(() => _customHeight = v),
-                ),
-              ),
-            ],
+            'Pixels for screens; millimetres, centimetres or inches for print.',
+            style: OcxText.body(context).copyWith(color: c.textSecondary),
           ),
           const SizedBox(height: Space.lg),
-          SegmentedButton<LengthUnit>(
-            segments: [
-              for (final unit in LengthUnit.values)
-                ButtonSegment(value: unit, label: Text(unit.symbol)),
-            ],
-            selected: {_customUnit},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) => setState(() => _customUnit = s.single),
+          SizedBox(
+            width: 320,
+            child: FieldColumn(
+              children: [
+                FieldRow(
+                  children: [
+                    NumberField(
+                      label: 'W',
+                      value: _width,
+                      min: 0,
+                      decimals: 2,
+                      tooltip: 'Width',
+                      onChanged: (v) => setState(() => _width = v),
+                    ),
+                    NumberField(
+                      label: 'H',
+                      value: _height,
+                      min: 0,
+                      decimals: 2,
+                      tooltip: 'Height',
+                      onChanged: (v) => setState(() => _height = v),
+                    ),
+                  ],
+                ),
+                OcxSelect<LengthUnit>(
+                  value: _unit,
+                  tooltip: 'Unit',
+                  options: const [
+                    SelectOption(LengthUnit.px, 'Pixels (px)'),
+                    SelectOption(LengthUnit.mm, 'Millimetres (mm)'),
+                    SelectOption(LengthUnit.cm, 'Centimetres (cm)'),
+                    SelectOption(LengthUnit.inch, 'Inches (in)'),
+                    SelectOption(LengthUnit.pt, 'Points (pt)'),
+                  ],
+                  onChanged: (u) => setState(() => _unit = u),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: Space.xl),
           PresetFrame(
-            width: _customWidth > 0 ? _customWidth : 1,
-            height: _customHeight > 0 ? _customHeight : 1,
+            width: _width > 0 ? _width : 1,
+            height: _height > 0 ? _height : 1,
             category: null,
-            box: 120,
+            box: 96,
           ),
           if (error != null) ...[
-            const SizedBox(height: Space.lg),
-            Text(
-              error,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
+            const SizedBox(height: Space.md),
+            Text(error, style: OcxText.body(context).copyWith(color: c.danger)),
           ],
         ],
       ),
@@ -344,56 +325,38 @@ class _CreateDesignDialogState extends State<_CreateDesignDialog> {
 String _fmt(double v) =>
     v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 
-class _CategoryItem extends StatelessWidget {
-  const _CategoryItem({
+class _Category extends StatelessWidget {
+  const _Category({
     required this.label,
-    required this.icon,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ocx = context.ocx;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: selected ? ocx.selectedFill : Colors.transparent,
+    final c = context.ocx;
+    return Material(
+      color: selected ? c.accentSubtle : Colors.transparent,
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(Radii.sm),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(Radii.sm),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Space.md,
-              vertical: 10,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 18,
-                  color: selected ? theme.colorScheme.primary : ocx.subtleText,
-                ),
-                const SizedBox(width: Space.md),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: selected ? theme.colorScheme.primary : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        child: Container(
+          height: Chrome.button,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: (selected
+                    ? OcxText.bodyStrong(context)
+                    : OcxText.body(context))
+                .copyWith(color: selected ? c.accent : null),
           ),
         ),
       ),
@@ -416,23 +379,22 @@ class _PresetOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ocx = context.ocx;
+    final c = context.ocx;
     return Material(
-      color: selected ? ocx.selectedFill : theme.colorScheme.surface,
+      color: c.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.lg),
+        borderRadius: BorderRadius.circular(Radii.md),
         side: BorderSide(
-          color: selected ? ocx.selection : ocx.border,
-          width: selected ? 2 : 1,
+          color: selected ? c.accent : c.border,
+          width: selected ? 1.5 : 1,
         ),
       ),
       child: InkWell(
         onTap: onTap,
         onDoubleTap: onDoubleTap,
-        borderRadius: BorderRadius.circular(Radii.lg),
+        borderRadius: BorderRadius.circular(Radii.md),
         child: Padding(
-          padding: const EdgeInsets.all(Space.md),
+          padding: const EdgeInsets.all(Space.sm),
           child: Column(
             children: [
               Expanded(
@@ -441,17 +403,23 @@ class _PresetOption extends StatelessWidget {
                     width: preset.width,
                     height: preset.height,
                     category: preset.category,
+                    selected: selected,
                   ),
                 ),
               ),
-              const SizedBox(height: Space.sm),
               Text(
                 preset.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelLarge,
+                style: OcxText.bodyStrong(context),
               ),
-              Text(preset.sizeLabel, style: theme.textTheme.bodySmall),
+              Text(
+                preset.sizeLabel,
+                maxLines: 1,
+                style: OcxText.caption(
+                  context,
+                ).copyWith(color: c.textTertiary, fontWeight: FontWeight.w400),
+              ),
             ],
           ),
         ),

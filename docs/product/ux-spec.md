@@ -3,6 +3,8 @@
 > **Source:** Derived from [OpenCanvasX_Complete_Specification.md](../OpenCanvasX_Complete_Specification.md).
 > **Status:** Normative product/architecture documentation for OpenCanvasX.
 
+> Visual and layout rules for everything below live in [design-system.md](design-system.md).
+
 ## 73. DESIGN SYSTEM
 
 UI:

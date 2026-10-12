@@ -44,7 +44,7 @@ Supports **fixed page** mode first; infinite canvas (whiteboard) extends page bo
 
 ## Object types (phased)
 
-**Phase 1:** `text`, `rect`, `rounded_rect`, `ellipse`, `line`, `arrow`, `path`, `image`, `group`.
+**Phase 1:** `text`, `rect`, `rounded_rect`, `ellipse`, `polygon`, `star`, `line`, `arrow`, `path`, `image`, `group`.
 
 **Later:** `chart`, `table`, `frame`, `component`, `svg`, `video`, `audio`, `qr`, `barcode`, `embedded_document`.
 
@@ -82,13 +82,17 @@ Apply order for rendering and export must match: **translate → rotate → scal
 
 ## Text
 
-Rich text is a structured tree (paragraphs, spans) with character and paragraph attributes. Font resolution uses `typography` (local fonts, fallbacks). OpenType features optional later.
+Phase 1 text (`TextPayload`) holds the string plus box-level formatting: font family, size (page units), weight (100–900), italic, alignment, line height (× size), letter spacing and sizing mode — auto width (box follows the text), auto height (fixed width, wraps) or fixed. The text colour is the object's fill. The editor re-measures auto-sized boxes after every edit.
+
+Character-level runs (P1.5.4) will extend this into a structured tree (paragraphs, spans) with character and paragraph attributes. Font resolution uses `typography` (local fonts, fallbacks). OpenType features optional later.
 
 ## Vector geometry
 
 Paths use SVG-compatible segment lists (m/l/c/q/z). Boolean ops and offset path are document mutations producing new path objects (Post-MVP).
 
 ## Styles
+
+Strokes have a dash pattern (`solid`, `dashed`, `dotted`) whose lengths scale with the stroke width. Polygons (3–64 sides) and stars (3–64 points, inner radius ratio) are inscribed in their box.
 
 Named styles enable brand kits and templates. Objects may reference `style_id` and override fields. Style records hold fill, stroke, corner radius, shadow, text defaults.
 

@@ -109,6 +109,16 @@ class _ShapePainter extends CustomPainter {
             ..close(),
           fill,
         );
+      case ObjectType.polygon:
+        canvas.drawPath(_regular(box, List.filled(6, 1)), fill);
+      case ObjectType.star:
+        canvas.drawPath(
+          _regular(box, [
+            for (var i = 0; i < 10; i++)
+              if (i.isEven) 1.0 else 0.45,
+          ]),
+          fill,
+        );
       case ObjectType.group:
         canvas
           ..drawRect(
@@ -120,6 +130,19 @@ class _ShapePainter extends CustomPainter {
             stroke,
           );
     }
+  }
+
+  static Path _regular(Rect box, List<double> radii) {
+    final path = Path();
+    for (var i = 0; i < radii.length; i++) {
+      final angle = -math.pi / 2 + 2 * math.pi * i / radii.length;
+      final p = Offset(
+        box.center.dx + math.cos(angle) * box.width / 2 * radii[i],
+        box.center.dy + math.sin(angle) * box.height / 2 * radii[i],
+      );
+      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    return path..close();
   }
 
   @override

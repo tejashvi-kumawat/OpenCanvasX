@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'editor_controller.dart';
+import 'tools.dart';
 import 'viewport.dart';
 
 bool get _isMac => defaultTargetPlatform == TargetPlatform.macOS;
@@ -31,6 +32,7 @@ abstract final class EditorKeys {
   static const delete = SingleActivator(LogicalKeyboardKey.delete);
   static const backspace = SingleActivator(LogicalKeyboardKey.backspace);
   static const escape = SingleActivator(LogicalKeyboardKey.escape);
+  static const editText = SingleActivator(LogicalKeyboardKey.enter);
   static final zoomIn = cmd(LogicalKeyboardKey.equal);
   static final zoomInNumpad = cmd(LogicalKeyboardKey.numpadAdd);
   static final zoomOut = cmd(LogicalKeyboardKey.minus);
@@ -53,12 +55,34 @@ void fitActivePage(WidgetRef ref) {
   ref.read(viewportProvider.notifier).fit(frame.rect);
 }
 
+/// Whether keyboard focus is in a text field (single-key shortcuts must not
+/// fire while typing).
+bool _typing() {
+  final focus = FocusManager.instance.primaryFocus?.context;
+  return focus != null &&
+      (focus.widget is EditableText ||
+          focus.findAncestorWidgetOfExactType<EditableText>() != null);
+}
+
 /// Key bindings for [CallbackShortcuts] around the editor.
 Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
   final editor = ref.read(editorProvider.notifier);
   final view = ref.read(viewportProvider.notifier);
+  final tools = ref.read(toolProvider.notifier);
   void nudge(int dx, int dy, {bool large = false}) =>
       editor.nudge(dx, dy, large: large);
+  VoidCallback unlessTyping(VoidCallback action) => () {
+    if (!_typing()) action();
+  };
+  void editSelectedText() {
+    final session = ref.read(editorProvider);
+    if (session == null || session.selection.length != 1) return;
+    final id = session.selection.first;
+    if (session.document.objects[id]?.payload is TextPayload) {
+      editor.startTextEdit(id);
+    }
+  }
+
   return {
     EditorKeys.undo: editor.undo,
     EditorKeys.redo: editor.redo,
@@ -71,7 +95,11 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
     EditorKeys.save: () => unawaited(editor.saveNow()),
     EditorKeys.delete: editor.deleteSelection,
     EditorKeys.backspace: editor.deleteSelection,
-    EditorKeys.escape: editor.clearSelection,
+    EditorKeys.escape: () {
+      tools.reset();
+      editor.clearSelection();
+    },
+    EditorKeys.editText: unlessTyping(editSelectedText),
     EditorKeys.zoomIn: view.zoomIn,
     EditorKeys.zoomInNumpad: view.zoomIn,
     EditorKeys.zoomOut: view.zoomOut,
@@ -83,6 +111,28 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
     EditorKeys.sendBackward: () => editor.arrange(ZOrderMove.backward),
     EditorKeys.bringToFront: () => editor.arrange(ZOrderMove.toFront),
     EditorKeys.sendToBack: () => editor.arrange(ZOrderMove.toBack),
+    // Tools (single keys, ignored while typing).
+    const SingleActivator(LogicalKeyboardKey.keyV): unlessTyping(
+      () => tools.select(EditorTool.move),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyH): unlessTyping(
+      () => tools.select(EditorTool.hand),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyR): unlessTyping(
+      () => tools.select(EditorTool.rect),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyO): unlessTyping(
+      () => tools.select(EditorTool.ellipse),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyL): unlessTyping(
+      () => tools.select(EditorTool.line),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyL, shift: true): unlessTyping(
+      () => tools.select(EditorTool.arrow),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyT): unlessTyping(
+      () => tools.select(EditorTool.text),
+    ),
     const SingleActivator(LogicalKeyboardKey.arrowLeft): () => nudge(-1, 0),
     const SingleActivator(LogicalKeyboardKey.arrowRight): () => nudge(1, 0),
     const SingleActivator(LogicalKeyboardKey.arrowUp): () => nudge(0, -1),
@@ -97,12 +147,3 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
         () => nudge(0, 1, large: true),
   };
 }
-
-/// Shapes offered in the Insert menu and Elements panel, in order.
-const insertableShapes = [
-  ObjectType.rect,
-  ObjectType.roundedRect,
-  ObjectType.ellipse,
-  ObjectType.line,
-  ObjectType.arrow,
-];

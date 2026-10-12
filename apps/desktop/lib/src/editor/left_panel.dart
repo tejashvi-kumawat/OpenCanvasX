@@ -1,401 +1,371 @@
-import 'dart:math' as math;
-
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:renderer/renderer.dart';
 
 import '../theme/ocx_theme.dart';
+import '../widgets/controls.dart';
+import '../widgets/object_icons.dart';
 import '../widgets/shape_preview.dart';
+import 'canvas_view.dart';
 import 'editor_controller.dart';
 import 'viewport.dart';
 
-/// Panels reachable from the left rail (ux-spec.md "Left").
-enum LeftPanel {
-  elements('Elements', Icons.category_outlined, Icons.category),
-  layers('Layers', Icons.layers_outlined, Icons.layers),
-  pages('Pages', Icons.auto_awesome_motion_outlined, Icons.auto_awesome_motion);
+/// Tabs of the left sidebar (design-system.md §5).
+enum LeftTab { layers, elements }
 
-  const LeftPanel(this.label, this.icon, this.selectedIcon);
-
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-}
-
-/// Open panel, or `null` when collapsed.
-final leftPanelProvider = NotifierProvider<LeftPanelController, LeftPanel?>(
-  LeftPanelController.new,
+final leftTabProvider = NotifierProvider<LeftTabController, LeftTab>(
+  LeftTabController.new,
 );
 
-class LeftPanelController extends Notifier<LeftPanel?> {
+class LeftTabController extends Notifier<LeftTab> {
   @override
-  LeftPanel? build() => LeftPanel.elements;
+  LeftTab build() => LeftTab.layers;
 
-  /// Opens [panel], or collapses it if it is already open.
-  void toggle(LeftPanel panel) => state = state == panel ? null : panel;
+  LeftTab get tab => state;
+  set tab(LeftTab value) => state = value;
 }
 
-/// Rail plus the open panel.
-class LeftSide extends ConsumerWidget {
-  const LeftSide({super.key});
+/// Left sidebar: Layers (pages + layers) and Elements.
+class LeftSidebar extends ConsumerWidget {
+  const LeftSidebar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final open = ref.watch(leftPanelProvider);
-    final ocx = context.ocx;
-    return ColoredBox(
-      color: ocx.panel,
-      child: Row(
+    final tab = ref.watch(leftTabProvider);
+    final c = context.ocx;
+    return Container(
+      width: Chrome.leftSidebar,
+      color: c.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: Chrome.railWidth,
-            child: Column(
-              children: [
-                const SizedBox(height: Space.sm),
-                for (final panel in LeftPanel.values)
-                  _RailItem(
-                    panel: panel,
-                    selected: panel == open,
-                    onTap:
-                        () =>
-                            ref.read(leftPanelProvider.notifier).toggle(panel),
-                  ),
-              ],
+            height: 40,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+              child: Row(
+                children: [
+                  for (final (value, label) in const [
+                    (LeftTab.layers, 'Layers'),
+                    (LeftTab.elements, 'Elements'),
+                  ])
+                    _Tab(
+                      label: label,
+                      selected: tab == value,
+                      onTap:
+                          () => ref.read(leftTabProvider.notifier).tab = value,
+                    ),
+                ],
+              ),
             ),
           ),
-          if (open != null) ...[
-            VerticalDivider(color: ocx.border),
-            SizedBox(
-              width: Chrome.sidePanelWidth,
-              child: switch (open) {
-                LeftPanel.elements => const _ElementsPanel(),
-                LeftPanel.layers => const _LayersPanel(),
-                LeftPanel.pages => const _PagesPanel(),
-              },
-            ),
-          ],
+          const Divider(),
+          Expanded(
+            child: switch (tab) {
+              LeftTab.layers => const _LayersTab(),
+              LeftTab.elements => const _ElementsTab(),
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class _RailItem extends StatelessWidget {
-  const _RailItem({
-    required this.panel,
+class _Tab extends StatelessWidget {
+  const _Tab({
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final LeftPanel panel;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ocx = context.ocx;
-    final color = selected ? theme.colorScheme.primary : ocx.subtleText;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 3),
-      child: Material(
-        color: selected ? ocx.selectedFill : Colors.transparent,
-        borderRadius: BorderRadius.circular(Radii.md),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(Radii.md),
-          child: SizedBox(
-            height: 60,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(selected ? panel.selectedIcon : panel.icon, color: color),
-                const SizedBox(height: 4),
-                Text(
-                  panel.label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: color,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
+    final c = context.ocx;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Radii.xs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: OcxText.bodyStrong(
+                context,
+              ).copyWith(color: selected ? c.text : c.textSecondary),
             ),
-          ),
+            const SizedBox(height: 6),
+            Container(
+              height: 2,
+              width: 24,
+              color: selected ? c.accent : Colors.transparent,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _PanelHeader extends StatelessWidget {
-  const _PanelHeader({required this.title, this.trailing});
+// ------------------------------------------------------------------ layers
 
-  final String title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.sm, Space.sm),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        ),
-        if (trailing case final widget?) widget,
-      ],
-    ),
-  );
-}
-
-// ---------------------------------------------------------------- elements
-
-class _ElementsPanel extends StatefulWidget {
-  const _ElementsPanel();
+class _LayersTab extends ConsumerStatefulWidget {
+  const _LayersTab();
 
   @override
-  State<_ElementsPanel> createState() => _ElementsPanelState();
+  ConsumerState<_LayersTab> createState() => _LayersTabState();
 }
 
-class _ElementsPanelState extends State<_ElementsPanel> {
-  String _query = '';
-
-  static const _shapes = [
-    ObjectType.rect,
-    ObjectType.roundedRect,
-    ObjectType.ellipse,
-  ];
-  static const _lines = [ObjectType.line, ObjectType.arrow];
-
-  bool _matches(ObjectType type) =>
-      _query.isEmpty ||
-      typeLabel(type).toLowerCase().contains(_query.toLowerCase());
+class _LayersTabState extends ConsumerState<_LayersTab> {
+  bool _pagesOpen = true;
 
   @override
   Widget build(BuildContext context) {
-    final shapes = _shapes.where(_matches).toList();
-    final lines = _lines.where(_matches).toList();
+    final session = ref.watch(editorProvider);
+    if (session == null) return const SizedBox.shrink();
+    final editor = ref.read(editorProvider.notifier);
+    final pages = session.document.pages;
+    final page = session.activePage;
+    final topFirst = page.objectIds.reversed.toList();
+    final c = context.ocx;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _PanelHeader(title: 'Elements'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-          child: TextField(
-            onChanged: (v) => setState(() => _query = v.trim()),
-            decoration: const InputDecoration(
-              hintText: 'Search elements',
-              prefixIcon: Icon(Icons.search, size: 20),
+        PanelSection(
+          title: 'Pages',
+          divider: false,
+          trailing: [
+            OcxIconButton(
+              icon: Icons.add,
+              tooltip: 'Add page  (Ctrl+Enter)',
+              onPressed: editor.addPage,
+            ),
+            OcxIconButton(
+              icon: _pagesOpen ? Icons.expand_less : Icons.expand_more,
+              tooltip: _pagesOpen ? 'Collapse pages' : 'Expand pages',
+              onPressed: () => setState(() => _pagesOpen = !_pagesOpen),
+            ),
+          ],
+        ),
+        if (_pagesOpen)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 168),
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              buildDefaultDragHandles: false,
+              padding: const EdgeInsets.fromLTRB(
+                Space.sm,
+                0,
+                Space.sm,
+                Space.sm,
+              ),
+              itemCount: pages.length,
+              onReorderItem: editor.movePage,
+              itemBuilder:
+                  (context, i) => _PageRow(
+                    key: ValueKey(pages[i].id),
+                    index: i,
+                    page: pages[i],
+                    active: pages[i].id == session.state.activePageId,
+                    canDelete: pages.length > 1,
+                  ),
             ),
           ),
+        const Divider(),
+        PanelSection(
+          title: 'Layers',
+          divider: false,
+          trailing: [
+            Padding(
+              padding: const EdgeInsets.only(right: Space.xs),
+              child: Text(
+                '${topFirst.length}',
+                style: OcxText.caption(context).copyWith(color: c.textTertiary),
+              ),
+            ),
+          ],
         ),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(Space.lg),
-            children: [
-              if (shapes.isNotEmpty) ...[
-                const _GroupTitle('Shapes'),
-                _ElementGrid(types: shapes),
-                const SizedBox(height: Space.xl),
-              ],
-              if (lines.isNotEmpty) ...[
-                const _GroupTitle('Lines'),
-                _ElementGrid(types: lines),
-              ],
-              if (shapes.isEmpty && lines.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: Space.xl),
-                  child: Text(
-                    'No elements match "$_query".',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
+          child:
+              topFirst.isEmpty
+                  ? Padding(
+                    padding: const EdgeInsets.all(Space.md),
+                    child: Text(
+                      'No layers on this page yet. Pick a tool in the toolbar '
+                      'or add something from Elements.',
+                      style: OcxText.caption(context).copyWith(
+                        color: c.textTertiary,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  )
+                  : ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
+                    padding: const EdgeInsets.fromLTRB(
+                      Space.sm,
+                      0,
+                      Space.sm,
+                      Space.md,
+                    ),
+                    itemCount: topFirst.length,
+                    onReorderItem: (from, to) {
+                      final list = [...topFirst];
+                      final moved = list.removeAt(from);
+                      list.insert(to, moved);
+                      editor.setLayerOrder(list.reversed.toList());
+                    },
+                    itemBuilder: (context, index) {
+                      final id = topFirst[index];
+                      final object = session.document.objects[id]!;
+                      return _LayerRow(
+                        key: ValueKey(id),
+                        index: index,
+                        object: object,
+                        name: layerName(session.document, page, object),
+                        selected: session.selection.contains(id),
+                      );
+                    },
                   ),
-                ),
-              const SizedBox(height: Space.xl),
-              Text(
-                'Click to add to the page, or drag onto the canvas.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
         ),
       ],
     );
   }
 }
 
-class _GroupTitle extends StatelessWidget {
-  const _GroupTitle(this.text);
+/// Shared look of a 28 px list row (pages, layers).
+class _RowShell extends StatefulWidget {
+  const _RowShell({
+    required this.selected,
+    required this.onTap,
+    required this.builder,
+    this.dragIndex,
+  });
 
-  final String text;
+  final bool selected;
+  final VoidCallback? onTap;
+  final Widget Function(BuildContext context, {required bool hover}) builder;
 
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: Space.sm),
-    child: Text(text, style: Theme.of(context).textTheme.titleSmall),
-  );
-}
-
-class _ElementGrid extends ConsumerWidget {
-  const _ElementGrid({required this.types});
-
-  final List<ObjectType> types;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: Space.sm,
-      crossAxisSpacing: Space.sm,
-      childAspectRatio: 0.92,
-      children: [
-        for (final type in types)
-          _ElementTile(
-            type: type,
-            onTap: () => ref.read(editorProvider.notifier).insertShape(type),
-          ),
-      ],
-    );
-  }
-}
-
-class _ElementTile extends StatefulWidget {
-  const _ElementTile({required this.type, required this.onTap});
-
-  final ObjectType type;
-  final VoidCallback onTap;
+  /// Index for drag-to-reorder from anywhere on the row.
+  final int? dragIndex;
 
   @override
-  State<_ElementTile> createState() => _ElementTileState();
+  State<_RowShell> createState() => _RowShellState();
 }
 
-class _ElementTileState extends State<_ElementTile> {
+class _RowShellState extends State<_RowShell> {
   bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
-    final ocx = context.ocx;
-    final theme = Theme.of(context);
-    final isLine =
-        widget.type == ObjectType.line || widget.type == ObjectType.arrow;
-    final color =
-        isLine ? theme.colorScheme.onSurface : toUiColor(defaultShapeFill);
-    final preview = ShapePreview(type: widget.type, color: color);
-    return Draggable<ObjectType>(
-      data: widget.type,
-      dragAnchorStrategy: pointerDragAnchorStrategy,
-      feedback: Opacity(
-        opacity: 0.85,
-        child: ShapePreview(type: widget.type, color: color, size: 64),
-      ),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: Tooltip(
-          message: 'Add ${typeLabel(widget.type).toLowerCase()}',
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(Radii.md),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              decoration: BoxDecoration(
-                color:
-                    _hover ? ocx.hover : theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(Radii.md),
-                border: Border.all(
-                  color:
-                      _hover
-                          ? ocx.selection.withValues(alpha: 0.5)
-                          : ocx.border,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  preview,
-                  const SizedBox(height: Space.sm),
-                  Text(
-                    _tileLabel(widget.type),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
+    final c = context.ocx;
+    Widget row = MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: Material(
+        color:
+            widget.selected
+                ? c.accentSubtle
+                : (_hover ? c.hover : Colors.transparent),
+        borderRadius: BorderRadius.circular(Radii.xs),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(Radii.xs),
+          child: SizedBox(
+            height: Chrome.control,
+            child: widget.builder(context, hover: _hover),
           ),
         ),
       ),
     );
+    if (widget.dragIndex case final index?) {
+      row = ReorderableDelayedDragStartListener(index: index, child: row);
+    }
+    return row;
   }
 }
 
-/// Short labels that fit element tiles.
-String _tileLabel(ObjectType type) =>
-    type == ObjectType.roundedRect ? 'Rounded' : typeLabel(type);
+class _PageRow extends ConsumerWidget {
+  const _PageRow({
+    required this.index,
+    required this.page,
+    required this.active,
+    required this.canDelete,
+    super.key,
+  });
 
-// ------------------------------------------------------------------ layers
-
-class _LayersPanel extends ConsumerWidget {
-  const _LayersPanel();
+  final int index;
+  final DesignPage page;
+  final bool active;
+  final bool canDelete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(editorProvider);
-    if (session == null) return const SizedBox.shrink();
-    final page = session.activePage;
-    final topFirst = page.objectIds.reversed.toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _PanelHeader(
-          title: 'Layers',
-          trailing: Text(
-            'Page ${session.state.activePageIndex + 1}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-        if (topFirst.isEmpty)
-          const _EmptyHint(
-            icon: Icons.layers_clear_outlined,
-            text:
-                'Elements you add to this page will be listed here, '
-                'top to bottom.',
-          )
-        else
-          Expanded(
-            child: ReorderableListView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Space.sm,
-                vertical: Space.xs,
+    final editor = ref.read(editorProvider.notifier);
+    final c = context.ocx;
+    return _RowShell(
+      selected: active,
+      dragIndex: index,
+      onTap: () {
+        editor
+          ..setActivePage(page.id)
+          ..clearSelection();
+        final session = ref.read(editorProvider);
+        if (session != null) {
+          ref
+              .read(viewportProvider.notifier)
+              .reveal(layoutPages(session.document.pages)[index].rect);
+        }
+      },
+      builder:
+          (context, {required hover}) => Row(
+            children: [
+              const SizedBox(width: Space.sm),
+              Icon(
+                Icons.insert_drive_file_outlined,
+                size: 14,
+                color: active ? c.accent : c.textSecondary,
               ),
-              buildDefaultDragHandles: false,
-              itemCount: topFirst.length,
-              onReorderItem: (from, to) {
-                final list = [...topFirst];
-                final moved = list.removeAt(from);
-                list.insert(to, moved);
-                ref
-                    .read(editorProvider.notifier)
-                    .setLayerOrder(list.reversed.toList());
-              },
-              itemBuilder: (context, index) {
-                final id = topFirst[index];
-                final object = session.document.objects[id]!;
-                return _LayerRow(
-                  key: ValueKey(id),
-                  index: index,
-                  object: object,
-                  name: layerName(session.document, page, object),
-                  selected: session.selection.contains(id),
-                );
-              },
-            ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Text(
+                  page.name.isEmpty ? 'Page ${index + 1}' : page.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      active
+                          ? OcxText.bodyStrong(context)
+                          : OcxText.body(context),
+                ),
+              ),
+              if (hover) ...[
+                OcxIconButton(
+                  icon: Icons.content_copy_outlined,
+                  iconSize: 14,
+                  size: 24,
+                  tooltip: 'Duplicate page',
+                  onPressed: () => editor.duplicatePage(page.id),
+                ),
+                OcxIconButton(
+                  icon: Icons.delete_outline,
+                  iconSize: 14,
+                  size: 24,
+                  tooltip: 'Delete page',
+                  onPressed:
+                      canDelete ? () => editor.deletePage(page.id) : null,
+                ),
+              ],
+              const SizedBox(width: Space.xs),
+            ],
           ),
-      ],
     );
   }
 }
@@ -419,7 +389,6 @@ class _LayerRow extends ConsumerStatefulWidget {
 }
 
 class _LayerRowState extends ConsumerState<_LayerRow> {
-  bool _hover = false;
   bool _editing = false;
   late final TextEditingController _name = TextEditingController();
 
@@ -452,115 +421,223 @@ class _LayerRowState extends ConsumerState<_LayerRow> {
   Widget build(BuildContext context) {
     final editor = ref.read(editorProvider.notifier);
     final o = widget.object;
-    final ocx = context.ocx;
-    final theme = Theme.of(context);
-    final fill = switch (o.style?.fill) {
-      SolidFill(:final color) => toUiColor(color),
-      _ => switch (o.style?.stroke) {
-        final s? => toUiColor(s.color),
-        null => ocx.subtleText,
-      },
-    };
+    final c = context.ocx;
     final dimmed = o.hidden;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 1),
+    return _RowShell(
+      selected: widget.selected,
+      dragIndex: _editing ? null : widget.index,
+      onTap: o.locked || o.hidden ? null : () => editor.select({o.id}),
+      builder:
+          (context, {required hover}) => Row(
+            children: [
+              const SizedBox(width: Space.sm),
+              Icon(
+                objectIcon(o.type),
+                size: 14,
+                color: dimmed ? c.textTertiary : c.textSecondary,
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child:
+                    _editing
+                        ? TextField(
+                          controller: _name,
+                          autofocus: true,
+                          style: OcxText.body(context),
+                          onSubmitted: (_) => _finishRename(),
+                          onTapOutside: (_) => _finishRename(),
+                        )
+                        // Double-tap only on the name, so the row's buttons respond
+                        // to single taps instantly.
+                        : GestureDetector(
+                          onDoubleTap: _startRename,
+                          child: Text(
+                            widget.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: OcxText.body(
+                              context,
+                            ).copyWith(color: dimmed ? c.textTertiary : null),
+                          ),
+                        ),
+              ),
+              if (hover || o.locked)
+                OcxIconButton(
+                  icon:
+                      o.locked ? Icons.lock_outline : Icons.lock_open_outlined,
+                  iconSize: 14,
+                  size: 24,
+                  tooltip: o.locked ? 'Unlock' : 'Lock',
+                  color: c.textSecondary,
+                  onPressed:
+                      () => editor.updateObject(
+                        o.id,
+                        (x) => x.copyWith(locked: !x.locked),
+                        label: o.locked ? 'Unlock' : 'Lock',
+                      ),
+                ),
+              if (hover || o.hidden)
+                OcxIconButton(
+                  icon:
+                      o.hidden
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                  iconSize: 14,
+                  size: 24,
+                  tooltip: o.hidden ? 'Show' : 'Hide',
+                  color: c.textSecondary,
+                  onPressed:
+                      () => editor.updateObject(
+                        o.id,
+                        (x) => x.copyWith(hidden: !x.hidden),
+                        label: o.hidden ? 'Show' : 'Hide',
+                      ),
+                ),
+              const SizedBox(width: Space.xs),
+            ],
+          ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------- elements
+
+class _ElementsTab extends ConsumerStatefulWidget {
+  const _ElementsTab();
+
+  @override
+  ConsumerState<_ElementsTab> createState() => _ElementsTabState();
+}
+
+class _ElementsTabState extends ConsumerState<_ElementsTab> {
+  String _query = '';
+
+  static const _shapes = [
+    ObjectType.rect,
+    ObjectType.roundedRect,
+    ObjectType.ellipse,
+    ObjectType.polygon,
+    ObjectType.star,
+  ];
+  static const _lines = [ObjectType.line, ObjectType.arrow];
+
+  bool _matches(String label) =>
+      _query.isEmpty || label.toLowerCase().contains(_query.toLowerCase());
+
+  @override
+  Widget build(BuildContext context) {
+    final editor = ref.read(editorProvider.notifier);
+    final texts = TextRole.values.where((r) => _matches(r.label)).toList();
+    final shapes = _shapes.where((t) => _matches(typeLabel(t))).toList();
+    final lines = _lines.where((t) => _matches(typeLabel(t))).toList();
+    final c = context.ocx;
+    return ListView(
+      padding: const EdgeInsets.only(bottom: Space.lg),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(Space.md),
+          child: TextField(
+            onChanged: (v) => setState(() => _query = v.trim()),
+            style: OcxText.body(context),
+            decoration: const InputDecoration(
+              hintText: 'Search elements',
+              prefixIcon: Icon(Icons.search, size: Chrome.icon),
+              prefixIconConstraints: BoxConstraints(minWidth: 28),
+            ),
+          ),
+        ),
+        if (texts.isNotEmpty)
+          PanelSection(
+            title: 'Text',
+            child: FieldColumn(
+              children: [
+                for (final role in texts)
+                  _TextElement(
+                    role: role,
+                    onTap: () => editor.insertText(role),
+                  ),
+              ],
+            ),
+          ),
+        if (shapes.isNotEmpty)
+          PanelSection(
+            title: 'Shapes',
+            child: _TileGrid(
+              children: [
+                for (final type in shapes)
+                  _ShapeTile(type: type, onTap: () => editor.insertShape(type)),
+              ],
+            ),
+          ),
+        if (lines.isNotEmpty)
+          PanelSection(
+            title: 'Lines',
+            child: _TileGrid(
+              children: [
+                for (final type in lines)
+                  _ShapeTile(type: type, onTap: () => editor.insertShape(type)),
+              ],
+            ),
+          ),
+        if (texts.isEmpty && shapes.isEmpty && lines.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(Space.md),
+            child: Text(
+              'Nothing matches "$_query".',
+              style: OcxText.caption(context).copyWith(color: c.textTertiary),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(Space.md),
+          child: Text(
+            'Click to add to the current page, or drag onto the canvas.',
+            style: OcxText.caption(
+              context,
+            ).copyWith(color: c.textTertiary, fontWeight: FontWeight.w400),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TileGrid extends StatelessWidget {
+  const _TileGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) =>
+      Wrap(spacing: Space.sm, runSpacing: Space.sm, children: children);
+}
+
+class _ShapeTile extends StatelessWidget {
+  const _ShapeTile({required this.type, required this.onTap});
+
+  final ObjectType type;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ocx;
+    final isLine = type == ObjectType.line || type == ObjectType.arrow;
+    final color = isLine ? c.text : c.textTertiary;
+    return Draggable<ElementDrag>(
+      data: ShapeDrag(type),
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      feedback: ShapePreview(type: type, color: color),
+      child: Tooltip(
+        message: typeLabel(type),
         child: Material(
-          color:
-              widget.selected
-                  ? ocx.selectedFill
-                  : (_hover ? ocx.hover : Colors.transparent),
+          color: c.surfaceSunken,
           borderRadius: BorderRadius.circular(Radii.sm),
           child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(Radii.sm),
-            onTap: o.locked || o.hidden ? null : () => editor.select({o.id}),
-            child: SizedBox(
-              height: 44,
-              child: Row(
-                children: [
-                  ReorderableDragStartListener(
-                    index: widget.index,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-                      child: Icon(
-                        Icons.drag_indicator,
-                        size: 18,
-                        color: ocx.subtleText.withValues(
-                          alpha: _hover ? 1 : 0.4,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(Radii.sm),
-                      border: Border.all(color: ocx.border),
-                    ),
-                    child: Opacity(
-                      opacity: dimmed ? 0.35 : 1,
-                      child: ShapePreview(type: o.type, color: fill, size: 22),
-                    ),
-                  ),
-                  const SizedBox(width: Space.sm),
-                  Expanded(
-                    child:
-                        _editing
-                            ? TextField(
-                              controller: _name,
-                              autofocus: true,
-                              style: theme.textTheme.bodyMedium,
-                              onSubmitted: (_) => _finishRename(),
-                              onTapOutside: (_) => _finishRename(),
-                            )
-                            // Double-tap only on the name, so the row's
-                            // buttons respond to single taps instantly.
-                            : GestureDetector(
-                              onDoubleTap: _startRename,
-                              child: Text(
-                                widget.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: dimmed ? ocx.subtleText : null,
-                                ),
-                              ),
-                            ),
-                  ),
-                  _RowToggle(
-                    visible: _hover || o.hidden,
-                    icon:
-                        o.hidden
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                    tooltip: o.hidden ? 'Show' : 'Hide',
-                    onPressed:
-                        () => editor.updateObject(
-                          o.id,
-                          (x) => x.copyWith(hidden: !x.hidden),
-                          label: o.hidden ? 'Show' : 'Hide',
-                        ),
-                  ),
-                  _RowToggle(
-                    visible: _hover || o.locked,
-                    icon:
-                        o.locked
-                            ? Icons.lock_outline
-                            : Icons.lock_open_outlined,
-                    tooltip: o.locked ? 'Unlock' : 'Lock',
-                    onPressed:
-                        () => editor.updateObject(
-                          o.id,
-                          (x) => x.copyWith(locked: !x.locked),
-                          label: o.locked ? 'Unlock' : 'Lock',
-                        ),
-                  ),
-                  const SizedBox(width: Space.xs),
-                ],
+            child: SizedBox.square(
+              dimension: 48,
+              child: Center(
+                child: ShapePreview(type: type, color: color, size: 24),
               ),
             ),
           ),
@@ -570,243 +647,47 @@ class _LayerRowState extends ConsumerState<_LayerRow> {
   }
 }
 
-class _RowToggle extends StatelessWidget {
-  const _RowToggle({
-    required this.visible,
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
+class _TextElement extends StatelessWidget {
+  const _TextElement({required this.role, required this.onTap});
 
-  final bool visible;
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Opacity(
-    opacity: visible ? 1 : 0,
-    child: IconButton(
-      icon: Icon(icon, size: 17),
-      tooltip: tooltip,
-      onPressed: onPressed,
-      visualDensity: VisualDensity.compact,
-      color: context.ocx.subtleText,
-    ),
-  );
-}
-
-// ------------------------------------------------------------------- pages
-
-class _PagesPanel extends ConsumerWidget {
-  const _PagesPanel();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(editorProvider);
-    if (session == null) return const SizedBox.shrink();
-    final pages = session.document.pages;
-    final editor = ref.read(editorProvider.notifier);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _PanelHeader(
-          title: 'Pages',
-          trailing: Text(
-            '${pages.length} ${pages.length == 1 ? 'page' : 'pages'}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-        Expanded(
-          child: ReorderableListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-            buildDefaultDragHandles: false,
-            itemCount: pages.length,
-            onReorderItem: editor.movePage,
-            itemBuilder:
-                (context, index) => _PageCard(
-                  key: ValueKey(pages[index].id),
-                  index: index,
-                  document: session.document,
-                  page: pages[index],
-                  active: pages[index].id == session.state.activePageId,
-                  canDelete: pages.length > 1,
-                ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(Space.lg),
-          child: FilledButton.tonalIcon(
-            onPressed: editor.addPage,
-            icon: const Icon(Icons.add),
-            label: const Text('Add page'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PageCard extends ConsumerStatefulWidget {
-  const _PageCard({
-    required this.index,
-    required this.document,
-    required this.page,
-    required this.active,
-    required this.canDelete,
-    super.key,
-  });
-
-  final int index;
-  final DesignDocument document;
-  final DesignPage page;
-  final bool active;
-  final bool canDelete;
-
-  @override
-  ConsumerState<_PageCard> createState() => _PageCardState();
-}
-
-class _PageCardState extends ConsumerState<_PageCard> {
-  bool _hover = false;
-
-  void _open() {
-    final editor = ref.read(editorProvider.notifier)
-      ..setActivePage(widget.page.id);
-    final session = ref.read(editorProvider);
-    if (session == null) return;
-    final frame = layoutPages(session.document.pages)[widget.index];
-    ref.read(viewportProvider.notifier).reveal(frame.rect);
-    editor.clearSelection();
-  }
+  final TextRole role;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final ocx = context.ocx;
-    final theme = Theme.of(context);
-    final editor = ref.read(editorProvider.notifier);
-    final page = widget.page;
-    final aspect = page.width / page.height;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: Space.md),
-        child: ReorderableDragStartListener(
-          index: widget.index,
-          child: GestureDetector(
-            onTap: _open,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      height: 132,
-                      padding: const EdgeInsets.all(Space.sm),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(Radii.md),
-                        border: Border.all(
-                          color: widget.active ? ocx.selection : ocx.border,
-                          width: widget.active ? 2 : 1,
-                        ),
-                      ),
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: math.max(aspect, 0.2),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(color: ocx.pageShadow, blurRadius: 6),
-                              ],
-                            ),
-                            child: CustomPaint(
-                              painter: PageThumbnailPainter(
-                                document: widget.document,
-                                page: page,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_hover)
-                      Positioned(
-                        top: Space.xs,
-                        right: Space.xs,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(Radii.sm),
-                            border: Border.all(color: ocx.border),
-                          ),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.copy_all_outlined,
-                                  size: 16,
-                                ),
-                                tooltip: 'Duplicate page',
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => editor.duplicatePage(page.id),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  size: 16,
-                                ),
-                                tooltip: 'Delete page',
-                                visualDensity: VisualDensity.compact,
-                                onPressed:
-                                    widget.canDelete
-                                        ? () => editor.deletePage(page.id)
-                                        : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: Space.xs),
-                Text(
-                  page.name.isEmpty
-                      ? '${widget.index + 1}'
-                      : '${widget.index + 1}  ·  ${page.name}',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: widget.active ? theme.colorScheme.primary : null,
-                  ),
-                ),
-              ],
-            ),
+    final c = context.ocx;
+    final style = switch (role) {
+      TextRole.heading => const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+      ),
+      TextRole.subheading => const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      TextRole.body => const TextStyle(fontSize: 12),
+    }.copyWith(color: c.text);
+    return Draggable<ElementDrag>(
+      data: TextDrag(role),
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Text(role.label, style: style),
+      ),
+      child: Material(
+        color: c.surfaceSunken,
+        borderRadius: BorderRadius.circular(Radii.sm),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          child: Container(
+            height: 40,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: Space.md),
+            child: Text('Add ${role.label.toLowerCase()}', style: style),
           ),
         ),
       ),
     );
   }
-}
-
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(Space.xl),
-    child: Column(
-      children: [
-        Icon(icon, size: 36, color: context.ocx.subtleText),
-        const SizedBox(height: Space.md),
-        Text(
-          text,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    ),
-  );
 }

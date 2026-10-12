@@ -4,6 +4,19 @@ import 'package:document_model/document_model.dart';
 import 'package:opencanvasx/src/library/design_library.dart';
 import 'package:storage/storage.dart';
 
+/// Deterministic text measurer: half an em per character, one line per
+/// paragraph; wraps at [width] for auto-height text.
+Point2D fakeMeasure(TextPayload text, {double? width}) {
+  final lines = text.text.split('\n');
+  final longest = lines.fold<int>(1, (m, l) => l.length > m ? l.length : m);
+  final natural = longest * text.fontSize * 0.5;
+  if (width == null || text.sizing == TextSizing.autoWidth) {
+    return Point2D(natural, lines.length * text.fontSize * text.lineHeight);
+  }
+  final wraps = (natural / width).ceil().clamp(1, 1 << 20);
+  return Point2D(width, lines.length * wraps * text.fontSize * text.lineHeight);
+}
+
 /// [DesignLibrary] kept in memory so tests never touch the disk.
 class InMemoryDesignLibrary implements DesignLibrary {
   final Map<String, DesignDocument> files = {};

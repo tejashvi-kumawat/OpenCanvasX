@@ -61,6 +61,9 @@ Encoding rules (schema version 1, implemented in `document_model/lib/src/documen
 | Object `transform` | `{ x, y, width, height, rotation, scale_x, scale_y, anchor_x, anchor_y }` | |
 | Object `payload` | text `{ "text" }`, image `{ "asset" }`, path `{ "segments": [["M",x,y], ["L",x,y], ["Q",cx,cy,x,y], ["C",c1x,c1y,c2x,c2y,x,y], ["Z"]] }`; omitted for shapes and groups | |
 | Object id | key in `objects`; not repeated inside the object | |
+| Text payload | `{ text, font_family?, font_size, font_weight, italic?, align, line_height, letter_spacing, sizing }`; `align` ∈ left/center/right/justify, `sizing` ∈ auto_width/auto_height/fixed | `"sizing": "auto_height"` |
+| Polygon / star payload | `{ "sides" }` / `{ "points", "inner_ratio" }` | `{"points": 5, "inner_ratio": 0.5}` |
+| Stroke | `{ color, width, dash? }`; `dash` ∈ dashed/dotted, omitted for solid | |
 
 Optional fields fall back to the model defaults (opacity `1`, anchor `0.5`, dpi `96`, white background, …). Unknown keys are ignored so minor additions stay readable by older builds; anything that changes meaning bumps `schema_version`.
 

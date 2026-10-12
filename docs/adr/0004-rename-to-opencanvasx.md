@@ -29,5 +29,5 @@ JSON keys inside `.opencanvasx` files are **snake_case**, matching the field tab
 
 ## Consequences
 
-- Old names must not be reintroduced; a repo-wide search for `design studio`, `ods_` and `designstudio` should return nothing.
+- Old names must not be reintroduced; a repo-wide search for `design studio`, `ods_` and `designstudio` should return nothing outside this ADR.
 - Per-user app data folders derive from the new ids, so the rename had to land before P1.1.5–P1.1.7 write any settings.

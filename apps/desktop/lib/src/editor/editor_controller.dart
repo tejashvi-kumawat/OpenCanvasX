@@ -1,0 +1,573 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:design_engine/design_engine.dart'
+    hide
+        addPage,
+        deletePage,
+        duplicatePage,
+        movePage,
+        setLayerOrder,
+        updatePage;
+import 'package:design_engine/design_engine.dart'
+    as engine
+    show
+        addPage,
+        deletePage,
+        duplicatePage,
+        movePage,
+        setLayerOrder,
+        updatePage;
+import 'package:document_model/document_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:storage/storage.dart';
+
+import '../providers.dart';
+
+/// Where the open design stands relative to its file.
+enum SaveStatus {
+  /// Everything is on disk.
+  saved,
+
+  /// Edits are waiting for the autosave quiet period.
+  pending,
+
+  /// A save is running.
+  saving,
+
+  /// The last save failed; edits are kept and retried.
+  failed,
+}
+
+/// The design being edited and everything the editor chrome shows about it.
+@immutable
+class EditorSession {
+  const EditorSession({
+    required this.path,
+    required this.state,
+    this.saveStatus = SaveStatus.saved,
+    this.undoLabel,
+    this.redoLabel,
+  });
+
+  final String path;
+  final EditorState state;
+  final SaveStatus saveStatus;
+  final String? undoLabel;
+  final String? redoLabel;
+
+  DesignDocument get document => state.document;
+  DesignPage get activePage => state.activePage;
+  Set<ObjectId> get selection => state.selection;
+  bool get canUndo => undoLabel != null;
+  bool get canRedo => redoLabel != null;
+
+  EditorSession copyWith({
+    EditorState? state,
+    SaveStatus? saveStatus,
+    String? undoLabel,
+    String? redoLabel,
+    bool clearUndo = false,
+    bool clearRedo = false,
+  }) => EditorSession(
+    path: path,
+    state: state ?? this.state,
+    saveStatus: saveStatus ?? this.saveStatus,
+    undoLabel: clearUndo ? null : (undoLabel ?? this.undoLabel),
+    redoLabel: clearRedo ? null : (redoLabel ?? this.redoLabel),
+  );
+}
+
+/// Quiet period before autosave writes the design file.
+final autosaveDelayProvider = Provider<Duration>(
+  (ref) => const Duration(milliseconds: 800),
+);
+
+/// Objects copied with Ctrl+C, shared across designs (P1.3.7).
+final clipboardProvider =
+    NotifierProvider<ClipboardController, List<DesignObject>>(
+      ClipboardController.new,
+    );
+
+class ClipboardController extends Notifier<List<DesignObject>> {
+  @override
+  List<DesignObject> build() => const [];
+
+  void set(List<DesignObject> objects) => state = List.unmodifiable(objects);
+}
+
+/// The open design, or `null` on the home screen.
+final editorProvider = NotifierProvider<EditorController, EditorSession?>(
+  EditorController.new,
+);
+
+/// Result of opening a design, for the UI to explain recovery.
+enum OpenNotice { none, recoveredFromAutosave, newerAutosaveAvailable }
+
+class EditorController extends Notifier<EditorSession?> {
+  final History _history = History();
+  Autosaver? _autosaver;
+
+  /// Document before a drag started, and the live objects of that drag.
+  DesignDocument? _gestureBase;
+  final Map<ObjectId, DesignObject> _gestureObjects = {};
+
+  @override
+  EditorSession? build() {
+    ref.onDispose(() => _autosaver?.dispose());
+    return null;
+  }
+
+  EditorSession get _session {
+    final session = state;
+    if (session == null) throw StateError('No design is open');
+    return session;
+  }
+
+  EditorState get _editor => _session.state;
+
+  // ------------------------------------------------------------ lifecycle
+
+  /// Opens the design at [path].
+  Future<OpenNotice> open(String path) async {
+    final opened = await ref.read(designLibraryProvider).open(path);
+    _start(path, opened.contents.document);
+    if (opened.source == ProjectSource.autosave) {
+      return OpenNotice.recoveredFromAutosave;
+    }
+    return opened.newerAutosaveAvailable
+        ? OpenNotice.newerAutosaveAvailable
+        : OpenNotice.none;
+  }
+
+  /// Starts editing an already loaded [document] saved at [path]. With
+  /// [unsaved] (e.g. a restored backup) it is written back promptly.
+  void start(String path, DesignDocument document, {bool unsaved = false}) {
+    _start(path, document);
+    if (unsaved) {
+      _setStatus(SaveStatus.pending);
+      _autosaver?.markDirty();
+    }
+  }
+
+  void _start(String path, DesignDocument document) {
+    _autosaver?.dispose();
+    _history.clear();
+    _gestureBase = null;
+    _gestureObjects.clear();
+    _autosaver = Autosaver(
+      delay: ref.read(autosaveDelayProvider),
+      save: _save,
+      onError: (_, _) => _setStatus(SaveStatus.failed),
+    );
+    state = EditorSession(path: path, state: EditorState.initial(document));
+    ref
+        .read(appIndexProvider)
+        .recent
+        .record(
+          path: path,
+          title: document.metadata.title,
+          documentId: document.id.value,
+        );
+  }
+
+  /// Saves pending edits and leaves the editor.
+  Future<void> close() async {
+    final autosaver = _autosaver;
+    if (autosaver != null) {
+      await autosaver.flush();
+      autosaver.dispose();
+    }
+    _autosaver = null;
+    _history.clear();
+    state = null;
+    ref.invalidate(designsProvider);
+  }
+
+  /// Writes the design now (Ctrl+S).
+  Future<void> saveNow() async => _autosaver?.flush();
+
+  Future<void> _save() async {
+    final session = state;
+    if (session == null) return;
+    _setStatus(SaveStatus.saving);
+    final document = session.document;
+    final stamped = DesignDocument(
+      id: document.id,
+      metadata: document.metadata.copyWith(modifiedAt: DateTime.now()),
+      pages: document.pages,
+      objects: document.objects,
+      styles: document.styles,
+      assets: document.assets,
+    );
+    await ref.read(designLibraryProvider).save(session.path, stamped);
+    _setStatus(
+      (_autosaver?.isDirty ?? false) ? SaveStatus.pending : SaveStatus.saved,
+    );
+  }
+
+  void _setStatus(SaveStatus status) {
+    final session = state;
+    if (session != null) state = session.copyWith(saveStatus: status);
+  }
+
+  // ------------------------------------------------------- state plumbing
+
+  void _commit(Change change, {Set<ObjectId>? select, PageId? activePage}) {
+    final document = _history.apply(_editor.document, change);
+    _publish(
+      _editor.copyWith(
+        document: document,
+        selection: select,
+        activePageId: activePage,
+      ),
+      edited: !change.isEmpty,
+    );
+  }
+
+  void _publish(EditorState next, {required bool edited}) {
+    state = _session.copyWith(
+      state: next,
+      undoLabel: _history.undoLabel,
+      redoLabel: _history.redoLabel,
+      clearUndo: !_history.canUndo,
+      clearRedo: !_history.canRedo,
+      saveStatus: edited ? SaveStatus.pending : null,
+    );
+    if (edited) _autosaver?.markDirty();
+  }
+
+  // ------------------------------------------------------------- history
+
+  void undo() {
+    if (!_history.canUndo) return;
+    _cancelGesture();
+    _publish(
+      _editor.copyWith(document: _history.undo(_editor.document)),
+      edited: true,
+    );
+  }
+
+  void redo() {
+    if (!_history.canRedo) return;
+    _cancelGesture();
+    _publish(
+      _editor.copyWith(document: _history.redo(_editor.document)),
+      edited: true,
+    );
+  }
+
+  // ----------------------------------------------------------- selection
+
+  void select(Iterable<ObjectId> ids) =>
+      _publish(_editor.copyWith(selection: ids.toSet()), edited: false);
+
+  void toggleSelected(ObjectId id) {
+    final next = {..._editor.selection};
+    if (!next.remove(id)) next.add(id);
+    select(next);
+  }
+
+  void clearSelection() => select(const {});
+
+  /// Selects every visible, unlocked object on the active page.
+  void selectAll() => select([
+    for (final id in _editor.activePage.objectIds)
+      if (_editor.document.objects[id] case final o?
+          when !o.hidden && !o.locked)
+        id,
+  ]);
+
+  void setActivePage(PageId id) {
+    if (id == _editor.activePageId) return;
+    _publish(
+      _editor.copyWith(activePageId: id, selection: const {}),
+      edited: false,
+    );
+  }
+
+  // ------------------------------------------------------------- objects
+
+  /// Adds a default [type] shape to the active page, centred on [at]
+  /// (page units) or the page centre, and selects it.
+  void insertShape(ObjectType type, {Point2D? at, PageId? pageId}) {
+    final document = _editor.document;
+    final page =
+        pageId == null
+            ? _editor.activePage
+            : document.pages.firstWhere((p) => p.id == pageId);
+    final shape = newShape(type, page, id: ObjectId.generate(), center: at);
+    _commit(
+      insertObjects(document, page.id, [
+        shape,
+      ], label: 'Add ${typeLabel(type)}'),
+      activePage: page.id,
+      select: {shape.id},
+    );
+  }
+
+  void deleteSelection() {
+    if (_editor.selection.isEmpty) return;
+    _commit(
+      deleteObjects(_editor.document, _editor.selection),
+      select: const {},
+    );
+  }
+
+  void duplicateSelection() {
+    if (_editor.selection.isEmpty) return;
+    final (change, ids) = duplicateObjects(
+      _editor.document,
+      _editor.activePageId,
+      _editor.selection,
+      offset: _nudgeStep(large: true),
+    );
+    _commit(change, select: ids.toSet());
+  }
+
+  void copySelection() {
+    if (_editor.selection.isEmpty) return;
+    final ordered = _editor.activePage.objectIds.where(
+      _editor.selection.contains,
+    );
+    ref
+        .read(clipboardProvider.notifier)
+        .set(copySubtrees(_editor.document, ordered));
+  }
+
+  void cutSelection() {
+    copySelection();
+    if (_editor.selection.isEmpty) return;
+    _commit(
+      deleteObjects(_editor.document, _editor.selection, label: 'Cut'),
+      select: const {},
+    );
+  }
+
+  void paste() {
+    final clipboard = ref.read(clipboardProvider);
+    if (clipboard.isEmpty) return;
+    final (change, ids) = pasteObjects(
+      _editor.document,
+      _editor.activePageId,
+      clipboard,
+      offset: _nudgeStep(large: true),
+    );
+    _commit(change, select: ids.toSet());
+  }
+
+  /// Arrow-key movement: 1 px-ish, or 10× with Shift.
+  void nudge(int dx, int dy, {bool large = false}) {
+    if (_editor.selection.isEmpty) return;
+    final step = _nudgeStep(large: large);
+    _commit(
+      moveObjects(
+        _editor.document,
+        _editor.selection,
+        dx * step,
+        dy * step,
+        label: 'Nudge',
+      ),
+    );
+  }
+
+  /// One screen-pixel-ish step in the active page's unit.
+  double _nudgeStep({required bool large}) {
+    final page = _editor.activePage;
+    final unitsPerPixel = convertLength(
+      1,
+      from: LengthUnit.px,
+      to: page.unit,
+      dpi: page.dpi,
+    );
+    final step = page.unit == LengthUnit.px ? 1.0 : unitsPerPixel * 4;
+    return large ? step * 10 : step;
+  }
+
+  void arrange(ZOrderMove move) {
+    if (_editor.selection.isEmpty) return;
+    _commit(
+      reorderObjects(
+        _editor.document,
+        _editor.activePageId,
+        _editor.selection,
+        move,
+      ),
+    );
+  }
+
+  /// Aligns one object to the page, several to their combined bounds.
+  void align(AlignEdge edge) {
+    final ids = _editor.selection;
+    if (ids.isEmpty) return;
+    final page = _editor.activePage;
+    final reference =
+        ids.length == 1
+            ? Rect2D.fromLTWH(0, 0, page.width, page.height)
+            : selectionBounds(_editor.document, ids);
+    if (reference == null) return;
+    _commit(alignObjects(_editor.document, ids, edge, reference));
+  }
+
+  /// Applies [update] to every selected object as one undo step.
+  void updateSelected(
+    DesignObject Function(DesignObject object) update, {
+    required String label,
+  }) {
+    _commit(
+      updateObjects(_editor.document, [
+        for (final o in _editor.selectedObjects) update(o),
+      ], label: label),
+    );
+  }
+
+  /// Applies [update] to one object (layers panel).
+  void updateObject(
+    ObjectId id,
+    DesignObject Function(DesignObject object) update, {
+    required String label,
+  }) {
+    final object = _editor.document.objects[id];
+    if (object == null) return;
+    final updated = update(object);
+    final selection = {..._editor.selection};
+    if (updated.hidden || updated.locked) selection.remove(id);
+    _commit(
+      updateObjects(_editor.document, [updated], label: label),
+      select: selection,
+    );
+  }
+
+  /// Sets the active page's back-to-front layer order.
+  void setLayerOrder(List<ObjectId> order) => _commit(
+    engine.setLayerOrder(_editor.document, _editor.activePageId, order),
+  );
+
+  // ----------------------------------------------- gestures (live preview)
+
+  /// Starts a drag that previews edits without recording history.
+  void beginGesture() {
+    _gestureBase ??= _editor.document;
+    _gestureObjects.clear();
+  }
+
+  bool get isGestureActive => _gestureBase != null;
+
+  /// Shows [objects] as edited during the drag.
+  void previewObjects(Iterable<DesignObject> objects) {
+    final base = _gestureBase;
+    if (base == null) return;
+    for (final o in objects) {
+      _gestureObjects[o.id] = o;
+    }
+    final (preview, _) = Change(
+      label: 'preview',
+      objects: _gestureObjects,
+    ).applyTo(base);
+    _publish(_editor.copyWith(document: preview), edited: false);
+  }
+
+  /// Finishes the drag as one undo step named [label].
+  void endGesture(String label) {
+    final base = _gestureBase;
+    _gestureBase = null;
+    if (base == null) return;
+    final change = updateObjects(base, _gestureObjects.values, label: label);
+    _gestureObjects.clear();
+    if (change.isEmpty) {
+      _publish(_editor.copyWith(document: base), edited: false);
+      return;
+    }
+    final (document, inverse) = change.applyTo(base);
+    _history.recordApplied(inverse);
+    _publish(_editor.copyWith(document: document), edited: true);
+  }
+
+  void _cancelGesture() {
+    final base = _gestureBase;
+    if (base == null) return;
+    _gestureBase = null;
+    _gestureObjects.clear();
+    _publish(_editor.copyWith(document: base), edited: false);
+  }
+
+  // --------------------------------------------------------------- pages
+
+  /// Adds a blank page with the active page's size after it.
+  void addPage() {
+    final current = _editor.activePage;
+    final page = DesignPage(
+      id: PageId.generate(),
+      width: current.width,
+      height: current.height,
+      unit: current.unit,
+      dpi: current.dpi,
+      background: current.background,
+    );
+    _commit(
+      engine.addPage(
+        _editor.document,
+        page,
+        index: _editor.activePageIndex + 1,
+      ),
+      activePage: page.id,
+      select: const {},
+    );
+  }
+
+  void duplicatePage(PageId pageId) {
+    final (change, copy) = engine.duplicatePage(_editor.document, pageId);
+    _commit(change, activePage: copy, select: const {});
+  }
+
+  /// Deletes [pageId] unless it is the last page.
+  void deletePage(PageId pageId) {
+    final pages = _editor.document.pages;
+    if (pages.length <= 1) return;
+    final index = pages.indexWhere((p) => p.id == pageId);
+    final neighbour = pages[index == 0 ? 1 : index - 1].id;
+    _commit(
+      engine.deletePage(_editor.document, pageId),
+      activePage: pageId == _editor.activePageId ? neighbour : null,
+      select: const {},
+    );
+  }
+
+  void movePage(int from, int to) =>
+      _commit(engine.movePage(_editor.document, from, to));
+
+  void updatePage(DesignPage page, {String label = 'Edit page'}) =>
+      _commit(engine.updatePage(_editor.document, page, label: label));
+
+  void rename(String title) => _commit(renameDocument(_editor.document, title));
+}
+
+/// Human name of an object type for menus, layers and undo labels.
+String typeLabel(ObjectType type) => switch (type) {
+  ObjectType.text => 'Text',
+  ObjectType.rect => 'Rectangle',
+  ObjectType.roundedRect => 'Rounded rectangle',
+  ObjectType.ellipse => 'Circle',
+  ObjectType.line => 'Line',
+  ObjectType.arrow => 'Arrow',
+  ObjectType.path => 'Shape',
+  ObjectType.image => 'Image',
+  ObjectType.group => 'Group',
+};
+
+/// Layer name: the user's name, or "Rectangle 2" style numbering.
+String layerName(
+  DesignDocument document,
+  DesignPage page,
+  DesignObject object,
+) {
+  final name = object.name;
+  if (name != null && name.trim().isNotEmpty) return name;
+  var n = 0;
+  for (final id in page.objectIds) {
+    if (document.objects[id]?.type == object.type) n++;
+    if (id == object.id) break;
+  }
+  return '${typeLabel(object.type)} ${math.max(n, 1)}';
+}

@@ -10,7 +10,8 @@ Decisions here reflect the current plan for OpenCanvasX. Locked choices have ADR
 | **Rust** for native core | Accepted — ADR-0002 | Performance, crypto-adjacent code; exposed via `flutter_rust_bridge` |
 | **Skia** (via Flutter / Impeller) | Accepted | 2D canvas, text, images |
 | **Melos** | Accepted | Monorepo bootstrap and scripts |
-| **Riverpod** (`flutter_riverpod`) | Accepted | UI state management; chosen 2026-10-12, used from the app shell (P1.10) |
+| **Riverpod** (`flutter_riverpod`) | Accepted — [ADR-0005](../adr/0005-riverpod-and-design-library.md) | UI state management |
+| `file_selector`, `path_provider` | Accepted | Flutter-team plugins: native folder picker, per-user data and documents folders |
 
 ## Persistence
 

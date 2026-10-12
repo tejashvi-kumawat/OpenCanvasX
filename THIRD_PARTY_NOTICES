@@ -15,6 +15,9 @@ Build-time / runtime dependencies (Phase 0):
 - crypto (Dart package) — BSD-3-Clause (https://pub.dev/packages/crypto)
 - sqlite3 (Dart package) — MIT, Copyright (c) 2020 Simon Binder (https://pub.dev/packages/sqlite3)
 - SQLite — public domain (https://sqlite.org/copyright.html)
+- flutter_riverpod / riverpod (Dart packages) — MIT, Copyright (c) 2020 Remi Rousselet (https://pub.dev/packages/flutter_riverpod)
+- file_selector, path_provider (Flutter plugins) — BSD-3-Clause, Copyright 2013 The Flutter Authors
+- jni, jni_flutter (transitive, via path_provider) — BSD-3-Clause, Copyright 2022 the Dart project authors
 - Rust crates: see rust/Cargo.lock and https://crates.io per crate
 
 Update this file and DEPENDENCIES when adding bundled assets, fonts, or libraries.

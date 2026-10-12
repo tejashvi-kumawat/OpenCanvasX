@@ -1,8 +1,15 @@
+# melos_managed_dependency_overrides: document_model,storage,renderer
 # melos_managed_dependency_overrides: design_engine,ocx_logging,ocx_native_bridge
 dependency_overrides:
   design_engine:
     path: ../../packages/design_engine
+  document_model:
+    path: ..\\..\\packages\\document_model
   ocx_logging:
     path: ../../packages/ocx_logging
   ocx_native_bridge:
     path: ../../packages/ocx_native_bridge
+  renderer:
+    path: ..\\..\\packages\\renderer
+  storage:
+    path: ..\\..\\packages\\storage

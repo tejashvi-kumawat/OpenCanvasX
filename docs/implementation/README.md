@@ -7,7 +7,8 @@ Engineering log tied to checklist phases — not normative spec. Normative desig
 | # | Document | Phase |
 |---|----------|-------|
 | 1 | [p0-foundation.md](p0-foundation.md) | P0 — repo, CI, shell, logging |
-| 2 | [p1-document-model.md](p1-document-model.md) | P1.1 — document model |
+| 2 | [p1-document-model.md](p1-document-model.md) | P1.1 — document model and storage |
+| 3 | [p1-editor.md](p1-editor.md) | P1.2–P1.4, P1.8.1, P1.10 — editor and home UI |
 
 Add `p1-*.md`, `p2-*.md`, … as phases complete.
 

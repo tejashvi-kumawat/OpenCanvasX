@@ -89,7 +89,7 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "OpenCanvasX contributors" "\0"
+            VALUE "CompanyName", "OpenCanvasX" "\0"
             VALUE "FileDescription", "OpenCanvasX" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "opencanvasx" "\0"

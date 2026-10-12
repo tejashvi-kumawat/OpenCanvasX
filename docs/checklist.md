@@ -100,27 +100,27 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.1.4 Serialization to `.opencanvasx` + versioned migration framework
 - [x] P1.1.5 Save / open / autosave
 - [x] P1.1.6 Recent documents
-- [ ] P1.1.7 Local project directory selection
+- [x] P1.1.7 Local project directory selection
 
 ## P1.2 Canvas & Navigation
-- [ ] P1.2.1 Fixed page canvas with pan/zoom
-- [ ] P1.2.2 Multiple pages + page navigation
-- [ ] P1.2.3 Custom dimensions and size presets
+- [x] P1.2.1 Fixed page canvas with pan/zoom
+- [x] P1.2.2 Multiple pages + page navigation
+- [x] P1.2.3 Custom dimensions and size presets
 - [ ] P1.2.4 Rulers, grid, guides
-- [ ] P1.2.5 Zoom shortcuts and fit-to-page
+- [x] P1.2.5 Zoom shortcuts and fit-to-page
 
 ## P1.3 Objects & Transforms
-- [ ] P1.3.1 Rectangle, rounded rectangle, ellipse/circle, line, arrow
+- [x] P1.3.1 Rectangle, rounded rectangle, ellipse/circle, line, arrow
 - [ ] P1.3.2 Polygon, star
-- [ ] P1.3.3 Selection (single, multi, marquee)
-- [ ] P1.3.4 Move, resize, rotate, flip
+- [x] P1.3.3 Selection (single, multi, marquee)
+- [x] P1.3.4 Move, resize, rotate, flip
 - [ ] P1.3.5 Opacity, fill, stroke, dashed stroke
 - [ ] P1.3.6 Group / ungroup, nested groups
-- [ ] P1.3.7 Copy / cut / paste / duplicate
+- [x] P1.3.7 Copy / cut / paste / duplicate
 
 ## P1.4 Layers & Alignment
-- [ ] P1.4.1 Layer tree panel (rename, lock, hide, reorder)
-- [ ] P1.4.2 Align (left/center/right/top/middle/bottom)
+- [x] P1.4.1 Layer tree panel (rename, lock, hide, reorder)
+- [x] P1.4.2 Align (left/center/right/top/middle/bottom)
 - [ ] P1.4.3 Distribute + equal spacing
 - [ ] P1.4.4 Snap to page / object / grid + smart guides
 
@@ -146,7 +146,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.7.4 Contrast checker
 
 ## P1.8 History
-- [ ] P1.8.1 Undo / redo
+- [x] P1.8.1 Undo / redo
 - [ ] P1.8.2 History panel
 - [ ] P1.8.3 Named checkpoints + snapshots + restore
 
@@ -158,9 +158,9 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.9.5 Background export on worker thread
 
 ## P1.10 App Shell UX
-- [ ] P1.10.1 Main layout: top menu, left panel, canvas, right inspector, bottom bar
-- [ ] P1.10.2 Inspector / properties panel
-- [ ] P1.10.3 Dark + light theme
+- [x] P1.10.1 Main layout: top menu, left panel, canvas, right inspector, bottom bar
+- [x] P1.10.2 Inspector / properties panel
+- [x] P1.10.3 Dark + light theme
 - [ ] P1.10.4 Keyboard shortcuts (core set) + customization
 - [ ] P1.10.5 Command palette (Ctrl/Cmd+K) with fuzzy search
 - [ ] P1.10.6 Onboarding: create identity, choose storage directory, privacy explanation

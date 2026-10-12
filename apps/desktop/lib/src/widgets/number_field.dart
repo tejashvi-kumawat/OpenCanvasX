@@ -1,0 +1,157 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../theme/ocx_theme.dart';
+
+/// Compact numeric input for the inspector.
+///
+/// Commits on Enter or when focus leaves; ↑/↓ step by [step] (Shift ×10).
+/// While focused it never overwrites what the user is typing.
+class NumberField extends StatefulWidget {
+  const NumberField({
+    required this.value,
+    required this.onChanged,
+    this.label,
+    this.suffix,
+    this.step = 1,
+    this.min,
+    this.max,
+    this.decimals = 1,
+    this.enabled = true,
+    super.key,
+  });
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  /// Short prefix such as "X" or "W".
+  final String? label;
+
+  /// Unit after the number, e.g. "px" or "°".
+  final String? suffix;
+  final double step;
+  final double? min;
+  final double? max;
+  final int decimals;
+  final bool enabled;
+
+  @override
+  State<NumberField> createState() => _NumberFieldState();
+}
+
+class _NumberFieldState extends State<NumberField> {
+  late final TextEditingController _controller = TextEditingController(
+    text: _format(widget.value),
+  );
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus) _commit();
+    });
+  }
+
+  @override
+  void didUpdateWidget(NumberField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focus.hasFocus && oldWidget.value != widget.value) {
+      _controller.text = _format(widget.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  String _format(double v) {
+    final fixed = v.toStringAsFixed(widget.decimals);
+    return fixed.contains('.')
+        ? fixed.replaceFirst(RegExp(r'\.?0+$'), '')
+        : fixed;
+  }
+
+  double _clamp(double v) {
+    var result = v;
+    if (widget.min != null && result < widget.min!) result = widget.min!;
+    if (widget.max != null && result > widget.max!) result = widget.max!;
+    return result;
+  }
+
+  void _commit() {
+    final parsed = double.tryParse(
+      _controller.text.trim().replaceAll(',', '.'),
+    );
+    if (parsed == null || !parsed.isFinite) {
+      _controller.text = _format(widget.value);
+      return;
+    }
+    final value = _clamp(parsed);
+    _controller.text = _format(value);
+    if (value != widget.value) widget.onChanged(value);
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final up = event.logicalKey == LogicalKeyboardKey.arrowUp;
+    final down = event.logicalKey == LogicalKeyboardKey.arrowDown;
+    if (!up && !down) return KeyEventResult.ignored;
+    final current = double.tryParse(_controller.text) ?? widget.value;
+    final step =
+        widget.step * (HardwareKeyboard.instance.isShiftPressed ? 10 : 1);
+    final next = _clamp(current + (up ? step : -step));
+    _controller.text = _format(next);
+    widget.onChanged(next);
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtle = context.ocx.subtleText;
+    return Focus(
+      onKeyEvent: _onKey,
+      child: TextField(
+        controller: _controller,
+        focusNode: _focus,
+        enabled: widget.enabled,
+        textAlign: TextAlign.right,
+        style: theme.textTheme.bodyMedium,
+        keyboardType: const TextInputType.numberWithOptions(
+          decimal: true,
+          signed: true,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[-0-9.,]')),
+        ],
+        onSubmitted: (_) => _commit(),
+        decoration: InputDecoration(
+          prefixIcon:
+              widget.label == null
+                  ? null
+                  : Padding(
+                    padding: const EdgeInsets.only(
+                      left: Space.md,
+                      right: Space.xs,
+                    ),
+                    child: Text(
+                      widget.label!,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: subtle,
+                      ),
+                    ),
+                  ),
+          prefixIconConstraints: const BoxConstraints(),
+          suffixText: widget.suffix,
+          suffixStyle: theme.textTheme.bodySmall,
+        ),
+      ),
+    );
+  }
+}

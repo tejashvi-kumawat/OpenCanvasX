@@ -28,13 +28,15 @@ The document model is the **single in-memory source of truth** while the app is 
 
 | Field | Purpose |
 |-------|---------|
-| `id` | Page id |
-| `name` | User label (e.g. "Slide 3") |
-| `width`, `height` | In document units |
-| `unit` | `px`, `pt`, `mm`, `cm`, `in` |
-| `dpi` | Conversion for export |
-| `background` | Solid, gradient, image ref, or transparent |
-| `bleed`, `margins`, `guides` | Print/layout aids |
+| `id` | Page id (UUID v4) |
+| `name` | User label (e.g. "Slide 3"); empty = UI shows page position |
+| `width`, `height` | In `unit`; must be > 0 |
+| `unit` | `px`, `pt`, `mm`, `cm`, `in` (default `px`) |
+| `dpi` | Conversion for export; default 96 (CSS reference pixel) |
+| `background` | Solid (default white), gradient (P1.7.3), image ref, or transparent |
+| `bleed`, `margins` | Per-edge insets ≥ 0; margins must fit inside the page |
+| `guides` | Vertical (fixed x) or horizontal (fixed y) lines; may sit outside the page |
+| `object_ids` | Root objects on this page, back-to-front ([ADR-0003](../adr/0003-global-object-map.md)) |
 
 Supports **fixed page** mode first; infinite canvas (whiteboard) extends page bounds and pan limits later.
 
@@ -117,6 +119,9 @@ The document model applies remote ops through the same validation paths as local
 | Payload | `NoPayload`, `TextPayload` (plain text until P1.5), `ImagePayload` (SHA-256 hex), `PathPayload` (`MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath` in object-local coordinates) | P1.1.1 |
 | Colour | `ArgbColor` (`0xAARRGGBB`, pure Dart, no `dart:ui`) | P1.1.1 |
 | Tree checks | `validateObjectGraph` → `List<ModelIssue>` | P1.1.1 |
+| Page | `DesignPage`, `PageInsets`, `Guide` / `GuideAxis`, `PageBackground` (`SolidBackground`, `TransparentBackground`, `ImageBackground`) | P1.1.2 |
+| Unit | `LengthUnit` (symbols only; conversion P1.1.3) | P1.1.2 |
+| Page checks | `validatePages` → `List<ModelIssue>` | P1.1.2 |
 
 All types are immutable values with value equality. Constructors throw `ArgumentError` for invalid input (non-finite numbers, negative sizes, payload not matching type, …). Cross-object problems are reported by validators, not thrown, so a damaged file can be repaired rather than rejected outright.
 

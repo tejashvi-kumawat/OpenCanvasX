@@ -9,9 +9,12 @@ export 'src/ids.dart';
 export 'src/model_issue.dart';
 export 'src/object_graph.dart';
 export 'src/object_type.dart';
+export 'src/page.dart';
+export 'src/page_graph.dart';
 export 'src/payload.dart';
 export 'src/style.dart';
 export 'src/transform.dart';
+export 'src/units.dart';
 
 /// Package version.
 String packageVersion() => '0.0.1';

@@ -95,7 +95,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 
 ## P1.1 Document Model & Storage
 - [x] P1.1.1 Implement object model (id, type, transform, style, children)
-- [ ] P1.1.2 Page model (size, background, margins, bleed, guides)
+- [x] P1.1.2 Page model (size, background, margins, bleed, guides)
 - [ ] P1.1.3 Units & conversion (px, mm, cm, in, pt) + DPI
 - [ ] P1.1.4 Serialization to `.designstudio` + versioned migration framework
 - [ ] P1.1.5 Save / open / autosave

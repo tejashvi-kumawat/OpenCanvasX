@@ -1,6 +1,8 @@
 import 'package:document_model/document_model.dart';
 import 'package:meta/meta.dart';
 
+import 'groups.dart';
+
 /// What the editor shows: the document, the page being edited and the
 /// selected objects. Selection is ephemeral and never saved
 /// (document-model.md "Selection and hit-testing").
@@ -26,7 +28,8 @@ final class EditorState {
   final DesignDocument document;
   final PageId activePageId;
 
-  /// Selected root-level objects on the active page.
+  /// Selected objects on the active page: roots, or objects inside groups
+  /// (entered with a double-click).
   final Set<ObjectId> selection;
 
   DesignPage get activePage => document.pages.firstWhere(
@@ -41,7 +44,7 @@ final class EditorState {
 
   /// Selected objects in z-order (back to front).
   List<DesignObject> get selectedObjects => [
-    for (final id in activePage.objectIds)
+    for (final id in pageObjectsInOrder(document, activePage))
       if (selection.contains(id))
         if (document.objects[id] case final object?) object,
   ];
@@ -58,15 +61,15 @@ final class EditorState {
       ).normalized();
 
   /// Repairs the state after an edit or undo: the active page must exist and
-  /// the selection may only hold existing roots of that page.
+  /// the selection may only hold existing objects on that page.
   EditorState normalized() {
     final page = activePage;
     final valid =
         selection
             .where(
               (id) =>
-                  page.objectIds.contains(id) &&
-                  document.objects.containsKey(id),
+                  document.objects.containsKey(id) &&
+                  rootOf(document, id)?.pageId == page.id,
             )
             .toSet();
     if (page.id == activePageId && valid.length == selection.length) {

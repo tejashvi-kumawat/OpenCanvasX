@@ -62,6 +62,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
   Point2D _downPage = Point2D.zero;
   PageFrame? _dragFrame;
   Map<ObjectId, DesignObject> _dragStart = const {};
+  late DesignDocument _dragDocument;
   bool _dragMoved = false;
   Rect? _marquee;
   ObjectId? _hovered;
@@ -284,13 +285,20 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     );
   }
 
-  ObjectId? _objectAt(Offset screen, PageFrame frame) {
+  /// What a click at [screen] selects; inside an entered group this is a
+  /// sibling of the selection, and [enter] goes one level deeper.
+  ObjectId? _objectAt(Offset screen, PageFrame frame, {bool enter = false}) {
     final session = ref.read(editorProvider)!;
-    return hitTest(
+    return pickObject(
       session.document,
       session.document.pages[frame.index],
       _pagePoint(screen, frame),
+      selection:
+          frame.pageId == session.state.activePageId
+              ? session.selection
+              : const {},
       tolerance: 5 * _unitsPerPixel(frame),
+      enter: enter,
     );
   }
 
@@ -427,7 +435,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     }
     final hit = _objectAt(event.localPosition, frame);
 
-    // Double-click on text edits it inline.
+    // Double-click enters a group, or edits text inline.
     final now = DateTime.now();
     final isDouble =
         now.difference(_lastClick) < const Duration(milliseconds: 400) &&
@@ -435,8 +443,14 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     _lastClick = now;
     _lastClickPosition = event.localPosition;
     if (isDouble && hit != null) {
-      final object = ref.read(editorProvider)!.document.objects[hit];
-      if (object?.payload is TextPayload) {
+      final document = ref.read(editorProvider)!.document;
+      final entered = _objectAt(event.localPosition, frame, enter: true);
+      if (entered != null && entered != hit) {
+        _editor.select({entered});
+        _drag = _Drag.none;
+        return;
+      }
+      if (document.objects[hit]?.payload is TextPayload) {
         _editor.startTextEdit(hit);
         _drag = _Drag.none;
         return;
@@ -470,6 +484,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       _drag = _Drag.none;
       return;
     }
+    _dragDocument = session.document;
     _editor.beginGesture();
   }
 
@@ -513,24 +528,25 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
         }
         _editor.previewObjects([
           for (final o in _dragStart.values)
-            o.copyWith(
-              transform: o.transform.copyWith(
-                x: o.transform.x + dx,
-                y: o.transform.y + dy,
-              ),
-            ),
+            shiftedInPage(_dragDocument, o, dx, dy),
         ]);
       case _Drag.resize:
         final o = _dragStart.values.first;
-        var resized = o.copyWith(
-          transform: resizeTransform(
-            o.transform,
-            _handle!,
-            p,
-            keepAspectRatio: shift,
-            minSize: 4 * _unitsPerPixel(frame),
-          ),
+        // Handles work in the object's parent space (groups may be
+        // rotated or scaled).
+        final local = pageToParent(_dragDocument, o.id, p);
+        final transform = resizeTransform(
+          o.transform,
+          _handle!,
+          local,
+          keepAspectRatio: shift || o.type == ObjectType.group,
+          minSize: 4 * _unitsPerPixel(frame),
         );
+        if (o.type == ObjectType.group) {
+          _editor.previewObjects(resizeGroup(_dragDocument, o, transform));
+          break;
+        }
+        var resized = o.copyWith(transform: transform);
         // Dragging a side of an auto-width text fixes its width.
         final payload = o.payload;
         if (payload is TextPayload &&
@@ -547,7 +563,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           o.copyWith(
             transform: rotateTransform(
               o.transform,
-              p,
+              pageToParent(_dragDocument, o.id, p),
               snapDegrees: shift ? 15 : 0,
             ),
           ),
@@ -745,6 +761,17 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
         item('Delete', 'Del', hasSelection ? _editor.deleteSelection : null),
         const PopupMenuDivider(height: 9),
         item(
+          'Group',
+          'Ctrl+G',
+          _editor.canGroup ? _editor.groupSelection : null,
+        ),
+        item(
+          'Ungroup',
+          'Ctrl+Shift+G',
+          _editor.canUngroup ? _editor.ungroupSelection : null,
+        ),
+        const PopupMenuDivider(height: 9),
+        item(
           'Bring to front',
           'Ctrl+Shift+]',
           hasSelection ? () => _editor.arrange(ZOrderMove.toFront) : null,
@@ -907,6 +934,21 @@ class _WorkspacePainter extends CustomPainter {
       );
     }
     if (showHandles) {
+      // The group being edited stays outlined while working inside it.
+      final entered = {
+        for (final id in selection)
+          if (document.objects[id]?.parentId case final parentId?) parentId,
+      };
+      for (final id in entered) {
+        _drawPolygon(
+          canvas,
+          _corners(id, active),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = colors.accent.withValues(alpha: 0.35),
+        );
+      }
       for (final id in selection) {
         _drawPolygon(canvas, _corners(id, active), outline);
       }

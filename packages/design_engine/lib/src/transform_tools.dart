@@ -78,7 +78,7 @@ ObjectTransform resizeTransform(
     handle.movesLeft ? width : 0,
     handle.movesTop ? height : 0,
   );
-  return _placeSoThat(
+  return placeTransform(
     t.copyWith(width: width, height: height),
     local: fixedNew,
     lands: toParent.apply(fixedOld),
@@ -120,11 +120,11 @@ ObjectTransform flipTransform(ObjectTransform t, {required bool horizontal}) {
       horizontal
           ? t.copyWith(scaleX: -t.scaleX)
           : t.copyWith(scaleY: -t.scaleY);
-  return _placeSoThat(flipped, local: center, lands: pinned);
+  return placeTransform(flipped, local: center, lands: pinned);
 }
 
 /// Returns [t] with x/y chosen so local point [local] maps to [lands].
-ObjectTransform _placeSoThat(
+ObjectTransform placeTransform(
   ObjectTransform t, {
   required Point2D local,
   required Point2D lands,

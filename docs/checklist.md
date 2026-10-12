@@ -115,7 +115,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.3.3 Selection (single, multi, marquee)
 - [x] P1.3.4 Move, resize, rotate, flip
 - [x] P1.3.5 Opacity, fill, stroke, dashed stroke
-- [ ] P1.3.6 Group / ungroup, nested groups
+- [x] P1.3.6 Group / ungroup, nested groups
 - [x] P1.3.7 Copy / cut / paste / duplicate
 
 ## P1.4 Layers & Alignment

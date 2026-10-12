@@ -305,6 +305,42 @@ void main() {
     expect((star.transform.x, star.transform.width), (10.0, 30.0));
   });
 
+  test('group, enter, escape and ungroup', () {
+    editor()
+      ..insertShape(ObjectType.rect, at: const Point2D(100, 100))
+      ..insertShape(ObjectType.ellipse, at: const Point2D(500, 500))
+      ..selectAll();
+    expect(editor().canGroup, isTrue);
+    editor().groupSelection();
+    final group = roots().single;
+    expect(doc().objects[group]!.type, ObjectType.group);
+    expect(session().selection, {group});
+    expect(session().undoLabel, 'Group');
+
+    // Select a child, move it, then Escape returns to the group.
+    final child = doc().objects[group]!.childIds.first;
+    final before = worldBounds(doc(), child)!;
+    editor()
+      ..select({child})
+      ..nudge(1, 0, large: true);
+    expect(worldBounds(doc(), child)!.left, closeTo(before.left + 10, 1e-9));
+    editor().selectParentOrClear();
+    expect(session().selection, {group});
+
+    editor().ungroupSelection();
+    expect(roots(), hasLength(2));
+    expect(session().selection, hasLength(2));
+    expect(doc().objects.containsKey(group), isFalse);
+    editor().undo();
+    expect(roots().single, group);
+  });
+
+  test('grouping needs siblings', () {
+    editor().insertShape(ObjectType.rect);
+    expect(editor().canGroup, isFalse);
+    expect(editor().canUngroup, isFalse);
+  });
+
   test('distribute needs three or more', () {
     editor()
       ..insertShape(ObjectType.rect, at: const Point2D(100, 100))

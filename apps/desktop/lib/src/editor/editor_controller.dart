@@ -483,9 +483,10 @@ class EditorController extends Notifier<EditorSession?> {
 
   void copySelection() {
     if (_editor.selection.isEmpty) return;
-    final ordered = _editor.activePage.objectIds.where(
-      _editor.selection.contains,
-    );
+    final ordered = pageObjectsInOrder(
+      _editor.document,
+      _editor.activePage,
+    ).where(_editor.selection.contains);
     ref
         .read(clipboardProvider.notifier)
         .set(copySubtrees(_editor.document, ordered));
@@ -538,6 +539,46 @@ class EditorController extends Notifier<EditorSession?> {
     );
     final step = page.unit == LengthUnit.px ? 1.0 : unitsPerPixel * 4;
     return large ? step * 10 : step;
+  }
+
+  /// Whether the selection can be grouped: two or more siblings.
+  bool get canGroup {
+    final selected = _editor.selectedObjects;
+    return selected.length > 1 &&
+        selected.every((o) => o.parentId == selected.first.parentId);
+  }
+
+  /// Whether the selection holds a group.
+  bool get canUngroup =>
+      _editor.selectedObjects.any((o) => o.type == ObjectType.group);
+
+  /// Groups the selected siblings (P1.3.6) and selects the group.
+  void groupSelection() {
+    if (!canGroup) return;
+    final (change, id) = groupObjects(_editor.document, _editor.selection);
+    if (id == null) return;
+    _commit(change, select: {id});
+  }
+
+  /// Dissolves selected groups and selects what they held.
+  void ungroupSelection() {
+    final groups = [
+      for (final o in _editor.selectedObjects)
+        if (o.type == ObjectType.group) o.id,
+    ];
+    if (groups.isEmpty) return;
+    final (change, released) = ungroupObjects(_editor.document, groups);
+    final keep = _editor.selection.where((id) => !groups.contains(id));
+    _commit(change, select: {...keep, ...released});
+  }
+
+  /// Escape inside a group selects the group; otherwise clears.
+  void selectParentOrClear() {
+    final parents = {
+      for (final o in _editor.selectedObjects)
+        if (o.parentId case final parentId?) parentId,
+    };
+    select(parents);
   }
 
   void arrange(ZOrderMove move) {
@@ -723,7 +764,7 @@ String layerName(
   final name = object.name;
   if (name != null && name.trim().isNotEmpty) return name;
   var n = 0;
-  for (final id in page.objectIds) {
+  for (final id in pageObjectsInOrder(document, page)) {
     if (document.objects[id]?.type == object.type) n++;
     if (id == object.id) break;
   }

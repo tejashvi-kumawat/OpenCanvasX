@@ -581,6 +581,17 @@ class _MainMenu extends ConsumerWidget {
         SubmenuButton(
           menuChildren: [
             item(
+              'Group',
+              editor.canGroup ? editor.groupSelection : null,
+              shortcut: EditorKeys.group,
+            ),
+            item(
+              'Ungroup',
+              editor.canUngroup ? editor.ungroupSelection : null,
+              shortcut: EditorKeys.ungroup,
+            ),
+            const Divider(),
+            item(
               'Bring to front',
               hasSelection ? () => editor.arrange(ZOrderMove.toFront) : null,
               shortcut: EditorKeys.bringToFront,

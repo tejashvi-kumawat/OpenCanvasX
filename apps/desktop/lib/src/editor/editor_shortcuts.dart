@@ -44,6 +44,8 @@ abstract final class EditorKeys {
   static final sendBackward = cmd(LogicalKeyboardKey.bracketLeft);
   static final bringToFront = cmd(LogicalKeyboardKey.bracketRight, shift: true);
   static final sendToBack = cmd(LogicalKeyboardKey.bracketLeft, shift: true);
+  static final group = cmd(LogicalKeyboardKey.keyG);
+  static final ungroup = cmd(LogicalKeyboardKey.keyG, shift: true);
 }
 
 /// Fits the active page in the view.
@@ -97,8 +99,10 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
     EditorKeys.backspace: editor.deleteSelection,
     EditorKeys.escape: () {
       tools.reset();
-      editor.clearSelection();
+      editor.selectParentOrClear();
     },
+    EditorKeys.group: editor.groupSelection,
+    EditorKeys.ungroup: editor.ungroupSelection,
     EditorKeys.editText: unlessTyping(editSelectedText),
     EditorKeys.zoomIn: view.zoomIn,
     EditorKeys.zoomInNumpad: view.zoomIn,

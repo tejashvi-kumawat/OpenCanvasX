@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:document_model/document_model.dart';
 
 import 'change.dart';
+import 'groups.dart';
 import 'scene.dart';
 
 /// Creates ids for new objects; tests pass a deterministic one.
@@ -166,7 +167,8 @@ Change updateObjects(
   },
 );
 
-/// Moves [ids] by `(dx, dy)` in their parents' units.
+/// Moves [ids] by `(dx, dy)` in page units (converted into each object's
+/// parent space, so grouped objects move with the pointer).
 Change moveObjects(
   DesignDocument document,
   Iterable<ObjectId> ids,
@@ -175,13 +177,7 @@ Change moveObjects(
   String label = 'Move',
 }) => updateObjects(document, [
   for (final id in ids)
-    if (document.objects[id] case final o?)
-      o.copyWith(
-        transform: o.transform.copyWith(
-          x: o.transform.x + dx,
-          y: o.transform.y + dy,
-        ),
-      ),
+    if (document.objects[id] case final o?) shiftedInPage(document, o, dx, dy),
 ], label: label);
 
 /// Deletes [ids] and everything inside them, unlinking them from pages and
@@ -232,10 +228,15 @@ List<DesignObject> copySubtrees(
 ) {
   final result = <DesignObject>[];
   final seen = <ObjectId>{};
+  final requested = ids.toSet();
   void visit(ObjectId id) {
     final object = document.objects[id];
     if (object == null || !seen.add(id)) return;
-    result.add(object);
+    // Copied objects from inside a group keep their place on the page.
+    final top = requested.contains(id) && object.parentId != null;
+    result.add(
+      top ? object.copyWith(transform: worldTransform(document, id)) : object,
+    );
     object.childIds.forEach(visit);
   }
 
@@ -296,7 +297,8 @@ List<DesignObject> copySubtrees(
   return (change, [for (final r in roots) r.id]);
 }
 
-/// Duplicates root [ids] on [pageId], offset so the copies are visible.
+/// Duplicates [ids] on [pageId], offset so the copies are visible; copies
+/// of objects inside groups land on the page as roots.
 (Change, List<ObjectId>) duplicateObjects(
   DesignDocument document,
   PageId pageId,
@@ -305,7 +307,8 @@ List<DesignObject> copySubtrees(
   ObjectIdFactory newId = _newObjectId,
 }) {
   final page = _page(document, pageId);
-  final ordered = page.objectIds.where(ids.contains).toList();
+  final wanted = ids.toSet();
+  final ordered = pageObjectsInOrder(document, page).where(wanted.contains);
   return pasteObjects(
     document,
     pageId,
@@ -324,16 +327,46 @@ Change reorderObjects(
   ZOrderMove move,
 ) {
   final page = _page(document, pageId);
-  final order = [...page.objectIds];
+  final order = _restacked(page.objectIds, ids, move);
+  final objects = <ObjectId, DesignObject?>{};
+  // Objects inside groups move among their siblings.
+  final parents = {
+    for (final id in ids)
+      if (document.objects[id]?.parentId case final parentId?) parentId,
+  };
+  for (final parentId in parents) {
+    final parent = document.objects[parentId];
+    if (parent == null) continue;
+    final children = _restacked(parent.childIds, ids, move);
+    if (!_sameOrder(children, parent.childIds)) {
+      objects[parentId] = parent.copyWith(childIds: children);
+    }
+  }
+  return Change(
+    label: 'Arrange',
+    objects: objects,
+    pages:
+        _sameOrder(order, page.objectIds)
+            ? null
+            : _replacePage(document, page.copyWith(objectIds: order)),
+  );
+}
+
+List<ObjectId> _restacked(
+  List<ObjectId> siblings,
+  Set<ObjectId> ids,
+  ZOrderMove move,
+) {
+  final order = [...siblings];
   switch (move) {
     case ZOrderMove.toFront:
       order
         ..removeWhere(ids.contains)
-        ..addAll(page.objectIds.where(ids.contains));
+        ..addAll(siblings.where(ids.contains));
     case ZOrderMove.toBack:
       order
         ..removeWhere(ids.contains)
-        ..insertAll(0, page.objectIds.where(ids.contains));
+        ..insertAll(0, siblings.where(ids.contains));
     case ZOrderMove.forward:
       for (var i = order.length - 2; i >= 0; i--) {
         if (ids.contains(order[i]) && !ids.contains(order[i + 1])) {
@@ -347,7 +380,7 @@ Change reorderObjects(
         }
       }
   }
-  return setLayerOrder(document, pageId, order, label: 'Arrange');
+  return order;
 }
 
 /// Sets the full back-to-front order of [pageId]'s roots (layers panel).
@@ -391,14 +424,7 @@ Change alignObjects(
       AlignEdge.centerVertical => (0.0, reference.center.y - bounds.center.y),
       AlignEdge.bottom => (0.0, reference.bottom - bounds.bottom),
     };
-    moved.add(
-      object.copyWith(
-        transform: object.transform.copyWith(
-          x: object.transform.x + dx,
-          y: object.transform.y + dy,
-        ),
-      ),
-    );
+    moved.add(shiftedInPage(document, object, dx, dy));
   }
   return updateObjects(document, moved, label: 'Align');
 }
@@ -433,13 +459,12 @@ Change distributeObjects(
   final moved = <DesignObject>[];
   for (final (object, bounds) in items) {
     final delta = cursor - start(bounds);
-    final t = object.transform;
     moved.add(
-      object.copyWith(
-        transform:
-            horizontal
-                ? t.copyWith(x: t.x + delta)
-                : t.copyWith(y: t.y + delta),
+      shiftedInPage(
+        document,
+        object,
+        horizontal ? delta : 0,
+        horizontal ? 0 : delta,
       ),
     );
     cursor += end(bounds) - start(bounds) + gap;

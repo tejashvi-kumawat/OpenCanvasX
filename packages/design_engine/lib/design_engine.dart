@@ -7,6 +7,7 @@ library;
 export 'src/change.dart';
 export 'src/editor_state.dart';
 export 'src/edits.dart';
+export 'src/groups.dart';
 export 'src/history.dart';
 export 'src/scene.dart';
 export 'src/transform_tools.dart';

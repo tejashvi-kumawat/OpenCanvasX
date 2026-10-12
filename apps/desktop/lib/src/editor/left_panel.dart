@@ -1,6 +1,7 @@
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/ocx_theme.dart';
@@ -127,6 +128,65 @@ class _LayersTab extends ConsumerStatefulWidget {
 class _LayersTabState extends ConsumerState<_LayersTab> {
   bool _pagesOpen = true;
 
+  /// Groups opened in the tree; groups holding the selection open too.
+  final Set<ObjectId> _expanded = {};
+
+  /// Visible tree rows, topmost first, with their nesting depth.
+  List<_TreeRow> _rows(EditorSession session) {
+    final document = session.document;
+    final open = {
+      ..._expanded,
+      for (final id in session.selection)
+        for (final ancestor in ancestorPath(document, id))
+          if (ancestor != id) ancestor,
+    };
+    final rows = <_TreeRow>[];
+    void visit(List<ObjectId> ids, int depth) {
+      for (final id in ids.reversed) {
+        final object = document.objects[id];
+        if (object == null) continue;
+        rows.add((object: object, depth: depth));
+        if (object.type == ObjectType.group && open.contains(id)) {
+          visit(object.childIds, depth + 1);
+        }
+      }
+    }
+
+    visit(session.activePage.objectIds, 0);
+    return rows;
+  }
+
+  /// Reorders a top-level layer dropped at [to] in the visible rows.
+  void _moveRoot(List<_TreeRow> rows, int from, int to) {
+    final moved = rows[from].object.id;
+    final rest = [...rows]..removeAt(from);
+    var slot = 0;
+    for (final row in rest.take(to)) {
+      if (row.depth == 0) slot++;
+    }
+    final topFirst = [
+      for (final row in rest)
+        if (row.depth == 0) row.object.id,
+    ]..insert(slot, moved);
+    ref.read(editorProvider.notifier).setLayerOrder(topFirst.reversed.toList());
+  }
+
+  void _toggle(EditorSession session, ObjectId group, {required bool open}) {
+    setState(() {
+      if (!open) {
+        _expanded.add(group);
+        return;
+      }
+      _expanded.remove(group);
+      // Collapsing a group that holds the selection selects the group.
+      final inside = session.selection.any(
+        (id) =>
+            id != group && ancestorPath(session.document, id).contains(group),
+      );
+      if (inside) ref.read(editorProvider.notifier).select({group});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(editorProvider);
@@ -134,7 +194,7 @@ class _LayersTabState extends ConsumerState<_LayersTab> {
     final editor = ref.read(editorProvider.notifier);
     final pages = session.document.pages;
     final page = session.activePage;
-    final topFirst = page.objectIds.reversed.toList();
+    final rows = _rows(session);
     final c = context.ocx;
 
     return Column(
@@ -188,7 +248,7 @@ class _LayersTabState extends ConsumerState<_LayersTab> {
             Padding(
               padding: const EdgeInsets.only(right: Space.xs),
               child: Text(
-                '${topFirst.length}',
+                '${page.objectIds.length}',
                 style: OcxText.caption(context).copyWith(color: c.textTertiary),
               ),
             ),
@@ -196,7 +256,7 @@ class _LayersTabState extends ConsumerState<_LayersTab> {
         ),
         Expanded(
           child:
-              topFirst.isEmpty
+              rows.isEmpty
                   ? Padding(
                     padding: const EdgeInsets.all(Space.md),
                     child: Text(
@@ -216,22 +276,28 @@ class _LayersTabState extends ConsumerState<_LayersTab> {
                       Space.sm,
                       Space.md,
                     ),
-                    itemCount: topFirst.length,
+                    itemCount: rows.length,
                     onReorderItem: (from, to) {
-                      final list = [...topFirst];
-                      final moved = list.removeAt(from);
-                      list.insert(to, moved);
-                      editor.setLayerOrder(list.reversed.toList());
+                      if (rows[from].depth == 0) _moveRoot(rows, from, to);
                     },
                     itemBuilder: (context, index) {
-                      final id = topFirst[index];
-                      final object = session.document.objects[id]!;
+                      final (:object, :depth) = rows[index];
+                      final open =
+                          index + 1 < rows.length &&
+                          rows[index + 1].depth > depth;
+                      final isGroup = object.type == ObjectType.group;
                       return _LayerRow(
-                        key: ValueKey(id),
+                        key: ValueKey(object.id),
                         index: index,
+                        depth: depth,
                         object: object,
                         name: layerName(session.document, page, object),
-                        selected: session.selection.contains(id),
+                        selected: session.selection.contains(object.id),
+                        expanded: isGroup ? open : null,
+                        onToggle:
+                            isGroup
+                                ? () => _toggle(session, object.id, open: open)
+                                : null,
                       );
                     },
                   ),
@@ -240,6 +306,9 @@ class _LayersTabState extends ConsumerState<_LayersTab> {
     );
   }
 }
+
+/// A visible layer row and how deeply it is nested.
+typedef _TreeRow = ({DesignObject object, int depth});
 
 /// Shared look of a 28 px list row (pages, layers).
 class _RowShell extends StatefulWidget {
@@ -376,6 +445,9 @@ class _LayerRow extends ConsumerStatefulWidget {
     required this.object,
     required this.name,
     required this.selected,
+    this.depth = 0,
+    this.expanded,
+    this.onToggle,
     super.key,
   });
 
@@ -383,6 +455,13 @@ class _LayerRow extends ConsumerStatefulWidget {
   final DesignObject object;
   final String name;
   final bool selected;
+
+  /// Nesting level; only top-level rows can be dragged.
+  final int depth;
+
+  /// Open state of a group row (`null` for other objects).
+  final bool? expanded;
+  final VoidCallback? onToggle;
 
   @override
   ConsumerState<_LayerRow> createState() => _LayerRowState();
@@ -425,12 +504,40 @@ class _LayerRowState extends ConsumerState<_LayerRow> {
     final dimmed = o.hidden;
     return _RowShell(
       selected: widget.selected,
-      dragIndex: _editing ? null : widget.index,
-      onTap: o.locked || o.hidden ? null : () => editor.select({o.id}),
+      dragIndex: _editing || widget.depth > 0 ? null : widget.index,
+      onTap:
+          o.locked || o.hidden
+              ? null
+              : () {
+                final keys = HardwareKeyboard.instance;
+                if (keys.isShiftPressed || keys.isControlPressed) {
+                  editor.toggleSelected(o.id);
+                } else {
+                  editor.select({o.id});
+                }
+              },
       builder:
           (context, {required hover}) => Row(
             children: [
-              const SizedBox(width: Space.sm),
+              SizedBox(width: Space.xs + widget.depth * Space.md),
+              SizedBox(
+                width: 16,
+                child:
+                    widget.expanded == null
+                        ? null
+                        : InkResponse(
+                          onTap: widget.onToggle,
+                          radius: 10,
+                          child: Icon(
+                            widget.expanded!
+                                ? Icons.keyboard_arrow_down
+                                : Icons.chevron_right,
+                            size: 14,
+                            color: c.textTertiary,
+                          ),
+                        ),
+              ),
+              const SizedBox(width: Space.xs),
               Icon(
                 objectIcon(o.type),
                 size: 14,

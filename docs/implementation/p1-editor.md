@@ -14,6 +14,7 @@ Engineering log for the first usable editor. Normative design: [ux-spec.md](../p
 - **Text (P1.5.1–P1.5.3):** heading/subheading/body from Elements or the Text tool (click to place); double-click or Enter edits inline; font, weight, size, italic, alignment, auto width / auto height / fixed, line height, letter spacing. Dragging a side handle of an auto-width text switches it to auto height.
 - **Strokes (P1.3.5):** colour, weight, solid/dashed/dotted; opacity and blend mode in Appearance.
 - **Distribute (P1.4.3):** equal spacing of 3+ elements horizontally or vertically.
+- **Groups (P1.3.6):** Ctrl+G groups two or more siblings (the group box fits their bounds and takes the topmost member's stacking slot); Ctrl+Shift+G ungroups, folding the group's rotation, scale, opacity and visibility into the children so nothing moves. Groups nest. A click selects the top-level object; double-click enters a group (and a further double-click goes deeper or edits text); once inside, clicks pick siblings at the same depth and the entered group stays faintly outlined; Escape goes back up one level. Moves, nudges, align and distribute work in page units through any parent rotation/scale; copies and duplicates of nested objects land on the page as top-level objects in place. Resizing a group scales its contents (aspect locked; text sizes scale too). Layers show a tree: groups expand/collapse, open automatically around the selection, children are indented; only top-level rows are drag-reordered (arrange commands reorder nested objects among their siblings). Shift/Ctrl-click in Layers adds to the selection.
 - **Context menu:** right-click on the canvas for clipboard and arrange commands.
 - **Selection and transforms (P1.3.3, P1.3.4):** click, Shift+click, marquee; move (Shift constrains axis), 8 resize handles (Shift keeps ratio; rotated objects keep the opposite corner fixed), rotation handle (Shift snaps 15°), flip from the inspector, arrow-key nudge.
 - **Inspector:** position, size with ratio lock, rotation, opacity, fill, border, corner radius, align (P1.4.2), arrange; page name, size, presets and background when nothing is selected.
@@ -36,7 +37,7 @@ Engineering log for the first usable editor. Normative design: [ux-spec.md](../p
 
 ## Not done yet (still open in the checklist)
 
-Rulers/grid/guides (P1.2.4), groups (P1.3.6), snapping and smart guides (P1.4.4), character-level text formatting and local font discovery (P1.5.4–P1.5.6), images/SVG (P1.6), full colour picker and gradients (P1.7), history panel and checkpoints (P1.8.2–3), export (P1.9), shortcut customisation and command palette (P1.10.4–5), identity in onboarding (P1.10.6), offline/telemetry verification (P1.11).
+Rulers/grid/guides (P1.2.4), snapping and smart guides (P1.4.4), character-level text formatting and local font discovery (P1.5.4–P1.5.6), images/SVG (P1.6), full colour picker and gradients (P1.7), history panel and checkpoints (P1.8.2–3), export (P1.9), shortcut customisation and command palette (P1.10.4–5), identity in onboarding (P1.10.6), offline/telemetry verification (P1.11).
 
 ## Testing
 

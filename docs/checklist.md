@@ -99,7 +99,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.1.3 Units & conversion (px, mm, cm, in, pt) + DPI
 - [x] P1.1.4 Serialization to `.opencanvasx` + versioned migration framework
 - [x] P1.1.5 Save / open / autosave
-- [ ] P1.1.6 Recent documents
+- [x] P1.1.6 Recent documents
 - [ ] P1.1.7 Local project directory selection
 
 ## P1.2 Canvas & Navigation

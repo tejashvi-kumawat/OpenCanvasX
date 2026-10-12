@@ -5,6 +5,7 @@ library;
 
 export 'src/project_archive.dart';
 export 'src/project_file.dart';
+export 'src/recent_documents.dart';
 
 /// Package version.
 String packageVersion() => '0.0.1';

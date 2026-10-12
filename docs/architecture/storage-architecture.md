@@ -32,6 +32,23 @@ Suggested tables:
 
 Rebuild FTS on save or background job after idle.
 
+### App-wide index (P1.1.6)
+
+Recent documents are app-wide, not per project, so they live in an `index.sqlite` in the app's per-user data folder (derived from the app id `com.opencanvasx.opencanvasx`; the app passes the path in). Implemented by `RecentDocuments` (`storage/lib/src/recent_documents.dart`) with the `sqlite3` package:
+
+```sql
+CREATE TABLE recent (
+  path TEXT PRIMARY KEY NOT NULL,   -- absolute path of the .opencanvasx file
+  title TEXT NOT NULL,
+  document_id TEXT,                 -- manifest document_id, when known
+  opened_at INTEGER NOT NULL        -- UTC microseconds since epoch
+);
+```
+
+- Schema version in `PRAGMA user_version` (currently `1`); an index from a newer build is refused rather than altered.
+- Re-recording a path moves it to the top; the list is trimmed to a limit (default 20).
+- `pruneMissing()` drops entries whose file no longer exists. Paths stay on the device.
+
 ## Content-addressed assets
 
 - Hash: SHA-256.

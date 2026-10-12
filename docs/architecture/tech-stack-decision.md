@@ -10,12 +10,13 @@ Decisions here reflect the current plan for OpenCanvasX. Locked choices have ADR
 | **Rust** for native core | Accepted — ADR-0002 | Performance, crypto-adjacent code; exposed via `flutter_rust_bridge` |
 | **Skia** (via Flutter / Impeller) | Accepted | 2D canvas, text, images |
 | **Melos** | Accepted | Monorepo bootstrap and scripts |
+| **Riverpod** (`flutter_riverpod`) | Accepted | UI state management; chosen 2026-10-12, used from the app shell (P1.10) |
 
 ## Persistence
 
 | Choice | Status | Notes |
 |--------|--------|-------|
-| **SQLite** | Planned | Project index, search FTS, asset catalog metadata |
+| **SQLite** | Accepted — `sqlite3` Dart package (P1.1.6) | Recent documents now; project index, search FTS, asset catalog later |
 | **Filesystem + content hashes** | Planned | Large binaries under `assets/sha256/<hash>` |
 | Native **`.opencanvasx`** archive | Planned | ZIP container; see [file-format.md](file-format.md) |
 

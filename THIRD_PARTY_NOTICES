@@ -13,6 +13,8 @@ Build-time / runtime dependencies (Phase 0):
 - meta (Dart package) — BSD-3-Clause (https://pub.dev/packages/meta)
 - archive (Dart package) — MIT, Copyright (c) 2013-2021 Brendan Duncan (https://pub.dev/packages/archive)
 - crypto (Dart package) — BSD-3-Clause (https://pub.dev/packages/crypto)
+- sqlite3 (Dart package) — MIT, Copyright (c) 2020 Simon Binder (https://pub.dev/packages/sqlite3)
+- SQLite — public domain (https://sqlite.org/copyright.html)
 - Rust crates: see rust/Cargo.lock and https://crates.io per crate
 
 Update this file and DEPENDENCIES when adding bundled assets, fonts, or libraries.

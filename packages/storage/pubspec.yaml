@@ -12,6 +12,7 @@ dependencies:
   document_model:
     path: ../document_model
   meta: ^1.11.0
+  sqlite3: ^3.7.0
 
 dev_dependencies:
   test: ^1.25.0

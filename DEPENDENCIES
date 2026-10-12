@@ -8,3 +8,5 @@ flutter_rust_bridge | 2.9.0 | MIT | https://github.com/fzyzcjy/flutter_rust_brid
 meta | ^1.11.0 | BSD-3-Clause | https://pub.dev/packages/meta | annotations (@immutable) in document_model
 archive | ^4.5.1 | MIT | https://pub.dev/packages/archive | .opencanvasx ZIP container in storage
 crypto | ^3.0.6 | BSD-3-Clause | https://pub.dev/packages/crypto | SHA-256 asset hashes in storage
+sqlite3 | ^3.7.0 | MIT | https://pub.dev/packages/sqlite3 | recent-documents index in storage; build hook downloads prebuilt SQLite from the package's GitHub releases and verifies pinned SHA-256 hashes
+SQLite | bundled by sqlite3 | Public domain | https://sqlite.org/copyright.html | native library shipped with the app

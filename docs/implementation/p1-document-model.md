@@ -35,6 +35,12 @@ Engineering log for checklist section P1.1. Normative design: [document-model.md
 - Behaviour table in [storage-architecture.md](../architecture/storage-architecture.md#autosave).
 - UI wiring (dialogs, "restore unsaved changes?" prompt) lands with the app shell (P1.10).
 
+## P1.1.6 Recent documents
+
+- `storage/lib/src/recent_documents.dart`: `RecentDocuments` (`open`, `inMemory`, `record`, `list`, `remove`, `pruneMissing`, `clear`) over SQLite table `recent`; schema in [storage-architecture.md](../architecture/storage-architecture.md#app-wide-index-p116).
+- New dependency `sqlite3` (MIT). Its build hook fetches a prebuilt SQLite binary (hash-verified) the first time tests or the app build, so the first run needs network access.
+- A failed open (e.g. index from a newer build) closes the database so Windows does not keep the file locked.
+
 ## Commands
 
 ```bash

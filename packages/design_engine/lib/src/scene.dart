@@ -93,15 +93,19 @@ bool _hits(
 ) {
   if (object.hidden || depth > _maxDepth) return false;
   final matrix = parent * localToParent(object.transform);
-  if (object.type == ObjectType.group) {
-    for (final childId in object.childIds.reversed) {
-      final child = document.objects[childId];
-      if (child != null &&
-          _hits(document, child, matrix, point, tolerance, depth + 1)) {
-        return true;
+  if (object.type.isContainer) {
+    final clipped =
+        clipsContent(object) && !insideBox(object, matrix, point, tolerance);
+    if (!clipped) {
+      for (final childId in object.childIds.reversed) {
+        final child = document.objects[childId];
+        if (child != null &&
+            _hits(document, child, matrix, point, tolerance, depth + 1)) {
+          return true;
+        }
       }
     }
-    return false;
+    return frameBodyHits(object) && insideBox(object, matrix, point, tolerance);
   }
   final inverse = matrix.inverse();
   if (inverse == null) return false;
@@ -130,13 +134,55 @@ bool _hits(
         ObjectType.path ||
         ObjectType.polygon ||
         ObjectType.star ||
-        ObjectType.group:
+        ObjectType.group ||
+        ObjectType.frame:
       return local.x >= -slack &&
           local.x <= w + slack &&
           local.y >= -slack &&
           local.y <= h + slack;
   }
 }
+
+/// Whether [object] (a frame) hides children outside its box.
+bool clipsContent(DesignObject object) => switch (object.payload) {
+  FramePayload(:final clipContent) => clipContent,
+  _ => false,
+};
+
+/// Whether clicking a frame's empty area selects it. Top-level frames that
+/// hold content are picked by their title instead (so a drag inside them
+/// starts a marquee), as in Figma; empty or nested frames are picked by
+/// their body.
+bool frameBodyHits(DesignObject object) =>
+    object.type == ObjectType.frame &&
+    (object.childIds.isEmpty || object.parentId != null);
+
+/// Whether page point [point] lies in [object]'s box, given the matrix
+/// [matrix] from its local space to the page.
+bool insideBox(
+  DesignObject object,
+  Affine2D matrix,
+  Point2D point,
+  double tolerance,
+) {
+  final local = matrix.inverse()?.apply(point);
+  if (local == null) return false;
+  final scale = math.sqrt(matrix.determinant.abs());
+  final slack = scale == 0 ? tolerance : tolerance / scale;
+  return local.x >= -slack &&
+      local.x <= object.transform.width + slack &&
+      local.y >= -slack &&
+      local.y <= object.transform.height + slack;
+}
+
+/// Whether [object] (drawn under [parent]) is under [point].
+bool hitsObject(
+  DesignDocument document,
+  DesignObject object,
+  Affine2D parent,
+  Point2D point, {
+  double tolerance = 0,
+}) => _hits(document, object, parent, point, tolerance, 0);
 
 double _distanceToSegment(Point2D p, Point2D a, Point2D b) {
   final ab = b - a;

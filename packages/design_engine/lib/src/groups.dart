@@ -50,8 +50,14 @@ DesignObject shiftedInPage(
 ///
 /// Rotation and scale are recombined; shear from non-uniform scale under
 /// rotation cannot be represented and is dropped.
-ObjectTransform composeTransform(ObjectTransform outer, ObjectTransform inner) {
-  final m = localToParent(outer) * localToParent(inner);
+ObjectTransform composeTransform(
+  ObjectTransform outer,
+  ObjectTransform inner,
+) => transformFromMatrix(inner, localToParent(outer) * localToParent(inner));
+
+/// [inner]'s box placed by matrix [m] (local to target space), as a plain
+/// transform. Shear cannot be represented and is dropped.
+ObjectTransform transformFromMatrix(ObjectTransform inner, Affine2D m) {
   final sx = math.sqrt(m.a * m.a + m.b * m.b);
   final rotation = math.atan2(m.b, m.a) * 180 / math.pi;
   final sy = sx == 0 ? inner.scaleY : (m.a * m.d - m.b * m.c) / sx;
@@ -85,16 +91,18 @@ ObjectTransform worldTransform(DesignDocument document, ObjectId id) {
   DesignDocument document,
   Iterable<ObjectId> ids, {
   ObjectIdFactory newId = _newId,
+  bool asFrame = false,
 }) {
+  final label = asFrame ? 'Frame selection' : 'Group';
   final members = [
     for (final id in ids)
       if (document.objects[id] case final o?) o,
   ];
-  if (members.length < 2) return (Change(label: 'Group'), null);
+  if (members.length < (asFrame ? 1 : 2)) return (Change(label: label), null);
   final parentId = members.first.parentId;
   final pageId = members.first.pageId;
   if (members.any((o) => o.parentId != parentId || o.pageId != pageId)) {
-    return (Change(label: 'Group'), null);
+    return (Change(label: label), null);
   }
 
   final siblings = _siblings(document, members.first);
@@ -108,10 +116,12 @@ ObjectTransform worldTransform(DesignDocument document, ObjectId id) {
   final groupId = newId();
   final group = DesignObject(
     id: groupId,
-    type: ObjectType.group,
+    type: asFrame ? ObjectType.frame : ObjectType.group,
     pageId: pageId,
     parentId: parentId,
     childIds: ordered,
+    style: asFrame ? ObjectStyle(fill: const SolidFill(ArgbColor.white)) : null,
+    payload: asFrame ? const FramePayload() : const NoPayload(),
     transform: ObjectTransform(
       x: bounds.left,
       y: bounds.top,
@@ -147,13 +157,13 @@ ObjectTransform worldTransform(DesignDocument document, ObjectId id) {
       if (i == topIndex) groupId else if (!memberIds.contains(id)) id,
   ];
   return (
-    _withSiblingOrder(document, members.first, newOrder, objects, 'Group'),
+    _withSiblingOrder(document, members.first, newOrder, objects, label),
     groupId,
   );
 }
 
-/// Dissolves [groupIds]; their children keep their place on the page and in
-/// the stacking order. Returns the change and the released children.
+/// Dissolves groups (or frames) [groupIds]; their children keep their place
+/// on the page and in the stacking order. Returns the change and the released children.
 (Change, List<ObjectId>) ungroupObjects(
   DesignDocument document,
   Iterable<ObjectId> groupIds,
@@ -164,7 +174,7 @@ ObjectTransform worldTransform(DesignDocument document, ObjectId id) {
   List<DesignPage>? pages;
   for (final id in groupIds) {
     final group = current.objects[id];
-    if (group == null || group.type != ObjectType.group) continue;
+    if (group == null || !group.type.isContainer) continue;
     final children = [
       for (final c in group.childIds)
         if (current.objects[c] case final o?) o,
@@ -244,61 +254,37 @@ List<DesignObject> resizeGroup(
   return result;
 }
 
-/// Topmost visible, unlocked leaf (not a group) under [point], looking
-/// inside groups — used for double-click "enter group" selection.
+/// Topmost visible, unlocked object under [point], looking inside groups
+/// and frames: a leaf, or a frame whose body was hit (see [frameBodyHits]).
 ObjectId? hitTestDeep(
   DesignDocument document,
   DesignPage page,
   Point2D point, {
   double tolerance = 0,
 }) {
-  ObjectId? search(List<ObjectId> ids) {
+  ObjectId? search(List<ObjectId> ids, Affine2D parent, int depth) {
+    if (depth > 64) return null;
     for (final id in ids.reversed) {
       final object = document.objects[id];
       if (object == null || object.hidden || object.locked) continue;
-      if (object.type == ObjectType.group) {
-        final inside = search(object.childIds);
-        if (inside != null) return inside;
+      if (!object.type.isContainer) {
+        if (hitsObject(document, object, parent, point, tolerance: tolerance)) {
+          return id;
+        }
         continue;
       }
-      final local = worldMatrix(document, id).inverse()?.apply(point);
-      if (local == null) continue;
-      final probe = DesignObject(
-        id: object.id,
-        type: object.type,
-        transform: ObjectTransform(
-          width: object.transform.width,
-          height: object.transform.height,
-          anchorX: 0,
-          anchorY: 0,
-        ),
-        pageId: page.id,
-        style: object.style,
-        payload: object.payload,
-      );
-      final probeDoc = DesignDocument(
-        id: document.id,
-        metadata: document.metadata,
-        pages: [
-          page.copyWith(objectIds: [object.id]),
-        ],
-        objects: {object.id: probe},
-      );
-      final scale = math.sqrt(worldMatrix(document, id).determinant.abs());
-      if (hitTest(
-            probeDoc,
-            probeDoc.pages.single,
-            local,
-            tolerance: scale == 0 ? tolerance : tolerance / scale,
-          ) !=
-          null) {
-        return id;
+      final matrix = parent * localToParent(object.transform);
+      final inBox = insideBox(object, matrix, point, tolerance);
+      if (!clipsContent(object) || inBox) {
+        final inside = search(object.childIds, matrix, depth + 1);
+        if (inside != null) return inside;
       }
+      if (frameBodyHits(object) && inBox) return id;
     }
     return null;
   }
 
-  return search(page.objectIds);
+  return search(page.objectIds, Affine2D.identity, 0);
 }
 
 /// All objects of [page] in drawing order (depth first, back to front).
@@ -378,7 +364,13 @@ ObjectId? pickObject(
     return hitTest(document, page, point, tolerance: tolerance);
   }
   final path = ancestorPath(document, leaf);
+  // Frames are artboards, not selection units: clicks go straight through
+  // them to their content (as in Figma).
   var depth = 0;
+  while (depth < path.length - 1 &&
+      document.objects[path[depth]]?.type == ObjectType.frame) {
+    depth++;
+  }
   for (final id in selection) {
     final parentId = document.objects[id]?.parentId;
     final i = parentId == null ? -1 : path.indexOf(parentId);
@@ -390,3 +382,132 @@ ObjectId? pickObject(
   }
   return path[math.min(depth, path.length - 1)];
 }
+
+/// Deepest visible frame on [page] containing [point], ignoring [exclude]
+/// and their descendants — where a drawn or dropped object should land.
+ObjectId? frameAt(
+  DesignDocument document,
+  DesignPage page,
+  Point2D point, {
+  Set<ObjectId> exclude = const {},
+}) {
+  ObjectId? search(List<ObjectId> ids, Affine2D parent, int depth) {
+    if (depth > 64) return null;
+    for (final id in ids.reversed) {
+      final object = document.objects[id];
+      if (object == null || object.hidden || exclude.contains(id)) continue;
+      if (object.type != ObjectType.frame) continue;
+      final matrix = parent * localToParent(object.transform);
+      if (!insideBox(object, matrix, point, 0)) continue;
+      return search(object.childIds, matrix, depth + 1) ?? id;
+    }
+    return null;
+  }
+
+  return search(page.objectIds, Affine2D.identity, 0);
+}
+
+/// Moves [ids] into container [parentId] (or to the top of [pageId]'s roots
+/// when `null`), keeping their place on the page. Objects already there,
+/// or that would end up inside themselves, are left alone.
+Change reparentObjects(
+  DesignDocument document,
+  Iterable<ObjectId> ids,
+  ObjectId? parentId, {
+  required PageId pageId,
+  String label = 'Move into frame',
+}) {
+  final parent = parentId == null ? null : document.objects[parentId];
+  if (parentId != null && (parent == null || !parent.type.isContainer)) {
+    return Change(label: label);
+  }
+  final toPage =
+      parentId == null
+          ? Affine2D.identity
+          : worldMatrix(document, parentId).inverse();
+  if (toPage == null) return Change(label: label);
+  final moving = [
+    for (final id in ids)
+      if (document.objects[id] case final o?
+          when o.parentId != parentId &&
+              (parentId == null ||
+                  !ancestorPath(document, parentId).contains(id)))
+        o,
+  ];
+  if (moving.isEmpty) return Change(label: label);
+
+  final movingIds = {for (final o in moving) o.id};
+  final objects = <ObjectId, DesignObject?>{};
+  final page = document.pages.firstWhere((p) => p.id == pageId);
+  var roots = [...page.objectIds];
+  DesignObject current(ObjectId id) => objects[id] ?? document.objects[id]!;
+
+  // Detach from old parents.
+  for (final o in moving) {
+    if (o.parentId case final oldParent?) {
+      final p = current(oldParent);
+      objects[oldParent] = p.copyWith(
+        childIds: p.childIds.where((c) => !movingIds.contains(c)),
+      );
+    } else {
+      roots = roots.where((r) => r != o.id).toList();
+    }
+  }
+  // Attach in page stacking order, on top.
+  final ordered = pageObjectsInOrder(document, page).where(movingIds.contains);
+  final added = <ObjectId>[];
+  for (final id in ordered) {
+    final o = document.objects[id]!;
+    final world = worldMatrix(document, id);
+    final transform = transformFromMatrix(o.transform, toPage * world);
+    objects[id] = DesignObject(
+      id: o.id,
+      type: o.type,
+      transform: transform,
+      pageId: parentId == null ? pageId : null,
+      parentId: parentId,
+      childIds: o.childIds,
+      name: o.name,
+      opacity: o.opacity,
+      blendMode: o.blendMode,
+      locked: o.locked,
+      hidden: o.hidden,
+      styleId: o.styleId,
+      style: o.style,
+      payload: o.payload,
+    );
+    added.add(id);
+  }
+  if (parentId != null) {
+    final p = current(parentId);
+    objects[parentId] = p.copyWith(childIds: [...p.childIds, ...added]);
+  } else {
+    roots = [...roots, ...added];
+  }
+  return Change(
+    label: label,
+    objects: objects,
+    pages: [
+      for (final p in document.pages)
+        if (p.id == pageId) p.copyWith(objectIds: roots) else p,
+    ],
+  );
+}
+
+/// A new white frame named [name] with its top-left at [at].
+DesignObject newFrame({
+  required ObjectId id,
+  required PageId pageId,
+  required double width,
+  required double height,
+  Point2D at = Point2D.zero,
+  String? name,
+}) => DesignObject(
+  id: id,
+  type: ObjectType.frame,
+  pageId: pageId,
+  name: name,
+  transform: ObjectTransform(x: at.x, y: at.y, width: width, height: height),
+  style: ObjectStyle(fill: const SolidFill(ArgbColor.white)),
+  payload: const FramePayload(),
+);

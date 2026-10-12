@@ -205,6 +205,11 @@ class _LayersTabState extends ConsumerState<_LayersTab> {
           divider: false,
           trailing: [
             OcxIconButton(
+              icon: Icons.dashboard_customize_outlined,
+              tooltip: 'Add board (free canvas)',
+              onPressed: editor.addBoard,
+            ),
+            OcxIconButton(
               icon: Icons.add,
               tooltip: 'Add page  (Ctrl+Enter)',
               onPressed: editor.addPage,

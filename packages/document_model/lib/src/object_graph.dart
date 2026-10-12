@@ -8,8 +8,8 @@ import 'object_type.dart';
 /// Per-object rules are enforced by [DesignObject] itself; this covers rules
 /// that span objects:
 /// - each map key equals its object's id;
-/// - a parent exists, is a group, and lists the child exactly once;
-/// - every listed child exists and points back to the group;
+/// - a parent exists, is a group or frame, and lists the child exactly once;
+/// - every listed child exists and points back to its parent;
 /// - no object is its own ancestor.
 ///
 /// Returns an empty list when the graph is consistent.
@@ -27,8 +27,10 @@ List<ModelIssue> validateObjectGraph(Map<ObjectId, DesignObject> objects) {
       final parent = objects[parentId];
       if (parent == null) {
         issues.add(ModelIssue(id, 'parent ${parentId.value} does not exist'));
-      } else if (parent.type != ObjectType.group) {
-        issues.add(ModelIssue(id, 'parent ${parentId.value} is not a group'));
+      } else if (!parent.type.isContainer) {
+        issues.add(
+          ModelIssue(id, 'parent ${parentId.value} is not a group or frame'),
+        );
       } else if (!parent.childIds.contains(object.id)) {
         issues.add(
           ModelIssue(id, 'parent ${parentId.value} does not list it as child'),

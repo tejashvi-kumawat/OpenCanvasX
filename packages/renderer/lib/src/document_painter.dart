@@ -123,18 +123,63 @@ void paintObject(
   }
 
   if (object.type == ObjectType.group) {
-    for (final childId in object.childIds) {
-      final child = document.objects[childId];
-      if (child != null) {
-        paintObject(canvas, document, child, depth: depth + 1);
-      }
-    }
+    _paintChildren(canvas, document, object, depth);
+  } else if (object.type == ObjectType.frame) {
+    _paintFrame(canvas, document, object, depth);
   } else {
     _paintShape(canvas, object, effectiveStyle(object, document.styles));
   }
 
   if (needsLayer) canvas.restore();
   canvas.restore();
+}
+
+void _paintChildren(
+  ui.Canvas canvas,
+  DesignDocument document,
+  DesignObject object,
+  int depth,
+) {
+  for (final childId in object.childIds) {
+    final child = document.objects[childId];
+    if (child != null) paintObject(canvas, document, child, depth: depth + 1);
+  }
+}
+
+/// Frames draw their fill, their (optionally clipped) children, then their
+/// stroke on top (ADR-0007).
+void _paintFrame(
+  ui.Canvas canvas,
+  DesignDocument document,
+  DesignObject object,
+  int depth,
+) {
+  final style = effectiveStyle(object, document.styles);
+  final outline = shapePath(object, style)!;
+  if (style.fill case SolidFill(:final color)) {
+    canvas.drawPath(outline, ui.Paint()..color = toUiColor(color));
+  }
+  final clip = switch (object.payload) {
+    FramePayload(:final clipContent) => clipContent,
+    _ => true,
+  };
+  if (clip) {
+    canvas
+      ..save()
+      ..clipPath(outline);
+  }
+  _paintChildren(canvas, document, object, depth);
+  if (clip) canvas.restore();
+  final stroke = style.stroke;
+  if (stroke != null && stroke.width > 0) {
+    canvas.drawPath(
+      _dashed(outline, stroke),
+      ui.Paint()
+        ..style = ui.PaintingStyle.stroke
+        ..strokeWidth = stroke.width
+        ..color = toUiColor(stroke.color),
+    );
+  }
 }
 
 void _paintShape(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
@@ -165,7 +210,7 @@ void _paintShape(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
       _paintImagePlaceholder(canvas, box);
     case ObjectType.arrow:
       if (strokePaint != null) _paintArrow(canvas, t, strokePaint, stroke!);
-    case ObjectType.group:
+    case ObjectType.group || ObjectType.frame:
       break;
     case ObjectType.line:
       if (strokePaint != null) {
@@ -199,7 +244,7 @@ ui.Path? shapePath(DesignObject object, ObjectStyle style) {
   final t = object.transform;
   final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
   switch (object.type) {
-    case ObjectType.rect || ObjectType.roundedRect:
+    case ObjectType.rect || ObjectType.roundedRect || ObjectType.frame:
       final radius = cornerRadiusOf(object, style);
       return ui.Path()
         ..addRRect(ui.RRect.fromRectAndRadius(box, ui.Radius.circular(radius)));

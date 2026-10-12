@@ -64,6 +64,8 @@ Encoding rules (schema version 1, implemented in `document_model/lib/src/documen
 | Text payload | `{ text, font_family?, font_size, font_weight, italic?, align, line_height, letter_spacing, sizing }`; `align` ∈ left/center/right/justify, `sizing` ∈ auto_width/auto_height/fixed | `"sizing": "auto_height"` |
 | Polygon / star payload | `{ "sides" }` / `{ "points", "inner_ratio" }` | `{"points": 5, "inner_ratio": 0.5}` |
 | Stroke | `{ color, width, dash? }`; `dash` ∈ dashed/dotted, omitted for solid | |
+| Page kind | `kind: "board"` for unbounded boards; omitted for fixed pages (schema 2) | `"kind": "board"` |
+| Frame payload | `{ clip_content }` (schema 2) | `{"clip_content": true}` |
 
 Optional fields fall back to the model defaults (opacity `1`, anchor `0.5`, dpi `96`, white background, …). Unknown keys are ignored so minor additions stay readable by older builds; anything that changes meaning bumps `schema_version`.
 

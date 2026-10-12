@@ -47,6 +47,8 @@ class _ShapePainter extends CustomPainter {
     switch (type) {
       case ObjectType.rect:
         canvas.drawRect(box, fill);
+      case ObjectType.frame:
+        canvas.drawRect(box.deflate(1), stroke);
       case ObjectType.roundedRect:
         canvas.drawRRect(
           RRect.fromRectAndRadius(box, Radius.circular(s * 0.16)),

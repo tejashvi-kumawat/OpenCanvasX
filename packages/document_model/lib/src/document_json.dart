@@ -14,12 +14,17 @@ import 'units.dart';
 const String currentFormatVersion = '1.0.0';
 
 /// Schema version written to `document.json`.
-const int currentSchemaVersion = 1;
+const int currentSchemaVersion = 2;
 
 /// Migrations for `document.json`. When the schema changes, bump
 /// [currentSchemaVersion] and add a `previousVersion: upgrade` step.
 final SchemaMigrator documentMigrator = SchemaMigrator(
   currentVersion: currentSchemaVersion,
+  steps: {
+    // 2 adds boards (`pages[].kind`) and frames; version 1 files need no
+    // changes, but older builds must refuse version 2 files.
+    1: (document) => document,
+  },
 );
 
 /// `manifest.json` content for [document] (file-format.md).
@@ -127,6 +132,7 @@ DesignDocument decodeDocument({
 
 Map<String, Object?> _encodePage(DesignPage page) => {
   'id': page.id.value,
+  if (page.kind != PageKind.fixed) 'kind': page.kind.name,
   'name': page.name,
   'width': page.width,
   'height': page.height,
@@ -211,6 +217,7 @@ Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
     'letter_spacing': t.letterSpacing,
     'sizing': _snake(t.sizing.name),
   },
+  FramePayload(:final clipContent) => {'clip_content': clipContent},
   PolygonPayload(:final sides) => {'sides': sides},
   StarPayload(:final points, :final innerRatio) => {
     'points': points,
@@ -243,6 +250,10 @@ DesignPage _decodePage(_Json j) => j.guard(() {
   final unitSymbol = j.string('unit');
   return DesignPage(
     id: PageId(j.string('id')),
+    kind:
+        j.has('kind')
+            ? _enumByName(PageKind.values, j, 'kind')
+            : PageKind.fixed,
     name: j.optString('name') ?? '',
     width: j.number('width'),
     height: j.number('height'),
@@ -384,6 +395,9 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
                   : TextSizing.autoWidth,
         ),
       );
+    case ObjectType.frame:
+      final p = object.child('payload');
+      return FramePayload(clipContent: p?.optBool('clip_content') ?? true);
     case ObjectType.polygon:
       final p = object.object('payload');
       return p.guard(() => PolygonPayload(sides: p.integer('sides')));

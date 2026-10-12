@@ -56,7 +56,7 @@ void main() {
   test('reports a parent that is not a group', () {
     expect(
       messages([shape('p'), shape('a', parent: 'p')]),
-      contains('a: parent p is not a group'),
+      contains('a: parent p is not a group or frame'),
     );
   });
 

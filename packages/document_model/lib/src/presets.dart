@@ -1,11 +1,14 @@
 import 'package:meta/meta.dart';
 
+import 'color.dart';
 import 'ids.dart';
 import 'page.dart';
 import 'units.dart';
 
 /// Groups presets in the "Create a design" picker.
 enum PresetCategory {
+  board('Boards'),
+  device('Devices'),
   social('Social media'),
   presentation('Presentations'),
   video('Video'),
@@ -27,9 +30,13 @@ final class PagePreset {
     required this.width,
     required this.height,
     required this.unit,
+    this.kind = PageKind.fixed,
   });
 
   final String id;
+
+  /// Boards are unbounded canvases (ADR-0007); the size is their start view.
+  final PageKind kind;
   final String name;
   final PresetCategory category;
   final double width;
@@ -38,7 +45,9 @@ final class PagePreset {
 
   /// e.g. `1080 × 1080 px`, `210 × 297 mm`.
   String get sizeLabel =>
-      '${_format(width)} × ${_format(height)} ${unit.symbol}';
+      kind == PageKind.board
+          ? 'Unlimited canvas'
+          : '${_format(width)} × ${_format(height)} ${unit.symbol}';
 
   /// A blank page of this size. Print sizes default to 300 DPI.
   DesignPage createPage(PageId id) => DesignPage(
@@ -47,14 +56,80 @@ final class PagePreset {
     height: height,
     unit: unit,
     dpi: unit == LengthUnit.px ? defaultDpi : 300,
+    kind: kind,
+    background:
+        kind == PageKind.board
+            ? const SolidBackground(boardBackground)
+            : const SolidBackground(ArgbColor.white),
   );
 
   static String _format(double v) =>
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 }
 
+/// Default board colour: a light neutral that white frames stand out on.
+const ArgbColor boardBackground = ArgbColor.boardGray;
+
 /// Built-in sizes offered when creating a design.
 const List<PagePreset> pagePresets = [
+  PagePreset(
+    id: 'board',
+    name: 'Free canvas',
+    category: PresetCategory.board,
+    width: 1920,
+    height: 1080,
+    unit: LengthUnit.px,
+    kind: PageKind.board,
+  ),
+  PagePreset(
+    id: 'board_web',
+    name: 'Website & app design',
+    category: PresetCategory.board,
+    width: 1920,
+    height: 1080,
+    unit: LengthUnit.px,
+    kind: PageKind.board,
+  ),
+  PagePreset(
+    id: 'device_phone',
+    name: 'Phone',
+    category: PresetCategory.device,
+    width: 390,
+    height: 844,
+    unit: LengthUnit.px,
+  ),
+  PagePreset(
+    id: 'device_android',
+    name: 'Android',
+    category: PresetCategory.device,
+    width: 412,
+    height: 917,
+    unit: LengthUnit.px,
+  ),
+  PagePreset(
+    id: 'device_tablet',
+    name: 'Tablet',
+    category: PresetCategory.device,
+    width: 834,
+    height: 1194,
+    unit: LengthUnit.px,
+  ),
+  PagePreset(
+    id: 'device_laptop',
+    name: 'Laptop',
+    category: PresetCategory.device,
+    width: 1440,
+    height: 900,
+    unit: LengthUnit.px,
+  ),
+  PagePreset(
+    id: 'device_desktop',
+    name: 'Desktop',
+    category: PresetCategory.device,
+    width: 1920,
+    height: 1080,
+    unit: LengthUnit.px,
+  ),
   PagePreset(
     id: 'instagram_post',
     name: 'Instagram post',
@@ -176,3 +251,10 @@ PagePreset? presetById(String id) {
   }
   return null;
 }
+
+/// Sizes offered for frames (artboards): devices, social and slides in
+/// pixels, plus paper sizes converted to 96 DPI pixels.
+List<PagePreset> get framePresets => [
+  for (final p in pagePresets)
+    if (p.kind == PageKind.fixed && p.unit == LengthUnit.px) p,
+];

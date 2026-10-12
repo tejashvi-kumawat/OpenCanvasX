@@ -7,7 +7,18 @@ import 'ids.dart';
 import 'units.dart';
 import 'validation.dart';
 
-/// One fixed-size page (slide, artboard) of a document.
+/// How a page is laid out in the editor (ADR-0007).
+enum PageKind {
+  /// A fixed-size page (slide, post, print sheet) with a background.
+  fixed,
+
+  /// An unbounded board (Figma-style canvas): objects and frames can sit
+  /// anywhere; [DesignPage.width] and [DesignPage.height] only give the
+  /// starting view.
+  board,
+}
+
+/// One page of a document: a fixed-size page or an unbounded board.
 ///
 /// All lengths are in [unit]. [objectIds] lists the page's root objects
 /// back-to-front (index 0 drawn first); nested objects hang off groups
@@ -26,6 +37,7 @@ final class DesignPage {
     PageInsets margins = PageInsets.zero,
     Iterable<Guide> guides = const [],
     Iterable<ObjectId> objectIds = const [],
+    PageKind kind = PageKind.fixed,
   }) {
     checkPositive(width, 'width');
     checkPositive(height, 'height');
@@ -50,6 +62,7 @@ final class DesignPage {
       margins: margins,
       guides: List.unmodifiable(guides),
       objectIds: roots,
+      kind: kind,
     );
   }
 
@@ -65,9 +78,14 @@ final class DesignPage {
     required this.margins,
     required this.guides,
     required this.objectIds,
+    required this.kind,
   });
 
   final PageId id;
+
+  final PageKind kind;
+
+  bool get isBoard => kind == PageKind.board;
 
   /// User label, e.g. "Slide 3". Empty means the UI shows its position.
   final String name;
@@ -120,6 +138,7 @@ final class DesignPage {
     PageInsets? margins,
     Iterable<Guide>? guides,
     Iterable<ObjectId>? objectIds,
+    PageKind? kind,
   }) {
     return DesignPage(
       id: id,
@@ -133,6 +152,7 @@ final class DesignPage {
       margins: margins ?? this.margins,
       guides: guides ?? this.guides,
       objectIds: objectIds ?? this.objectIds,
+      kind: kind ?? this.kind,
     );
   }
 
@@ -140,6 +160,7 @@ final class DesignPage {
   bool operator ==(Object other) =>
       other is DesignPage &&
       other.id == id &&
+      other.kind == kind &&
       other.name == name &&
       other.width == width &&
       other.height == height &&
@@ -154,6 +175,7 @@ final class DesignPage {
   @override
   int get hashCode => Object.hash(
     id,
+    kind,
     name,
     width,
     height,

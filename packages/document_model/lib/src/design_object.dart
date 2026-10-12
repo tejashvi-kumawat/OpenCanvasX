@@ -39,8 +39,12 @@ final class DesignObject {
       throw ArgumentError.value(parentId, 'parentId', 'must not be own id');
     }
     final children = List<ObjectId>.unmodifiable(childIds);
-    if (children.isNotEmpty && type != ObjectType.group) {
-      throw ArgumentError.value(type, 'type', 'only groups have children');
+    if (children.isNotEmpty && !type.isContainer) {
+      throw ArgumentError.value(
+        type,
+        'type',
+        'only groups and frames have children',
+      );
     }
     if (children.contains(id)) {
       throw ArgumentError.value(id, 'childIds', 'must not contain own id');
@@ -101,7 +105,7 @@ final class DesignObject {
   /// Group containing this object; `null` for root objects.
   final ObjectId? parentId;
 
-  /// Children of a group, back-to-front (index 0 is drawn first).
+  /// Children of a group or frame, back-to-front (index 0 is drawn first).
   final List<ObjectId> childIds;
 
   /// User-facing layer name; `null` means the UI shows a default label.

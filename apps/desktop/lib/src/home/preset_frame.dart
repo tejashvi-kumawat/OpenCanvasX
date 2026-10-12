@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../theme/ocx_theme.dart';
 
 IconData categoryIcon(PresetCategory? category) => switch (category) {
+  PresetCategory.board => Icons.dashboard_outlined,
+  PresetCategory.device => Icons.devices_outlined,
   PresetCategory.social => Icons.tag,
   PresetCategory.presentation => Icons.slideshow_outlined,
   PresetCategory.video => Icons.smart_display_outlined,

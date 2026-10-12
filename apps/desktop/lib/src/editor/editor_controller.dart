@@ -26,6 +26,7 @@ import 'package:storage/storage.dart';
 import 'package:renderer/renderer.dart' as renderer;
 
 import '../providers.dart';
+import 'viewport.dart';
 
 /// Where the open design stands relative to its file.
 enum SaveStatus {
@@ -304,6 +305,11 @@ class EditorController extends Notifier<EditorSession?> {
 
   void setActivePage(PageId id) {
     if (id == _editor.activePageId) return;
+    final next = _editor.document.pages.where((p) => p.id == id).firstOrNull;
+    // Boards and stacked pages lay the workspace out differently: refit.
+    if ((next?.isBoard ?? false) || _editor.activePage.isBoard) {
+      ref.read(viewportProvider.notifier).reset();
+    }
     _publish(
       _editor.copyWith(activePageId: id, selection: const {}),
       edited: false,
@@ -320,15 +326,114 @@ class EditorController extends Notifier<EditorSession?> {
         pageId == null
             ? _editor.activePage
             : document.pages.firstWhere((p) => p.id == pageId);
-    final shape = newShape(type, page, id: ObjectId.generate(), center: at);
+    final center = at ?? _boardCenter(page);
+    final shape = newShape(type, page, id: ObjectId.generate(), center: center);
     _commit(
-      insertObjects(document, page.id, [
-        shape,
-      ], label: 'Add ${typeLabel(type)}'),
+      _intoFrame(
+        insertObjects(document, page.id, [
+          shape,
+        ], label: 'Add ${typeLabel(type)}'),
+        [shape.id],
+        page.id,
+        center ?? _centerOf(shape.transform),
+      ),
       activePage: page.id,
       select: {shape.id},
     );
   }
+
+  /// Adds a frame (artboard). Without [topLeft] it is centred in the view
+  /// on boards, or on the page. Frames inside frames nest.
+  ObjectId insertFrame({
+    required double width,
+    required double height,
+    String? name,
+    Point2D? topLeft,
+    PageId? pageId,
+  }) {
+    final document = _editor.document;
+    final page =
+        pageId == null
+            ? _editor.activePage
+            : document.pages.firstWhere((p) => p.id == pageId);
+    final center =
+        _boardCenter(page) ?? Point2D(page.width / 2, page.height / 2);
+    final at = topLeft ?? Point2D(center.x - width / 2, center.y - height / 2);
+    final frame = newFrame(
+      id: ObjectId.generate(),
+      pageId: page.id,
+      width: width,
+      height: height,
+      at: at,
+      name: name,
+    );
+    _commit(
+      _intoFrame(
+        insertObjects(document, page.id, [frame], label: 'Add frame'),
+        [frame.id],
+        page.id,
+        _centerOf(frame.transform),
+      ),
+      activePage: page.id,
+      select: {frame.id},
+    );
+    return frame.id;
+  }
+
+  /// Wraps the selection in a frame fitted to it (Ctrl+Alt+G).
+  void frameSelection() {
+    final selected = _editor.selectedObjects;
+    if (selected.isEmpty ||
+        selected.any((o) => o.parentId != selected.first.parentId)) {
+      return;
+    }
+    final (change, id) = groupObjects(
+      _editor.document,
+      _editor.selection,
+      asFrame: true,
+    );
+    if (id == null) return;
+    _commit(change, select: {id});
+  }
+
+  /// View centre on a board page, `null` on fixed pages.
+  Point2D? _boardCenter(DesignPage page) {
+    if (!page.isBoard) return null;
+    final viewport = ref.read(viewportProvider);
+    if (viewport.size.isEmpty) return null;
+    final frame = layoutPages(_editor.document.pages, active: page.id).single;
+    return viewCenterOn(viewport, frame);
+  }
+
+  static Point2D _centerOf(ObjectTransform t) =>
+      Point2D(t.x + t.width / 2, t.y + t.height / 2);
+
+  /// [insert] followed by moving [ids] into the frame under [at], as one
+  /// undo step.
+  Change _intoFrame(
+    Change insert,
+    List<ObjectId> ids,
+    PageId pageId,
+    Point2D at,
+  ) {
+    final (inserted, _) = insert.applyTo(_editor.document);
+    final page = inserted.pages.firstWhere((p) => p.id == pageId);
+    final target = frameAt(inserted, page, at, exclude: ids.toSet());
+    if (target == null) return insert;
+    return _chain(
+      insert,
+      reparentObjects(inserted, ids, target, pageId: pageId),
+    );
+  }
+
+  /// [first] then [second] (computed on the result of [first]) as one
+  /// change. Changes carry whole objects, so later entries win.
+  static Change _chain(Change first, Change second) => Change(
+    label: first.label,
+    objects: {...first.objects, ...second.objects},
+    pages: second.pages ?? first.pages,
+    metadata: second.metadata ?? first.metadata,
+  );
 
   /// Adds a [type] shape with an explicit [transform] (drawn with a tool).
   void insertDrawnShape(
@@ -343,9 +448,14 @@ class EditorController extends Notifier<EditorSession?> {
       id: ObjectId.generate(),
     ).copyWith(transform: transform);
     _commit(
-      insertObjects(_editor.document, pageId, [
-        shape,
-      ], label: 'Add ${typeLabel(type)}'),
+      _intoFrame(
+        insertObjects(_editor.document, pageId, [
+          shape,
+        ], label: 'Add ${typeLabel(type)}'),
+        [shape.id],
+        pageId,
+        _centerOf(transform),
+      ),
       activePage: pageId,
       select: {shape.id},
     );
@@ -371,7 +481,7 @@ class EditorController extends Notifier<EditorSession?> {
       id: ObjectId.generate(),
       role: role,
       text: text,
-      center: center,
+      center: center ?? (topLeft == null ? _boardCenter(page) : null),
       measure: measure,
     );
     if (topLeft != null) {
@@ -380,7 +490,12 @@ class EditorController extends Notifier<EditorSession?> {
       );
     }
     _commit(
-      insertObjects(document, page.id, [object], label: 'Add text'),
+      _intoFrame(
+        insertObjects(document, page.id, [object], label: 'Add text'),
+        [object.id],
+        page.id,
+        topLeft ?? _centerOf(object.transform),
+      ),
       activePage: page.id,
       select: {object.id},
     );
@@ -549,8 +664,7 @@ class EditorController extends Notifier<EditorSession?> {
   }
 
   /// Whether the selection holds a group.
-  bool get canUngroup =>
-      _editor.selectedObjects.any((o) => o.type == ObjectType.group);
+  bool get canUngroup => _editor.selectedObjects.any((o) => o.type.isContainer);
 
   /// Groups the selected siblings (P1.3.6) and selects the group.
   void groupSelection() {
@@ -564,7 +678,7 @@ class EditorController extends Notifier<EditorSession?> {
   void ungroupSelection() {
     final groups = [
       for (final o in _editor.selectedObjects)
-        if (o.type == ObjectType.group) o.id,
+        if (o.type.isContainer) o.id,
     ];
     if (groups.isEmpty) return;
     final (change, released) = ungroupObjects(_editor.document, groups);
@@ -680,6 +794,45 @@ class EditorController extends Notifier<EditorSession?> {
     _publish(_editor.copyWith(document: document), edited: true);
   }
 
+  /// Ends a move drag released at page point [pointer]: objects dropped on
+  /// a frame move into it, objects dragged out of their frame leave it
+  /// (objects inside groups stay put). One undo step.
+  void endMoveGesture(Point2D pointer) {
+    final base = _gestureBase;
+    _gestureBase = null;
+    if (base == null) return;
+    final move = updateObjects(base, _gestureObjects.values, label: 'Move');
+    final moved = {..._gestureObjects.keys};
+    _gestureObjects.clear();
+    if (move.isEmpty) {
+      _publish(_editor.copyWith(document: base), edited: false);
+      return;
+    }
+    final (afterMove, _) = move.applyTo(base);
+    final page = afterMove.pages.firstWhere(
+      (p) => p.id == _editor.activePageId,
+    );
+    final target = frameAt(afterMove, page, pointer, exclude: moved);
+    final movable = [
+      for (final id in moved)
+        if (afterMove.objects[id] case final o?
+            when o.parentId != target &&
+                (o.parentId == null ||
+                    afterMove.objects[o.parentId]?.type == ObjectType.frame))
+          id,
+    ];
+    final change =
+        movable.isEmpty
+            ? move
+            : _chain(
+              move,
+              reparentObjects(afterMove, movable, target, pageId: page.id),
+            );
+    final (document, inverse) = change.applyTo(base);
+    _history.recordApplied(inverse);
+    _publish(_editor.copyWith(document: document), edited: true);
+  }
+
   void _cancelGesture() {
     ref.read(textEditingProvider.notifier).id = null;
     final base = _gestureBase;
@@ -692,6 +845,24 @@ class EditorController extends Notifier<EditorSession?> {
   // --------------------------------------------------------------- pages
 
   /// Adds a blank page with the active page's size after it.
+  /// Adds an unbounded board (free canvas) after the active page.
+  void addBoard() {
+    final page = pagePresets
+        .firstWhere((p) => p.kind == PageKind.board)
+        .createPage(PageId.generate())
+        .copyWith(name: 'Board');
+    _commit(
+      engine.addPage(
+        _editor.document,
+        page,
+        index: _editor.activePageIndex + 1,
+      ),
+      activePage: page.id,
+      select: const {},
+    );
+    ref.read(viewportProvider.notifier).reset();
+  }
+
   void addPage() {
     final current = _editor.activePage;
     final page = DesignPage(
@@ -701,6 +872,7 @@ class EditorController extends Notifier<EditorSession?> {
       unit: current.unit,
       dpi: current.dpi,
       background: current.background,
+      kind: current.kind,
     );
     _commit(
       engine.addPage(
@@ -751,6 +923,7 @@ String typeLabel(ObjectType type) => switch (type) {
   ObjectType.path => 'Shape',
   ObjectType.image => 'Image',
   ObjectType.group => 'Group',
+  ObjectType.frame => 'Frame',
   ObjectType.polygon => 'Polygon',
   ObjectType.star => 'Star',
 };

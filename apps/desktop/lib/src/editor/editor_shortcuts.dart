@@ -45,6 +45,12 @@ abstract final class EditorKeys {
   static final bringToFront = cmd(LogicalKeyboardKey.bracketRight, shift: true);
   static final sendToBack = cmd(LogicalKeyboardKey.bracketLeft, shift: true);
   static final group = cmd(LogicalKeyboardKey.keyG);
+  static final frameSelection = SingleActivator(
+    LogicalKeyboardKey.keyG,
+    control: !_isMac,
+    meta: _isMac,
+    alt: true,
+  );
   static final ungroup = cmd(LogicalKeyboardKey.keyG, shift: true);
 }
 
@@ -52,9 +58,14 @@ abstract final class EditorKeys {
 void fitActivePage(WidgetRef ref) {
   final session = ref.read(editorProvider);
   if (session == null) return;
-  final frame =
-      layoutPages(session.document.pages)[session.state.activePageIndex];
-  ref.read(viewportProvider.notifier).fit(frame.rect);
+  final frames = layoutPages(
+    session.document.pages,
+    active: session.state.activePageId,
+  );
+  final frame = frames.firstWhere(
+    (f) => f.pageId == session.state.activePageId,
+  );
+  ref.read(viewportProvider.notifier).fit(fitRectFor(session.document, frame));
 }
 
 /// Whether keyboard focus is in a text field (single-key shortcuts must not
@@ -102,6 +113,7 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
       editor.selectParentOrClear();
     },
     EditorKeys.group: editor.groupSelection,
+    EditorKeys.frameSelection: editor.frameSelection,
     EditorKeys.ungroup: editor.ungroupSelection,
     EditorKeys.editText: unlessTyping(editSelectedText),
     EditorKeys.zoomIn: view.zoomIn,
@@ -136,6 +148,9 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
     ),
     const SingleActivator(LogicalKeyboardKey.keyT): unlessTyping(
       () => tools.select(EditorTool.text),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyF): unlessTyping(
+      () => tools.select(EditorTool.frame),
     ),
     const SingleActivator(LogicalKeyboardKey.arrowLeft): () => nudge(-1, 0),
     const SingleActivator(LogicalKeyboardKey.arrowRight): () => nudge(1, 0),

@@ -15,6 +15,7 @@ sealed class ObjectPayload {
     ObjectType.path => this is PathPayload,
     ObjectType.polygon => this is PolygonPayload,
     ObjectType.star => this is StarPayload,
+    ObjectType.frame => this is FramePayload,
     ObjectType.rect ||
     ObjectType.roundedRect ||
     ObjectType.ellipse ||
@@ -175,6 +176,27 @@ final class TextPayload extends ObjectPayload {
 }
 
 const Object _keep = Object();
+
+/// Frame options (ADR-0007).
+final class FramePayload extends ObjectPayload {
+  const FramePayload({this.clipContent = true});
+
+  /// Whether children outside the frame's box are hidden.
+  final bool clipContent;
+
+  FramePayload copyWith({bool? clipContent}) =>
+      FramePayload(clipContent: clipContent ?? this.clipContent);
+
+  @override
+  bool operator ==(Object other) =>
+      other is FramePayload && other.clipContent == clipContent;
+
+  @override
+  int get hashCode => Object.hash(FramePayload, clipContent);
+
+  @override
+  String toString() => 'FramePayload(clip: $clipContent)';
+}
 
 /// Regular polygon inscribed in the object's box (P1.3.2).
 final class PolygonPayload extends ObjectPayload {

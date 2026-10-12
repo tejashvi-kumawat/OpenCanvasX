@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,13 +24,19 @@ class PageFrame {
     required this.index,
     required this.rect,
     required this.unitScale,
+    this.unbounded = false,
   });
 
   final PageId pageId;
+
+  /// A board (ADR-0007): the whole workspace belongs to this page and
+  /// [rect] is only its starting view.
   final int index;
 
   /// Page bounds in workspace pixels.
   final Rect rect;
+
+  final bool unbounded;
 
   /// Workspace pixels per page unit.
   final double unitScale;
@@ -47,8 +54,25 @@ class PageFrame {
 double referencePixelsPerUnit(DesignPage page) =>
     convertLength(1, from: page.unit, to: LengthUnit.px);
 
-/// Stacks [pages] vertically, centred on x = 0.
-List<PageFrame> layoutPages(List<DesignPage> pages) {
+/// Stacks [pages] vertically, centred on x = 0. When the [active] page is
+/// a board it fills the workspace alone, with page (0, 0) at the origin.
+List<PageFrame> layoutPages(List<DesignPage> pages, {PageId? active}) {
+  if (active != null) {
+    final index = pages.indexWhere((p) => p.id == active);
+    if (index >= 0 && pages[index].isBoard) {
+      final page = pages[index];
+      final scale = referencePixelsPerUnit(page);
+      return [
+        PageFrame(
+          pageId: page.id,
+          index: index,
+          rect: Rect.fromLTWH(0, 0, page.width * scale, page.height * scale),
+          unitScale: scale,
+          unbounded: true,
+        ),
+      ];
+    }
+  }
   final frames = <PageFrame>[];
   var y = 0.0;
   for (final (index, page) in pages.indexed) {
@@ -67,6 +91,23 @@ List<PageFrame> layoutPages(List<DesignPage> pages) {
   }
   return frames;
 }
+
+/// What "fit" shows for [frame]: the page, or a board's content (its
+/// starting view when empty).
+Rect fitRectFor(DesignDocument document, PageFrame frame) {
+  if (!frame.unbounded) return frame.rect;
+  final page = document.pages[frame.index];
+  final bounds = selectionBounds(document, page.objectIds);
+  if (bounds == null) return frame.rect;
+  return Rect.fromPoints(
+    frame.toWorkspace(bounds.topLeft),
+    frame.toWorkspace(Point2D(bounds.right, bounds.bottom)),
+  );
+}
+
+/// Page point at the centre of the view, for inserting on boards.
+Point2D viewCenterOn(ViewportState viewport, PageFrame frame) =>
+    frame.toPage(viewport.toWorkspace(viewport.size.center(Offset.zero)));
 
 /// Pan and zoom: `screen = workspace * zoom + pan`.
 @immutable

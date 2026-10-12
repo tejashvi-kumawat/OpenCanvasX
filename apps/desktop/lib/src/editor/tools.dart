@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum EditorTool {
   move('Move', Icons.near_me_outlined, LogicalKeyboardKey.keyV, 'V'),
   hand('Hand', Icons.pan_tool_outlined, LogicalKeyboardKey.keyH, 'H'),
+  frame('Frame', Icons.tag, LogicalKeyboardKey.keyF, 'F'),
   rect('Rectangle', Icons.crop_square, LogicalKeyboardKey.keyR, 'R'),
   roundedRect('Rounded rectangle', Icons.rounded_corner, null, null),
   ellipse('Ellipse', Icons.circle_outlined, LogicalKeyboardKey.keyO, 'O'),
@@ -36,6 +37,7 @@ enum EditorTool {
     EditorTool.line => ObjectType.line,
     EditorTool.arrow => ObjectType.arrow,
     EditorTool.text => ObjectType.text,
+    EditorTool.frame => ObjectType.frame,
     EditorTool.move || EditorTool.hand => null,
   };
 

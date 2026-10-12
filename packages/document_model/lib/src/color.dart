@@ -32,6 +32,9 @@ final class ArgbColor {
   static const black = ArgbColor._(0xFF000000);
   static const white = ArgbColor._(0xFFFFFFFF);
 
+  /// Default board colour (ADR-0007).
+  static const boardGray = ArgbColor._(0xFFF1F2F4);
+
   final int value;
 
   int get alpha => (value >> 24) & 0xFF;

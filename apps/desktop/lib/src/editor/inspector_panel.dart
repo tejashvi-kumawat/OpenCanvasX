@@ -154,6 +154,7 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
       (o) => o.type == ObjectType.line || o.type == ObjectType.arrow,
     );
     final style = single?.style ?? ObjectStyle.none;
+    final anyGroup = objects.any((o) => o.type == ObjectType.group);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -168,11 +169,69 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
         ),
         _AlignmentSection(count: objects.length),
         if (single != null) _layoutSection(single, unit, decimals, step),
+        if (single?.payload case final FramePayload frame)
+          _frameSection(single!, frame),
         if (allText) _TextSection(texts: texts, unit: unit),
         _appearanceSection(objects),
-        if (!allLines) _fillSection(objects, allText),
-        if (single != null) _strokeSection(single, style, unit),
+        if (!allLines && !anyGroup) _fillSection(objects, allText),
+        if (single != null && !anyGroup) _strokeSection(single, style, unit),
       ],
+    );
+  }
+
+  /// Frame options: size presets and clipping (ADR-0007).
+  Widget _frameSection(DesignObject o, FramePayload frame) {
+    final editor = ref.read(editorProvider.notifier);
+    final presets = framePresets;
+    final t = o.transform;
+    final current =
+        presets
+            .where((p) => p.width == t.width && p.height == t.height)
+            .firstOrNull;
+    return PanelSection(
+      title: 'Frame',
+      child: FieldColumn(
+        children: [
+          OcxSelect<String>(
+            value: current?.id ?? '',
+            tooltip: 'Frame size',
+            options: [
+              const SelectOption('', 'Custom'),
+              for (final p in presets)
+                SelectOption(p.id, '${p.name} · ${p.sizeLabel}'),
+            ],
+            onChanged: (id) {
+              final preset = presets.where((p) => p.id == id).firstOrNull;
+              if (preset == null) return;
+              editor.updateSelected(
+                (x) => x.copyWith(
+                  transform: x.transform.copyWith(
+                    width: preset.width,
+                    height: preset.height,
+                  ),
+                ),
+                label: 'Resize frame',
+              );
+            },
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Text('Clip content', style: OcxText.body(context)),
+              ),
+              Switch(
+                value: frame.clipContent,
+                onChanged:
+                    (v) => editor.updateSelected(
+                      (x) =>
+                          x.copyWith(payload: frame.copyWith(clipContent: v)),
+                      label: v ? 'Clip content' : 'Show overflow',
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -185,7 +244,9 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
     final t = o.transform;
     final flat = t.height == 0;
     final canRound =
-        o.type == ObjectType.rect || o.type == ObjectType.roundedRect;
+        o.type == ObjectType.rect ||
+        o.type == ObjectType.roundedRect ||
+        o.type == ObjectType.frame;
     final style = o.style ?? ObjectStyle.none;
     return PanelSection(
       title: 'Layout',
@@ -736,7 +797,10 @@ class _PageInspector extends ConsumerWidget {
       SolidBackground(:final color) => color,
       _ => null,
     };
-    final presets = pagePresets.where((p) => p.unit == page.unit).toList();
+    final presets =
+        pagePresets
+            .where((p) => p.unit == page.unit && p.kind == PageKind.fixed)
+            .toList();
     final matching =
         presets
             .where((p) => p.width == page.width && p.height == page.height)
@@ -747,10 +811,15 @@ class _PageInspector extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Header(
-          icon: Icons.insert_drive_file_outlined,
+          icon:
+              page.isBoard
+                  ? Icons.dashboard_outlined
+                  : Icons.insert_drive_file_outlined,
           title: page.name.isEmpty ? 'Page $index' : page.name,
           subtitle:
-              page.unit == LengthUnit.px
+              page.isBoard
+                  ? 'Free canvas'
+                  : page.unit == LengthUnit.px
                   ? 'px'
                   : '${page.unit.symbol} · ${page.dpi.round()} dpi',
         ),
@@ -767,7 +836,15 @@ class _PageInspector extends ConsumerWidget {
                       label: 'Rename page',
                     ),
               ),
-              if (presets.isNotEmpty)
+              if (page.isBoard)
+                Text(
+                  'Boards have no edges. Add frames (F) for screens, '
+                  'posts or slides.',
+                  style: OcxText.caption(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w400),
+                ),
+              if (presets.isNotEmpty && !page.isBoard)
                 OcxSelect<PagePreset>(
                   value: matching,
                   label: 'Custom size',
@@ -782,26 +859,27 @@ class _PageInspector extends ConsumerWidget {
                         label: 'Resize page',
                       ),
                 ),
-              FieldRow(
-                children: [
-                  NumberField(
-                    label: 'W',
-                    value: page.width,
-                    min: 1,
-                    decimals: decimals,
-                    tooltip: 'Page width (${page.unit.symbol})',
-                    onChanged: (v) => _resize(editor, page, width: v),
-                  ),
-                  NumberField(
-                    label: 'H',
-                    value: page.height,
-                    min: 1,
-                    decimals: decimals,
-                    tooltip: 'Page height (${page.unit.symbol})',
-                    onChanged: (v) => _resize(editor, page, height: v),
-                  ),
-                ],
-              ),
+              if (!page.isBoard)
+                FieldRow(
+                  children: [
+                    NumberField(
+                      label: 'W',
+                      value: page.width,
+                      min: 1,
+                      decimals: decimals,
+                      tooltip: 'Page width (${page.unit.symbol})',
+                      onChanged: (v) => _resize(editor, page, width: v),
+                    ),
+                    NumberField(
+                      label: 'H',
+                      value: page.height,
+                      min: 1,
+                      decimals: decimals,
+                      tooltip: 'Page height (${page.unit.symbol})',
+                      onChanged: (v) => _resize(editor, page, height: v),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

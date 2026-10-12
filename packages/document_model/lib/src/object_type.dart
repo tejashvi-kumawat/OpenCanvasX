@@ -12,6 +12,16 @@ enum ObjectType {
   group,
   polygon,
   star,
+
+  /// Artboard / container that clips its children (ADR-0007). Unlike a
+  /// group it has its own box and style, and resizing it does not scale
+  /// its contents.
+  frame,
+}
+
+/// Kinds that hold children.
+extension ObjectTypeContainers on ObjectType {
+  bool get isContainer => this == ObjectType.group || this == ObjectType.frame;
 }
 
 /// Compositing mode used when drawing an object over what is beneath it.

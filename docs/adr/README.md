@@ -13,5 +13,6 @@ Short, permanent notes for significant technical choices. Read [architecture/ove
 | 5 | [0004-rename-to-opencanvasx.md](0004-rename-to-opencanvasx.md) | Accepted |
 | 6 | [0005-riverpod-and-design-library.md](0005-riverpod-and-design-library.md) | Accepted |
 | 7 | [0006-invertible-changes-for-undo.md](0006-invertible-changes-for-undo.md) | Accepted |
+| 8 | [0007-boards-and-frames.md](0007-boards-and-frames.md) | Accepted |
 
 New decisions: create `0007-short-title.md` from the template, link from the relevant [architecture](../architecture/README.md) doc.

@@ -267,7 +267,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P3.6.5 PPTX export/import (best fidelity, documented gaps)
 
 ## P3.7 Whiteboard
-- [ ] P3.7.1 Infinite canvas
+- [x] P3.7.1 Infinite canvas
 - [ ] P3.7.2 Sticky notes, connectors, frames
 - [ ] P3.7.3 Mind maps
 

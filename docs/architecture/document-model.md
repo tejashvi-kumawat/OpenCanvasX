@@ -44,7 +44,9 @@ Supports **fixed page** mode first; infinite canvas (whiteboard) extends page bo
 
 ## Object types (phased)
 
-**Phase 1:** `text`, `rect`, `rounded_rect`, `ellipse`, `polygon`, `star`, `line`, `arrow`, `path`, `image`, `group`.
+**Phase 1:** `text`, `rect`, `rounded_rect`, `ellipse`, `polygon`, `star`, `line`, `arrow`, `path`, `image`, `group`, `frame`.
+
+Pages are `fixed` (a sized page) or `board` (an unbounded canvas). Frames are artboard containers with their own box and style that clip their children; see [ADR-0007](../adr/0007-boards-and-frames.md).
 
 **Later:** `chart`, `table`, `frame`, `component`, `svg`, `video`, `audio`, `qr`, `barcode`, `embedded_document`.
 
@@ -56,7 +58,7 @@ Each object carries:
 | `type` | Discriminator |
 | `page_id` | Page of a root object (`null` when nested) |
 | `parent_id` | Layer tree parent (`null` = page root) |
-| `child_ids` | Ordered children, groups only, back-to-front (index 0 drawn first) |
+| `child_ids` | Ordered children, groups and frames only, back-to-front (index 0 drawn first) |
 | `name` | Optional user layer name (`null` = UI default label) |
 | `transform` | See below |
 | `opacity` | 0–1 |

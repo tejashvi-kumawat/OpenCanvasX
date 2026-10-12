@@ -341,6 +341,76 @@ void main() {
     expect(editor().canUngroup, isFalse);
   });
 
+  group('boards and frames', () {
+    test('addBoard adds an unbounded page and activates it', () {
+      editor().addBoard();
+      expect(session().activePage.isBoard, isTrue);
+      expect(doc().pages, hasLength(2));
+      expect(session().undoLabel, isNotNull);
+    });
+
+    test('shapes drawn on a frame go inside it', () {
+      editor().addBoard();
+      final frame = editor().insertFrame(
+        width: 390,
+        height: 844,
+        name: 'Phone',
+        topLeft: Point2D.zero,
+      );
+      expect(roots(), [frame]);
+      editor().insertDrawnShape(
+        ObjectType.rect,
+        ObjectTransform(x: 20, y: 20, width: 100, height: 100),
+        pageId: session().activePage.id,
+      );
+      final shape = session().selection.single;
+      expect(doc().objects[shape]!.parentId, frame);
+      expect(doc().objects[frame]!.childIds, [shape]);
+      // One undo step removes the shape and its frame membership.
+      editor().undo();
+      expect(doc().objects[frame]!.childIds, isEmpty);
+      expect(doc().objects.containsKey(shape), isFalse);
+    });
+
+    test('dragging out of a frame moves the object to the board', () {
+      editor().addBoard();
+      final frame = editor().insertFrame(
+        width: 400,
+        height: 400,
+        topLeft: Point2D.zero,
+      );
+      editor().insertDrawnShape(
+        ObjectType.rect,
+        ObjectTransform(x: 10, y: 10, width: 50, height: 50),
+        pageId: session().activePage.id,
+      );
+      final shape = session().selection.single;
+      final o = doc().objects[shape]!;
+      editor()
+        ..beginGesture()
+        ..previewObjects([
+          o.copyWith(transform: o.transform.copyWith(x: 600, y: 600)),
+        ])
+        ..endMoveGesture(const Point2D(620, 620));
+      expect(doc().objects[shape]!.parentId, isNull);
+      expect(roots(), [frame, shape]);
+      expect(worldBounds(doc(), shape)!.left, closeTo(600, 1e-9));
+      editor().undo();
+      expect(doc().objects[shape]!.parentId, frame);
+    });
+
+    test('frame selection wraps objects; ungroup removes the frame', () {
+      editor()
+        ..insertShape(ObjectType.rect)
+        ..frameSelection();
+      final frame = roots().single;
+      expect(doc().objects[frame]!.type, ObjectType.frame);
+      expect(editor().canUngroup, isTrue);
+      editor().ungroupSelection();
+      expect(doc().objects[roots().single]!.type, ObjectType.rect);
+    });
+  });
+
   test('distribute needs three or more', () {
     editor()
       ..insertShape(ObjectType.rect, at: const Point2D(100, 100))

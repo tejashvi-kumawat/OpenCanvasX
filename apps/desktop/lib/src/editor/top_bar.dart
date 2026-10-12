@@ -106,6 +106,10 @@ class _ToolButtons extends ConsumerWidget {
           selected: tools.active == EditorTool.move,
           onTap: () => select(EditorTool.move),
         ),
+        _FrameTool(
+          selected: tools.active == EditorTool.frame,
+          onSelect: () => select(EditorTool.frame),
+        ),
         _ToolGroup(
           tools: shapeTools,
           current: tools.lastShape,
@@ -156,6 +160,103 @@ class _ToolButton extends StatelessWidget {
       onPressed: onTap,
     ),
   );
+}
+
+/// Frame tool (F) plus a menu of frame sizes (ADR-0007).
+class _FrameTool extends ConsumerWidget {
+  const _FrameTool({required this.selected, required this.onSelect});
+
+  final bool selected;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ocx;
+    final editor = ref.read(editorProvider.notifier);
+    final presets = framePresets;
+    return MenuAnchor(
+      menuChildren: [
+        MenuItemButton(
+          onPressed: onSelect,
+          leadingIcon: const Icon(Icons.tag),
+          trailingIcon: Text('F', style: OcxText.caption(context)),
+          child: const Text('Draw a frame'),
+        ),
+        const Divider(),
+        for (final category in PresetCategory.values)
+          if (presets.any((p) => p.category == category))
+            SubmenuButton(
+              menuChildren: [
+                for (final p in presets)
+                  if (p.category == category)
+                    MenuItemButton(
+                      onPressed:
+                          () => editor.insertFrame(
+                            width: p.width,
+                            height: p.height,
+                            name: p.name,
+                          ),
+                      trailingIcon: Text(
+                        p.sizeLabel,
+                        style: OcxText.caption(context),
+                      ),
+                      child: Text(p.name),
+                    ),
+              ],
+              child: Text(category.label),
+            ),
+      ],
+      builder:
+          (context, controller, _) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Material(
+              color: selected ? c.accentSubtle : Colors.transparent,
+              borderRadius: BorderRadius.circular(Radii.xs),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Tooltip(
+                    message: EditorTool.frame.tooltip,
+                    child: InkWell(
+                      onTap: onSelect,
+                      borderRadius: BorderRadius.circular(Radii.xs),
+                      child: SizedBox(
+                        width: 30,
+                        height: 32,
+                        child: Icon(
+                          EditorTool.frame.icon,
+                          size: Chrome.toolbarIcon,
+                          color: selected ? c.accent : c.text,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Tooltip(
+                    message: 'Frame sizes',
+                    child: InkWell(
+                      onTap:
+                          () =>
+                              controller.isOpen
+                                  ? controller.close()
+                                  : controller.open(),
+                      borderRadius: BorderRadius.circular(Radii.xs),
+                      child: SizedBox(
+                        width: 14,
+                        height: 32,
+                        child: Icon(
+                          Icons.expand_more,
+                          size: 14,
+                          color: c.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
 }
 
 /// One button for a family of tools (shapes, lines) with a chevron menu.
@@ -589,6 +690,11 @@ class _MainMenu extends ConsumerWidget {
               'Ungroup',
               editor.canUngroup ? editor.ungroupSelection : null,
               shortcut: EditorKeys.ungroup,
+            ),
+            item(
+              'Frame selection',
+              hasSelection ? editor.frameSelection : null,
+              shortcut: EditorKeys.frameSelection,
             ),
             const Divider(),
             item(

@@ -83,7 +83,10 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     final viewport = ref.watch(viewportProvider);
     final tool = ref.watch(toolProvider).active;
     final editingText = ref.watch(textEditingProvider);
-    final frames = layoutPages(session.document.pages);
+    final frames = layoutPages(
+      session.document.pages,
+      active: session.state.activePageId,
+    );
     final colors = context.ocx;
     final cursor = _drag == _Drag.none ? _cursorFor(tool) ?? _cursor : _cursor;
 
@@ -129,18 +132,20 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                             dragLabel: _dragLabel(session),
                             showHandles: editingText == null,
                             colors: colors,
+                            titles: _frameTitles(session, frames, viewport),
                           ),
                         ),
                       ),
                     ),
                   ),
                   for (final frame in frames)
-                    _PageTitle(
-                      frame: frame,
-                      rect: viewport.rectToScreen(frame.rect),
-                      page: session.document.pages[frame.index],
-                      isActive: frame.pageId == session.state.activePageId,
-                    ),
+                    if (!frame.unbounded)
+                      _PageTitle(
+                        frame: frame,
+                        rect: viewport.rectToScreen(frame.rect),
+                        page: session.document.pages[frame.index],
+                        isActive: frame.pageId == session.state.activePageId,
+                      ),
                   if (editingText != null)
                     if (_screenMatrix(
                           session.document,
@@ -231,7 +236,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           (f) => f.pageId == session.state.activePageId,
           orElse: () => frames.first,
         );
-        _view.fit(active.rect);
+        _view.fit(fitRectFor(session.document, active));
       }
     });
   }
@@ -261,9 +266,72 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
 
   // ----------------------------------------------------------- hit tests
 
+  /// Name labels above the active page's top-level frames (ADR-0007).
+  List<_FrameTitle> _frameTitles(
+    EditorSession session,
+    List<PageFrame> frames,
+    ViewportState viewport,
+  ) {
+    final frame =
+        frames.where((f) => f.pageId == session.state.activePageId).firstOrNull;
+    if (frame == null) return const [];
+    final page = session.document.pages[frame.index];
+    final titles = <_FrameTitle>[];
+    for (final id in page.objectIds) {
+      final object = session.document.objects[id];
+      if (object == null || object.type != ObjectType.frame || object.hidden) {
+        continue;
+      }
+      final corners = worldCorners(session.document, id);
+      if (corners.isEmpty) continue;
+      final topLeft = viewport.toScreen(frame.toWorkspace(corners.first));
+      final topRight = viewport.toScreen(frame.toWorkspace(corners[1]));
+      final width = (topRight - topLeft).distance;
+      if (width < 24) continue;
+      final painter = TextPainter(
+        text: TextSpan(
+          text: layerName(session.document, page, object),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+        ),
+        maxLines: 1,
+        ellipsis: '…',
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: width);
+      titles.add(
+        _FrameTitle(
+          id: id,
+          painter: painter,
+          rect: Rect.fromLTWH(
+            topLeft.dx,
+            topLeft.dy - painter.height - 4,
+            painter.width,
+            painter.height,
+          ),
+        ),
+      );
+    }
+    return titles;
+  }
+
+  ObjectId? _titleAt(Offset screen, PageFrame frame) {
+    final session = ref.read(editorProvider)!;
+    if (frame.pageId != session.state.activePageId) return null;
+    for (final title
+        in _frameTitles(session, [
+          frame,
+        ], ref.read(viewportProvider)).reversed) {
+      if (title.rect.inflate(3).contains(screen)) {
+        final object = session.document.objects[title.id];
+        return object == null || object.locked ? null : title.id;
+      }
+    }
+    return null;
+  }
+
   PageFrame? _frameAt(Offset screen, List<PageFrame> frames) {
     final w = ref.read(viewportProvider).toWorkspace(screen);
     for (final frame in frames) {
+      if (frame.unbounded) return frame;
       final band = frame.rect.inflate(pageGap / 2);
       if (w.dy >= band.top && w.dy <= band.bottom) return frame;
     }
@@ -348,7 +416,10 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       return;
     }
     final frame = _frameAt(screen, frames);
-    final hit = frame == null ? null : _objectAt(screen, frame);
+    final hit =
+        frame == null
+            ? null
+            : (_titleAt(screen, frame) ?? _objectAt(screen, frame));
     final cursor =
         hit == null ? SystemMouseCursors.basic : SystemMouseCursors.move;
     if (hit != _hovered || cursor != _cursor) {
@@ -432,6 +503,17 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
 
     if (frame.pageId != session.state.activePageId) {
       _editor.setActivePage(frame.pageId);
+    }
+    final title = _titleAt(event.localPosition, frame);
+    if (title != null) {
+      if (shift) {
+        _editor.toggleSelected(title);
+        _drag = _Drag.none;
+      } else {
+        if (!session.selection.contains(title)) _editor.select({title});
+        _startObjectDrag(_Drag.move);
+      }
+      return;
     }
     final hit = _objectAt(event.localPosition, frame);
 
@@ -577,7 +659,12 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
   void _pointerUp(PointerUpEvent event, List<PageFrame> frames) {
     switch (_drag) {
       case _Drag.move:
-        _editor.endGesture('Move');
+        final frame = _dragFrame;
+        if (frame == null) {
+          _editor.endGesture('Move');
+        } else {
+          _editor.endMoveGesture(_pagePoint(event.localPosition, frame));
+        }
       case _Drag.resize:
         _editor.endGesture('Resize');
       case _Drag.rotate:
@@ -619,6 +706,32 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     final type = tool.objectType;
     if (frame == null || type == null) return;
     final preview = _drawPreview();
+
+    if (tool == EditorTool.frame) {
+      if (preview == null) {
+        // A click places a 400 px-equivalent frame at the pointer.
+        final size = 400 / frame.unitScale;
+        _editor.insertFrame(
+          width: size,
+          height: size,
+          topLeft: _downPage,
+          pageId: frame.pageId,
+        );
+      } else {
+        final box = _boxTransform(
+          _pagePoint(preview.$1, frame),
+          _pagePoint(preview.$2, frame),
+        );
+        _editor.insertFrame(
+          width: math.max(box.width, 1 / frame.unitScale),
+          height: math.max(box.height, 1 / frame.unitScale),
+          topLeft: Point2D(box.x, box.y),
+          pageId: frame.pageId,
+        );
+      }
+      ref.read(toolProvider.notifier).reset();
+      return;
+    }
 
     if (tool == EditorTool.text) {
       final id = _editor.insertText(
@@ -873,8 +986,10 @@ class _WorkspacePainter extends CustomPainter {
     required this.dragLabel,
     required this.showHandles,
     required this.colors,
+    required this.titles,
   });
 
+  final List<_FrameTitle> titles;
   final DesignDocument document;
   final List<PageFrame> frames;
   final ViewportState viewport;
@@ -897,6 +1012,10 @@ class _WorkspacePainter extends CustomPainter {
     for (final frame in frames) {
       final rect = viewport.rectToScreen(frame.rect);
       if (frame.pageId == activePageId) active = frame;
+      if (frame.unbounded) {
+        _paintBoard(canvas, size, frame);
+        continue;
+      }
       if (!rect.inflate(24).overlaps(screen)) continue;
       final page = document.pages[frame.index];
       canvas
@@ -915,6 +1034,22 @@ class _WorkspacePainter extends CustomPainter {
       canvas.restore();
     }
     if (active == null) return;
+
+    for (final title in titles) {
+      final selected = selection.contains(title.id);
+      final isHovered = hovered == title.id;
+      title.painter.text = TextSpan(
+        text: (title.painter.text! as TextSpan).text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: selected || isHovered ? colors.accent : colors.textSecondary,
+        ),
+      );
+      title.painter
+        ..layout(maxWidth: math.max(title.rect.width, 1) + 0.5)
+        ..paint(canvas, title.rect.topLeft);
+    }
 
     final outline =
         Paint()
@@ -994,6 +1129,42 @@ class _WorkspacePainter extends CustomPainter {
         canvas.drawRect(Rect.fromPoints(preview.$1, preview.$2), outline);
       }
     }
+  }
+
+  /// A board: its background over the whole view, a dot grid when zoomed
+  /// in, and its content without page clipping.
+  void _paintBoard(Canvas canvas, Size size, PageFrame frame) {
+    final page = document.pages[frame.index];
+    final background = switch (page.background) {
+      SolidBackground(:final color) => Color(color.value),
+      _ => colors.workspace,
+    };
+    canvas.drawRect(Offset.zero & size, Paint()..color = background);
+    final step = 24 * viewport.zoom;
+    if (step >= 10) {
+      final dot =
+          Paint()
+            ..color = (background.computeLuminance() > 0.5
+                    ? Colors.black
+                    : Colors.white)
+                .withValues(alpha: 0.12);
+      final origin = viewport.pan;
+      final startX = origin.dx % step;
+      final startY = origin.dy % step;
+      for (var x = startX; x < size.width; x += step) {
+        for (var y = startY; y < size.height; y += step) {
+          canvas.drawCircle(Offset(x, y), 0.9, dot);
+        }
+      }
+    }
+    canvas
+      ..save()
+      ..translate(viewport.pan.dx, viewport.pan.dy)
+      ..scale(viewport.zoom)
+      ..translate(frame.rect.left, frame.rect.top)
+      ..scale(frame.unitScale);
+    paintPageContent(canvas, document, page);
+    canvas.restore();
   }
 
   List<Offset> _corners(ObjectId id, PageFrame frame) => [
@@ -1109,4 +1280,13 @@ class _PageTitle extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// A frame's name label on the canvas (click to select, drag to move).
+class _FrameTitle {
+  _FrameTitle({required this.id, required this.painter, required this.rect});
+
+  final ObjectId id;
+  final TextPainter painter;
+  final Rect rect;
 }

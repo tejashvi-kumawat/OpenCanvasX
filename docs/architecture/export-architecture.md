@@ -58,4 +58,5 @@ Office formats and HTML may lose layout nuance. Each importer documents a **know
 - `packages/export_engine` (pure Dart): `exportTargets` (page, board frames, selection → regions), `exportSvg` (own SVG 1.1 writer; text lines supplied by the renderer's layout), `encodeJpeg`/`encodePng` (`image`), `encodeRasterPdf` (`pdf`: pages at physical size with a rendered image, title/author/creator metadata).
 - `packages/renderer`: `renderRegion` (draws a target into a `ui.Image`), `textLines` (line breaks matching the canvas).
 - App: `lib/src/export/` dialog and `buildExport`; images are decoded (`MediaCache.preload`) before rendering so nothing exports as a placeholder.
-- Next: vector PDF with embedded OFL fonts, WebP, an export worker isolate (P1.9.5), PPTX/HTML (Phase 3).
+- `exportHtmlSite` (early P3.9.2): static site, one HTML page per target with inline SVG, prototype links as `<a>` hotspots positioned in %, pager links for pages.
+- Next: vector PDF with embedded OFL fonts, WebP, an export worker isolate (P1.9.5), PPTX (Phase 3), HTML with real text/CSS layout.

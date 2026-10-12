@@ -702,6 +702,38 @@ void main() {
       expect(find.text('Home'), findsOneWidget);
     });
 
+    testWidgets('export: a board becomes a website', (tester) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier)..addBoard();
+      await tester.pumpAndSettle();
+      editor
+        ..insertFrame(
+          width: 390,
+          height: 844,
+          name: 'Home',
+          topLeft: Point2D.zero,
+        )
+        ..insertFrame(
+          width: 390,
+          height: 844,
+          name: 'About us',
+          topLeft: const Point2D(500, 0),
+        )
+        ..clearSelection();
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Export'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Website'));
+      await tester.pumpAndSettle();
+      expect(find.text('Website · 2 HTML pages'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Export').last);
+      await tester.pumpAndSettle();
+      final (files, format) = exported.single;
+      expect(format, ExportFormat.html);
+      expect(files.map((f) => f.name), ['index.html', 'about-us.html']);
+      expect(utf8.decode(files.first.bytes), contains('<svg'));
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);

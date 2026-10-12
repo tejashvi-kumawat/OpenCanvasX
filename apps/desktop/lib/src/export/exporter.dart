@@ -14,7 +14,12 @@ enum ExportFormat {
   png('PNG', 'png', 'Best for web and social; supports transparency'),
   jpg('JPG', 'jpg', 'Smallest files for photos; no transparency'),
   svg('SVG', 'svg', 'Scalable vectors for the web and other design tools'),
-  pdf('PDF', 'pdf', 'One document with every page, at print size');
+  pdf('PDF', 'pdf', 'One document with every page, at print size'),
+  html(
+    'Website',
+    'html',
+    'A small website: one page per frame or page; prototype links work',
+  );
 
   const ExportFormat(this.label, this.extension, this.hint);
 
@@ -23,6 +28,7 @@ enum ExportFormat {
   final String hint;
 
   bool get isRaster => this == png || this == jpg || this == pdf;
+  bool get isVector => this == svg || this == html;
   bool get supportsTransparency => this == png || this == svg;
 }
 
@@ -141,6 +147,19 @@ Future<List<ExportedFile>> buildExport(
 
   final format = options.format;
   final transparent = options.transparent && format.supportsTransparency;
+  if (format == ExportFormat.html) {
+    final site = exportHtmlSite(
+      document,
+      targets,
+      assets: media.allBytes,
+      lines: textLines,
+    );
+    return [
+      for (final MapEntry(key: name, value: html) in site.entries)
+        (name: name, bytes: Uint8List.fromList(utf8.encode(html))),
+    ];
+  }
+
   if (format == ExportFormat.svg) {
     return [
       for (final target in targets)
@@ -212,7 +231,7 @@ Future<List<ExportedFile>> buildExport(
               height: size.height,
             ),
           ));
-        case ExportFormat.svg:
+        case ExportFormat.svg || ExportFormat.html:
           break;
       }
     } finally {

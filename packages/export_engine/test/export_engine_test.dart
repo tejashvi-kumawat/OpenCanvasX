@@ -314,4 +314,79 @@ void main() {
     expect(svg, contains('fill="url(#grad0)"'));
     expect(svg.indexOf('<defs>'), lessThan(svg.indexOf('url(#grad0)')));
   });
+
+  group('exportHtmlSite', () {
+    test('board frames become linked pages', () {
+      final second = DesignObject(
+        id: const ObjectId('f2'),
+        type: ObjectType.frame,
+        pageId: boardId,
+        name: 'Details page',
+        transform: ObjectTransform(x: 500, width: 390, height: 844),
+        style: ObjectStyle(fill: const SolidFill(ArgbColor.white)),
+        payload: const FramePayload(),
+      );
+      final base = document();
+      final board = base.pages.last;
+      final linked = DesignDocument(
+        id: base.id,
+        metadata: base.metadata,
+        pages: [
+          base.pages.first,
+          board.copyWith(
+            objectIds: [...board.objectIds, second.id],
+            links: const [
+              PrototypeLink(source: ObjectId('fc'), target: ObjectId('f2')),
+            ],
+          ),
+        ],
+        objects: {...base.objects, second.id: second},
+        assets: base.assets,
+      );
+      final targets = exportTargets(
+        linked,
+        scope: ExportScope.currentPage,
+        activePage: boardId,
+      );
+      final site = exportHtmlSite(linked, targets, assets: const {});
+      expect(site.keys, ['index.html', 'details-page.html']);
+      final index = site['index.html']!;
+      expect(index, startsWith('<!doctype html>'));
+      expect(index, contains('<svg'));
+      expect(index, isNot(contains('<?xml')));
+      expect(index, contains('href="details-page.html"'));
+      // The star (fc) sits at 0,0 of the frame at -100,0: left 0%.
+      expect(index, contains('left:0.0000%'));
+      expect(site['details-page.html'], isNot(contains('class="hotspot"')));
+    });
+
+    test('pages get previous / next links', () {
+      final base = document();
+      final pages = DesignDocument(
+        id: base.id,
+        metadata: base.metadata,
+        pages: [
+          base.pages.first,
+          DesignPage(id: const PageId('p2'), width: 1080, height: 1080),
+        ],
+        objects: {
+          for (final MapEntry(:key, :value) in base.objects.entries)
+            if (value.pageId == pageId ||
+                value.parentId == null && value.pageId == pageId)
+              key: value,
+        },
+        assets: base.assets,
+      );
+      final targets = exportTargets(
+        pages,
+        scope: ExportScope.allPages,
+        activePage: pageId,
+      );
+      final site = exportHtmlSite(pages, targets, assets: const {});
+      expect(site.keys, ['index.html', 'page-2.html']);
+      expect(site['index.html'], contains('href="page-2.html">Next'));
+      expect(site['page-2.html'], contains('href="index.html">← Previous'));
+      expect(site['page-2.html'], contains('2 / 2'));
+    });
+  });
 }

@@ -96,13 +96,15 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
       0 => 'Nothing to export',
       _ when format == ExportFormat.pdf =>
         '1 PDF · ${targets.length} page${targets.length == 1 ? '' : 's'}',
+      _ when format == ExportFormat.html =>
+        'Website · ${targets.length} HTML page${targets.length == 1 ? '' : 's'}',
       1 => '1 file · ${first!.name}',
       _ => '${targets.length} files',
     };
 
     return Dialog(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
+        constraints: const BoxConstraints(maxWidth: 540),
         child: Padding(
           padding: const EdgeInsets.all(Space.xl),
           child: Column(
@@ -162,7 +164,7 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
                     (v) =>
                         setState(() => _options = _options.copyWith(scope: v)),
               ),
-              if (format != ExportFormat.svg) ...[
+              if (!format.isVector) ...[
                 const SizedBox(height: Space.lg),
                 _Label(format == ExportFormat.pdf ? 'Quality' : 'Size'),
                 SegmentedButton<double>(

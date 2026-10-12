@@ -4,4 +4,5 @@ library;
 
 export 'src/encoders.dart';
 export 'src/export_targets.dart';
+export 'src/html_writer.dart';
 export 'src/svg_writer.dart';

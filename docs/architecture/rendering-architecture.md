@@ -62,6 +62,13 @@ Export reuses scene traversal with a different **backend**:
 
 See [export-architecture.md](export-architecture.md).
 
+## Implementation status (Phase 1)
+
+- `packages/renderer` (Flutter package): `paintPageBackground`, `paintPageContent` and `paintObject` draw any page in page units using `localToParent` matrices from `document_model` — the same matrices `design_engine` uses for hit-testing, so screen and export geometry agree. Opacity and blend modes use layers; shared styles resolve through `effectiveStyle`.
+- `PageThumbnailPainter` draws a page scaled into any box (home cards, page strip).
+- The editor canvas (`apps/desktop/lib/src/editor/canvas_view.dart`) lays pages out vertically in **workspace pixels at 96 per inch**, so mm/in pages appear at physical size at 100 % zoom; `screen = workspace × zoom + pan`. Off-screen pages are culled.
+- Text renders as plain paragraphs and images as placeholders until P1.5 / P1.6. Tiles, caches and background isolates (P3.10) are not implemented yet.
+
 ## Related
 
 - [performance-budget.md](performance-budget.md)

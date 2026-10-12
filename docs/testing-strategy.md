@@ -45,6 +45,6 @@ Performance:
 ## CI (OpenCanvasX)
 
 - `melos run analyze --no-select`
-- `melos run test:packages --no-select` and `melos run test --no-select`
+- `melos run test:packages --no-select` (pure-Dart packages, `dart test`) and `melos run test --no-select` (Flutter packages — the app and `renderer` — with `flutter test`)
 - `cargo test --manifest-path rust/Cargo.toml`
 - Desktop build on Linux, macOS, Windows (see `.github/workflows/ci.yml`)

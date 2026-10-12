@@ -19,18 +19,18 @@ scripts:
       concurrency: 4
   test:
     run: flutter test
-    description: Run Flutter tests (desktop app).
+    description: Run Flutter tests (desktop app and Flutter packages such as renderer).
     exec:
       concurrency: 1
     packageFilters:
-      scope: opencanvasx
+      flutter: true
   test:packages:
     run: dart test
-    description: Run Dart VM tests in engine packages.
+    description: Run Dart VM tests in pure-Dart engine packages.
     exec:
       concurrency: 4
     packageFilters:
-      ignore: opencanvasx
+      flutter: false
   format:
     run: dart format .
     description: Format all Dart code.

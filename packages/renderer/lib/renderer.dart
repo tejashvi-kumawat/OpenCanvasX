@@ -1,5 +1,9 @@
-/// OpenCanvasX — `renderer` package (Phase 0 skeleton).
+/// OpenCanvasX — `renderer` package: draws documents with Flutter's canvas
+/// (Skia/Impeller). See docs/architecture/rendering-architecture.md.
 library;
 
-/// Package marker for Phase 0; replaced with real APIs in later phases.
+export 'src/document_painter.dart';
+export 'src/page_thumbnail_painter.dart';
+
+/// Package version.
 String packageVersion() => '0.0.1';

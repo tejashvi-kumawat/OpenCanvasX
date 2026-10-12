@@ -1,11 +1,19 @@
 name: renderer
-description: OpenCanvasX — renderer (skeleton).
+description: OpenCanvasX — draws documents with Flutter's canvas (Skia/Impeller).
 version: 0.0.1
 publish_to: none
 
 environment:
   sdk: ^3.7.0
+  flutter: ">=3.29.0"
+
+dependencies:
+  document_model:
+    path: ../document_model
+  flutter:
+    sdk: flutter
 
 dev_dependencies:
-  test: ^1.25.0
+  flutter_test:
+    sdk: flutter
   very_good_analysis: ^7.0.0

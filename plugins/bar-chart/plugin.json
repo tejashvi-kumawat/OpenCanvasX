@@ -1,0 +1,21 @@
+{
+  "id": "org.opencanvasx.bar-chart",
+  "name": "Bar chart",
+  "version": "1.0.0",
+  "api": 1,
+  "author": "OpenCanvasX contributors",
+  "description": "Draws an editable bar chart from labels and values.",
+  "permissions": ["write_document"],
+  "entry": { "command": ["python", "main.py"] },
+  "commands": [
+    {
+      "id": "draw",
+      "title": "Draw a bar chart",
+      "inputs": [
+        { "id": "labels", "label": "Labels (comma separated)", "type": "text", "default": "Jan, Feb, Mar, Apr, May" },
+        { "id": "values", "label": "Values (comma separated)", "type": "text", "default": "12, 19, 8, 24, 16" },
+        { "id": "colour", "label": "Bar colour", "type": "color", "default": "#3256F0" }
+      ]
+    }
+  ]
+}

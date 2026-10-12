@@ -1,0 +1,20 @@
+{
+  "id": "org.opencanvasx.placeholder-text",
+  "name": "Placeholder text",
+  "version": "1.0.0",
+  "api": 1,
+  "author": "OpenCanvasX contributors",
+  "description": "Adds placeholder paragraphs (lorem ipsum or plain English) to the page.",
+  "permissions": ["write_document"],
+  "entry": { "command": ["python", "main.py"] },
+  "commands": [
+    {
+      "id": "insert",
+      "title": "Insert placeholder text",
+      "inputs": [
+        { "id": "paragraphs", "label": "Paragraphs", "type": "number", "default": 2, "min": 1, "max": 8 },
+        { "id": "style", "label": "Style", "type": "select", "options": ["Classic lorem ipsum", "Plain English"], "default": "Classic lorem ipsum" }
+      ]
+    }
+  ]
+}

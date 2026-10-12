@@ -25,6 +25,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.7.0"
+  asset_engine:
+    dependency: "direct main"
+    description:
+      path: "../asset_engine"
+      relative: true
+    source: path
+    version: "0.0.1"
   async:
     dependency: transitive
     description:
@@ -74,13 +81,27 @@ packages:
     source: hosted
     version: "1.15.1"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  design_engine:
+    dependency: "direct main"
+    description:
+      path: "../design_engine"
+      relative: true
+    source: path
+    version: "0.0.1"
+  document_model:
+    dependency: "direct main"
+    description:
+      path: "../document_model"
+      relative: true
+    source: path
+    version: "0.0.1"
   file:
     dependency: transitive
     description:
@@ -146,7 +167,7 @@ packages:
     source: hosted
     version: "0.12.19"
   meta:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: meta
       sha256: "307249ce4ff29d58a18e97f6345f539382eb9c9c29ecda628900f31de0443dd9"

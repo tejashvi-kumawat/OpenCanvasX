@@ -53,6 +53,8 @@ dependencies:
     path: ../../packages/export_engine
   template_engine:
     path: ../../packages/template_engine
+  plugins_sdk:
+    path: ../../packages/plugins_sdk
   flutter_svg: 2.3.0
 
 dev_dependencies:

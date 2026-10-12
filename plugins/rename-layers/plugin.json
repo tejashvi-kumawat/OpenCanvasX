@@ -1,0 +1,20 @@
+{
+  "id": "org.opencanvasx.rename-layers",
+  "name": "Rename layers",
+  "version": "1.0.0",
+  "api": 1,
+  "author": "OpenCanvasX contributors",
+  "description": "Renames the selected layers with a name and a number.",
+  "permissions": ["read_selection", "write_document"],
+  "entry": { "command": ["python", "main.py"] },
+  "commands": [
+    {
+      "id": "rename",
+      "title": "Rename selected layers",
+      "inputs": [
+        { "id": "prefix", "label": "Name", "type": "text", "default": "Item" },
+        { "id": "order", "label": "Number by", "type": "select", "options": ["Left to right", "Top to bottom", "Layer order"], "default": "Left to right" }
+      ]
+    }
+  ]
+}

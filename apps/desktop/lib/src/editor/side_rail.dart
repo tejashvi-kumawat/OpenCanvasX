@@ -4,6 +4,7 @@ import 'package:template_engine/template_engine.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../home/preset_frame.dart';
+import '../plugins/apps_panel.dart';
 import '../templates/template_gallery.dart';
 import '../theme/ocx_theme.dart';
 import 'editor_controller.dart';
@@ -22,7 +23,8 @@ enum RailTab {
   text('Text', Icons.text_fields),
   uploads('Uploads', Icons.cloud_upload_outlined),
   layers('Layers', Icons.layers_outlined),
-  pages('Pages', Icons.auto_awesome_motion_outlined);
+  pages('Pages', Icons.auto_awesome_motion_outlined),
+  apps('Apps', Icons.extension_outlined);
 
   const RailTab(this.label, this.icon);
 
@@ -122,6 +124,7 @@ class SideRail extends ConsumerWidget {
                     RailTab.uploads => const UploadsPanel(),
                     RailTab.layers => const LayersPanel(),
                     RailTab.pages => const PagesPanel(),
+                    RailTab.apps => const AppsPanel(),
                   },
                 ),
               ],
@@ -139,6 +142,7 @@ class SideRail extends ConsumerWidget {
     RailTab.uploads => 'Uploads',
     RailTab.layers => 'Layers',
     RailTab.pages => 'Pages',
+    RailTab.apps => 'Apps',
   };
 }
 

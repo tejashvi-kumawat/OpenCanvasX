@@ -428,11 +428,11 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 # PHASE 6 — Ecosystem
 
 ## P6.1 Plugin System
-- [ ] P6.1.1 Plugin manifest + permission declarations
-- [ ] P6.1.2 Sandboxed runtime
-- [ ] P6.1.3 Install approval UI + signature verification + version compatibility
+- [x] P6.1.1 Plugin manifest + permission declarations
+- [ ] P6.1.2 Sandboxed runtime (process isolation + limits done; OS sandbox pending — gated behind developer mode)
+- [ ] P6.1.3 Install approval UI + signature verification + version compatibility (approval + API version done; signatures pending)
 - [ ] P6.1.4 Plugin APIs: importer, exporter, tool, template pack, asset pack, AI provider, diagram type, effect
-- [ ] P6.1.5 Malicious-plugin tests
+- [x] P6.1.5 Malicious-plugin tests
 
 ## P6.2 Community Repositories
 - [x] P6.2.1 Repository format (`index.json`, `templates/`, `assets/`, `previews/`, `licenses/`) — templates; asset repositories pending

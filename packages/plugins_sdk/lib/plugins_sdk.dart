@@ -1,5 +1,8 @@
-/// OpenCanvasX — `plugins_sdk` package (Phase 0 skeleton).
+/// OpenCanvasX plugins (plugin-architecture.md, P6.1): manifests with
+/// permissions, the JSON request/operations protocol, and the process
+/// runner.
 library;
 
-/// Package marker for Phase 0; replaced with real APIs in later phases.
-String packageVersion() => '0.0.1';
+export 'src/manifest.dart';
+export 'src/protocol.dart';
+export 'src/runner.dart';

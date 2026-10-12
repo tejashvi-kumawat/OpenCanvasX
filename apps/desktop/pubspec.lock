@@ -521,6 +521,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  plugins_sdk:
+    dependency: "direct main"
+    description:
+      path: "../../packages/plugins_sdk"
+      relative: true
+    source: path
+    version: "0.0.1"
   posix:
     dependency: transitive
     description:

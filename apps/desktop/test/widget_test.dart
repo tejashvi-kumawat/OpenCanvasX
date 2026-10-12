@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:opencanvasx/main.dart';
 import 'package:opencanvasx/src/editor/canvas_view.dart';
 import 'package:opencanvasx/src/export/exporter.dart';
+import 'package:opencanvasx/src/plugins/plugins.dart';
 import 'package:opencanvasx/src/present/present_page.dart';
 import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
@@ -68,6 +69,9 @@ void main() {
               '../../templates/official',
               label: 'OpenCanvasX',
             ),
+        ]),
+        bundledPluginsProvider.overrideWithValue([
+          '../../plugins/placeholder-text',
         ]),
         templateCacheDirProvider.overrideWith(
           (ref) async => Directory.systemTemp.path,
@@ -750,6 +754,51 @@ void main() {
       expect(format, ExportFormat.html);
       expect(files.map((f) => f.name), ['index.html', 'about-us.html']);
       expect(utf8.decode(files.first.bytes), contains('<svg'));
+    });
+
+    testWidgets('apps: install a plugin with approval and run it', (
+      tester,
+    ) async {
+      final hasPython = () {
+        try {
+          return Process.runSync('python', ['--version']).exitCode == 0;
+        } on ProcessException {
+          return false;
+        }
+      }();
+      if (!hasPython) return;
+      await openFirstDesign(tester);
+      await showTab(tester, RailTab.apps);
+      expect(find.text('Placeholder text'), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(ListTile, 'Placeholder text'),
+          matching: find.text('Install'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Install Placeholder text?'), findsOneWidget);
+      expect(find.text('Add, change and delete objects'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Install'));
+      await tester.pumpAndSettle();
+      expect(container.read(installedPluginsProvider), hasLength(1));
+      container.read(developerModeProvider.notifier).enabled = true;
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Insert placeholder text'));
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        await tester.tap(find.widgetWithText(FilledButton, 'Run'));
+        for (var i = 0; i < 60 && roots().isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+      final text = session().document.objects[roots().single]!;
+      expect((text.payload as TextPayload).text, startsWith('Lorem ipsum'));
+      expect(session().undoLabel, 'Placeholder text');
     });
 
     testWidgets('tool shortcuts switch tools', (tester) async {

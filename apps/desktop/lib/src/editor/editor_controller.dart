@@ -22,6 +22,7 @@ import 'package:design_engine/design_engine.dart'
 import 'package:document_model/document_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:plugins_sdk/plugins_sdk.dart' show PluginEffect;
 import 'package:storage/storage.dart';
 import 'package:template_engine/template_engine.dart' as tpl;
 
@@ -561,6 +562,25 @@ class EditorController extends Notifier<EditorSession?> {
       select: {path.id},
     );
     return path.id;
+  }
+
+  /// Applies a plugin's result (P6.1.4) as one undo step named after the
+  /// plugin, registering any new asset bytes, and selects what it created.
+  void applyPluginEffect(PluginEffect effect, {required String name}) {
+    final media = ref.read(mediaCacheProvider);
+    for (final MapEntry(key: hash, value: bytes) in effect.assets.entries) {
+      media.register(hash, bytes, 'image/svg+xml');
+    }
+    if (effect.change.isEmpty) return;
+    _commit(
+      Change(
+        label: name,
+        objects: effect.change.objects,
+        pages: effect.change.pages,
+        assets: effect.change.assets,
+      ),
+      select: effect.created.isEmpty ? null : effect.created.toSet(),
+    );
   }
 
   /// Links [source] to frame [target] on the active page (prototyping);

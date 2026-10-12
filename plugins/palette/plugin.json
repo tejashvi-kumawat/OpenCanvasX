@@ -1,0 +1,20 @@
+{
+  "id": "org.opencanvasx.palette",
+  "name": "Palette generator",
+  "version": "1.0.0",
+  "api": 1,
+  "author": "OpenCanvasX contributors",
+  "description": "Creates a harmonious five-colour palette with labelled swatches.",
+  "permissions": ["write_document"],
+  "entry": { "command": ["python", "main.py"] },
+  "commands": [
+    {
+      "id": "generate",
+      "title": "Generate a palette",
+      "inputs": [
+        { "id": "base", "label": "Base colour", "type": "color", "default": "#3256F0" },
+        { "id": "harmony", "label": "Harmony", "type": "select", "options": ["Analogous", "Complementary", "Triadic", "Monochrome"], "default": "Analogous" }
+      ]
+    }
+  ]
+}

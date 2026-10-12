@@ -193,8 +193,7 @@ Map<String, Object?> _encodeObject(DesignObject o) {
 }
 
 Map<String, Object?> _encodeStyle(ObjectStyle s) => {
-  if (s.fill case SolidFill(:final color))
-    'fill': {'type': 'solid', 'color': _encodeColor(color)},
+  if (s.fill case final fill?) 'fill': _encodeFill(fill),
   if (s.stroke case final stroke?)
     'stroke': {
       'color': _encodeColor(stroke.color),
@@ -369,10 +368,58 @@ ObjectStyle _decodeStyle(_Json j) => j.guard(() {
   );
 });
 
-Fill _decodeFill(_Json j) => switch (j.string('type')) {
-  'solid' => SolidFill(_decodeColor(j, 'color')),
-  final other => throw j.error('type', 'unknown fill "$other"'),
+Fill _decodeFill(_Json j) => j.guard(
+  () => switch (j.string('type')) {
+    'solid' => SolidFill(_decodeColor(j, 'color')),
+    'linear' => LinearGradientFill(
+      _decodeStops(j),
+      angle: j.optNumber('angle') ?? 90,
+    ),
+    'radial' => RadialGradientFill(
+      _decodeStops(j),
+      centerX: j.optNumber('center_x') ?? 0.5,
+      centerY: j.optNumber('center_y') ?? 0.5,
+      radius: j.optNumber('radius') ?? 0.5,
+    ),
+    final other => throw j.error('type', 'unknown fill "$other"'),
+  },
+);
+
+List<GradientStop> _decodeStops(_Json j) => [
+  for (final (i, raw) in j.list('stops').indexed)
+    () {
+      final stop = _Json.root(raw, '${j.path}.stops[$i]');
+      return stop.guard(
+        () => GradientStop(stop.number('offset'), _decodeColor(stop, 'color')),
+      );
+    }(),
+];
+
+Map<String, Object?> _encodeFill(Fill fill) => switch (fill) {
+  SolidFill(:final color) => {'type': 'solid', 'color': _encodeColor(color)},
+  LinearGradientFill(:final stops, :final angle) => {
+    'type': 'linear',
+    'angle': angle,
+    'stops': _encodeStops(stops),
+  },
+  RadialGradientFill(
+    :final stops,
+    :final centerX,
+    :final centerY,
+    :final radius,
+  ) =>
+    {
+      'type': 'radial',
+      'center_x': centerX,
+      'center_y': centerY,
+      'radius': radius,
+      'stops': _encodeStops(stops),
+    },
 };
+
+List<Map<String, Object?>> _encodeStops(List<GradientStop> stops) => [
+  for (final s in stops) {'offset': s.offset, 'color': _encodeColor(s.color)},
+];
 
 ObjectPayload _decodePayload(ObjectType type, _Json object) {
   switch (type) {

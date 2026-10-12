@@ -104,9 +104,7 @@ class _SvgWriter {
         }
       case ObjectType.frame:
         final box = _roundedRect(t.width, t.height, style.cornerRadius);
-        if (style.fill case SolidFill(:final color)) {
-          out.writeln('<$box${_paint('fill', color)}/>');
-        }
+        if (style.fill != null) out.writeln('<$box${_fill(style)}/>');
         final clip = switch (o.payload) {
           FramePayload(:final clipContent) => clipContent,
           _ => true,
@@ -251,9 +249,7 @@ class _SvgWriter {
     if (payload.letterSpacing != 0) {
       attrs.write(' letter-spacing="${_n(payload.letterSpacing)}"');
     }
-    if (style.fill case SolidFill(:final color)) {
-      attrs.write(_paint('fill', color));
-    }
+    if (style.fill != null) attrs.write(_fill(style));
     final lineHeight = payload.fontSize * payload.lineHeight;
     // Baseline of the first line: half leading plus the ascent (~0.8 em).
     final first = (lineHeight - payload.fontSize) / 2 + payload.fontSize * 0.8;
@@ -277,7 +273,7 @@ class _SvgWriter {
     final t = o.transform;
     if (info.mime == 'image/svg+xml') {
       // Bake the icon colour in: currentColor does not cross <image>.
-      if (style.fill case SolidFill(:final color)) {
+      if (style.fill?.representative case final color?) {
         bytes = Uint8List.fromList(
           utf8.encode(
             utf8
@@ -312,10 +308,60 @@ class _SvgWriter {
     }
   }
 
-  String _fill(ObjectStyle style) => switch (style.fill) {
-    SolidFill(:final color) => _paint('fill', color),
-    null => ' fill="none"',
-  };
+  int _gradients = 0;
+
+  /// Fill attribute; gradients are written to `<defs>` in bounding-box
+  /// units and referenced by id (P1.7.3).
+  String _fill(ObjectStyle style) {
+    switch (style.fill) {
+      case null:
+        return ' fill="none"';
+      case SolidFill(:final color):
+        return _paint('fill', color);
+      case LinearGradientFill(:final stops, :final angle):
+        final id = 'grad${_gradients++}';
+        final r = angle * math.pi / 180;
+        final dx = math.cos(r);
+        final dy = math.sin(r);
+        final half = (dx.abs() + dy.abs()) / 2;
+        defs
+          ..writeln(
+            '<linearGradient id="$id" x1="${_n(0.5 - dx * half)}" '
+            'y1="${_n(0.5 - dy * half)}" x2="${_n(0.5 + dx * half)}" '
+            'y2="${_n(0.5 + dy * half)}">',
+          )
+          ..write(_stops(stops))
+          ..writeln('</linearGradient>');
+        return ' fill="url(#$id)"';
+      case RadialGradientFill(
+        :final stops,
+        :final centerX,
+        :final centerY,
+        :final radius,
+      ):
+        final id = 'grad${_gradients++}';
+        defs
+          ..writeln(
+            '<radialGradient id="$id" cx="${_n(centerX)}" '
+            'cy="${_n(centerY)}" r="${_n(radius)}">',
+          )
+          ..write(_stops(stops))
+          ..writeln('</radialGradient>');
+        return ' fill="url(#$id)"';
+    }
+  }
+
+  static String _stops(List<GradientStop> stops) {
+    final out = StringBuffer();
+    for (final s in stops) {
+      final alpha = s.color.alpha / 255;
+      final opacity = alpha < 1 ? ' stop-opacity="${_n(alpha)}"' : '';
+      out.writeln(
+        '<stop offset="${_n(s.offset)}" stop-color="${_hex(s.color)}"$opacity/>',
+      );
+    }
+    return out.toString();
+  }
 
   String _strokeOf(ObjectStyle style) => switch (style.stroke) {
     final stroke? when stroke.width > 0 => _stroke(stroke),

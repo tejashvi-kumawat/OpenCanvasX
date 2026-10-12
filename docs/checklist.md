@@ -140,10 +140,10 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.6.5 Content-hash asset storage + thumbnail cache
 
 ## P1.7 Color (Basic)
-- [ ] P1.7.1 Color picker (RGB, HEX, HSL, HSV) + eyedropper
-- [ ] P1.7.2 Swatches + custom palettes
-- [ ] P1.7.3 Linear + radial gradient editor
-- [ ] P1.7.4 Contrast checker
+- [x] P1.7.1 Color picker (RGB, HEX, HSL, HSV) + eyedropper
+- [x] P1.7.2 Swatches + custom palettes
+- [x] P1.7.3 Linear + radial gradient editor
+- [x] P1.7.4 Contrast checker
 
 ## P1.8 History
 - [x] P1.8.1 Undo / redo

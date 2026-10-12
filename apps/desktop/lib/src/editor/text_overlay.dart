@@ -68,10 +68,9 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
   Widget build(BuildContext context) {
     final payload = _payload;
     final t = widget.object.transform;
-    final color = switch (widget.object.style?.fill) {
-      SolidFill(:final color) => toUiColor(color),
-      null => context.ocx.text,
-    };
+    final fill = widget.object.style?.fill;
+    final color =
+        fill == null ? context.ocx.text : toUiColor(fill.representative);
     final style = TextStyle(
       fontFamily: payload.fontFamily ?? defaultFontFamily,
       fontSize: payload.fontSize,

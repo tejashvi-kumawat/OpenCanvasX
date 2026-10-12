@@ -87,4 +87,45 @@ void main() {
       'alpha beta gamma delta',
     );
   });
+
+  testWidgets('linear gradients run along their angle', (tester) async {
+    await tester.runAsync(() async {
+      final g = DesignObject(
+        id: const ObjectId('g'),
+        type: ObjectType.rect,
+        pageId: pageId,
+        transform: ObjectTransform(width: 100, height: 100),
+        style: ObjectStyle(
+          fill: LinearGradientFill([
+            GradientStop(0, ArgbColor(0xFFFF0000)),
+            GradientStop(1, ArgbColor(0xFF0000FF)),
+          ], angle: 0),
+        ),
+      );
+      final gd = DesignDocument(
+        id: const DocumentId('g'),
+        metadata: const DocumentMetadata(title: 'g'),
+        pages: [
+          doc.pages.single.copyWith(objectIds: [g.id]),
+        ],
+        objects: {g.id: g},
+      );
+      final rgba = await imageRgba(
+        await renderRegion(
+          gd,
+          gd.pages.single,
+          region: Rect2D.fromLTWH(0, 0, 100, 100),
+          roots: [g.id],
+          background: false,
+          width: 20,
+          height: 20,
+        ),
+      );
+      int at(int x) => (10 * 20 + x) * 4;
+      expect(rgba[at(1)], greaterThan(200)); // red on the left
+      expect(rgba[at(1) + 2], lessThan(60));
+      expect(rgba[at(18) + 2], greaterThan(200)); // blue on the right
+      expect(rgba[at(18)], lessThan(60));
+    });
+  });
 }

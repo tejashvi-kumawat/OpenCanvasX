@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:renderer/renderer.dart';
 
 import '../theme/ocx_theme.dart';
+import 'color_picker.dart';
 
 /// 28 px icon button with a 16 px icon and a required tooltip
 /// (design-system.md §6).
@@ -341,12 +342,19 @@ class ColorRow extends StatefulWidget {
   const ColorRow({
     required this.color,
     required this.onChanged,
+    this.onPreview,
     this.trailing,
     super.key,
   });
 
   final ArgbColor color;
+
+  /// Commits a colour (one undo step).
   final ValueChanged<ArgbColor> onChanged;
+
+  /// Shows a colour live while the picker is dragged; [onChanged] follows
+  /// when the drag ends. Without it only committed colours are applied.
+  final ValueChanged<ArgbColor>? onPreview;
   final Widget? trailing;
 
   @override
@@ -436,17 +444,10 @@ class _ColorRowState extends State<ColorRow> {
                 MenuAnchor(
                   controller: _menu,
                   menuChildren: [
-                    _PalettePanel(
-                      selected: widget.color,
-                      onPick: (color) {
-                        _menu.close();
-                        widget.onChanged(
-                          ArgbColor(
-                            (widget.color.alpha << 24) |
-                                (color.value & 0xFFFFFF),
-                          ),
-                        );
-                      },
+                    ColorPickerPanel(
+                      color: widget.color,
+                      onChanged: (c) => widget.onPreview?.call(c),
+                      onChangeEnd: widget.onChanged,
                     ),
                   ],
                   builder:
@@ -532,51 +533,4 @@ class _Swatch extends StatelessWidget {
       border: Border.all(color: context.ocx.borderStrong),
     ),
   );
-}
-
-class _PalettePanel extends StatelessWidget {
-  const _PalettePanel({required this.selected, required this.onPick});
-
-  final ArgbColor selected;
-  final ValueChanged<ArgbColor> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.ocx;
-    return Padding(
-      padding: const EdgeInsets.all(Space.sm),
-      child: SizedBox(
-        width: 6 * 28,
-        child: Wrap(
-          children: [
-            for (final color in defaultPalette)
-              Tooltip(
-                message: '#${hexOf(color)}',
-                child: InkWell(
-                  onTap: () => onPick(color),
-                  borderRadius: BorderRadius.circular(Radii.xs),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Radii.xs),
-                      border: Border.all(
-                        color:
-                            (color.value & 0xFFFFFF) ==
-                                    (selected.value & 0xFFFFFF)
-                                ? c.accent
-                                : Colors.transparent,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: _Swatch(color: color, size: 18),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }

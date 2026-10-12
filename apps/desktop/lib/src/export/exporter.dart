@@ -136,13 +136,7 @@ Future<List<ExportedFile>> buildExport(
   await media.preload([
     for (final o in document.objects.values)
       if (o.payload case ImagePayload(:final assetHash))
-        (
-          assetHash,
-          switch (o.style?.fill) {
-            SolidFill(:final color) => color.value,
-            null => null,
-          },
-        ),
+        (assetHash, o.style?.fill?.representative.value),
   ]);
 
   final format = options.format;

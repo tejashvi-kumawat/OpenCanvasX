@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:asset_engine/asset_engine.dart';
 import 'package:asset_packs/asset_packs.dart';
+import 'package:document_model/document_model.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,6 +58,37 @@ final imagePickerProvider = Provider<Future<List<PickedFile>> Function()>(
     ];
   },
 );
+
+/// The user's saved colours (P1.7.2), stored in the app index.
+final customPaletteProvider =
+    NotifierProvider<CustomPaletteController, List<ArgbColor>>(
+      CustomPaletteController.new,
+    );
+
+class CustomPaletteController extends Notifier<List<ArgbColor>> {
+  static const _key = 'palette.custom';
+
+  @override
+  List<ArgbColor> build() {
+    final raw = ref.watch(appIndexProvider).settings.get(_key) ?? '';
+    return [
+      for (final part in raw.split(','))
+        if (int.tryParse(part, radix: 16) case final v?
+            when v >= 0 && v <= 0xFFFFFFFF)
+          ArgbColor(v),
+    ];
+  }
+
+  /// Saves [color] first in the list (at most 24, no duplicates).
+  void add(ArgbColor color) {
+    final next = [color, ...state.where((c) => c != color)].take(24).toList();
+    ref
+        .read(appIndexProvider)
+        .settings
+        .set(_key, [for (final c in next) c.value.toRadixString(16)].join(','));
+    state = next;
+  }
+}
 
 /// Bundled asset packs (icons, stickers) with licence metadata (P2.1).
 final assetCatalogProvider = FutureProvider<AssetCatalog>(

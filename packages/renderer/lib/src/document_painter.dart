@@ -140,10 +140,7 @@ void paintObject(
       effectiveStyle(object, document.styles),
       media?.resolve(
         assetHash,
-        currentColor: switch (object.style?.fill) {
-          SolidFill(:final color) => color.value,
-          null => null,
-        },
+        currentColor: object.style?.fill?.representative.value,
       ),
     );
   } else {
@@ -180,8 +177,8 @@ void _paintFrame(
 ) {
   final style = effectiveStyle(object, document.styles);
   final outline = shapePath(object, style)!;
-  if (style.fill case SolidFill(:final color)) {
-    canvas.drawPath(outline, ui.Paint()..color = toUiColor(color));
+  if (fillPaint(style.fill, outline.getBounds()) case final paint?) {
+    canvas.drawPath(outline, paint);
   }
   final clip = switch (object.payload) {
     FramePayload(:final clipContent) => clipContent,
@@ -209,10 +206,7 @@ void _paintFrame(
 void _paintShape(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
   final t = object.transform;
   final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
-  final fill = switch (style.fill) {
-    SolidFill(:final color) => ui.Paint()..color = toUiColor(color),
-    null => null,
-  };
+  final fill = fillPaint(style.fill, box);
   final stroke = style.stroke;
   final strokePaint =
       stroke != null && stroke.width > 0
@@ -428,7 +422,12 @@ const String defaultFontFamily = 'Segoe UI';
 
 /// Builds a laid-out paragraph for [text]. [width] constrains wrapping;
 /// `null` lays out on one line per paragraph (auto width).
-ui.Paragraph layoutText(TextPayload text, {double? width, ui.Color? color}) {
+ui.Paragraph layoutText(
+  TextPayload text, {
+  double? width,
+  ui.Color? color,
+  ui.Paint? foreground,
+}) {
   final builder =
       ui.ParagraphBuilder(
           ui.ParagraphStyle(
@@ -447,7 +446,9 @@ ui.Paragraph layoutText(TextPayload text, {double? width, ui.Color? color}) {
         )
         ..pushStyle(
           ui.TextStyle(
-            color: color ?? const ui.Color(0xFF16181D),
+            color:
+                foreground == null ? color ?? const ui.Color(0xFF16181D) : null,
+            foreground: foreground,
             fontFamily: text.fontFamily ?? defaultFontFamily,
             fontSize: text.fontSize,
             height: text.lineHeight,
@@ -482,16 +483,23 @@ void _paintText(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
   final payload = object.payload;
   if (payload is! TextPayload) return;
   final t = object.transform;
-  final color = switch (style.fill) {
+  final fill = style.fill;
+  final color = switch (fill) {
     SolidFill(:final color) => toUiColor(color),
     null => const ui.Color(0x00000000),
+    _ => null,
   };
+  final foreground =
+      color == null
+          ? fillPaint(fill, ui.Rect.fromLTWH(0, 0, t.width, t.height))
+          : null;
   final paragraph = layoutText(
     payload,
     // Auto-width boxes are kept at the text's natural width by the editor;
     // laying out unconstrained keeps lines unwrapped even if they lag.
     width: payload.sizing == TextSizing.autoWidth ? null : math.max(t.width, 1),
     color: color,
+    foreground: foreground,
   );
   if (payload.sizing == TextSizing.fixed) {
     canvas
@@ -546,6 +554,53 @@ void _paintImage(
         ..strokeWidth = stroke.width
         ..color = toUiColor(stroke.color),
     );
+  }
+}
+
+/// Paint for [fill] over [box] (local units): a colour, or a linear or
+/// radial gradient shader (P1.7.3). `null` for no fill.
+ui.Paint? fillPaint(Fill? fill, ui.Rect box) {
+  switch (fill) {
+    case null:
+      return null;
+    case SolidFill(:final color):
+      return ui.Paint()..color = toUiColor(color);
+    case LinearGradientFill(:final stops, :final angle):
+      final radians = angle * math.pi / 180;
+      final dx = math.cos(radians);
+      final dy = math.sin(radians);
+      // Length that makes the gradient reach the box corners (as in CSS).
+      final half = (box.width * dx.abs() + box.height * dy.abs()) / 2;
+      final c = box.center;
+      return ui.Paint()
+        ..shader = ui.Gradient.linear(
+          ui.Offset(c.dx - dx * half, c.dy - dy * half),
+          ui.Offset(c.dx + dx * half, c.dy + dy * half),
+          [for (final s in stops) toUiColor(s.color)],
+          [for (final s in stops) s.offset],
+        );
+    case RadialGradientFill(
+      :final stops,
+      :final centerX,
+      :final centerY,
+      :final radius,
+    ):
+      // A unit-circle gradient stretched to the box (elliptical).
+      final matrix = Float64List.fromList([
+        box.width, 0, 0, 0, //
+        0, box.height, 0, 0,
+        0, 0, 1, 0,
+        box.left, box.top, 0, 1,
+      ]);
+      return ui.Paint()
+        ..shader = ui.Gradient.radial(
+          ui.Offset(centerX, centerY),
+          radius,
+          [for (final s in stops) toUiColor(s.color)],
+          [for (final s in stops) s.offset],
+          ui.TileMode.clamp,
+          matrix,
+        );
   }
 }
 

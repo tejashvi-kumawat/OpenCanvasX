@@ -545,6 +545,97 @@ void main() {
       expect(session().selection, {id});
     });
 
+    testWidgets('colour: gradient fills from the inspector', (tester) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertShape(ObjectType.rect);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Linear gradient'));
+      await tester.pumpAndSettle();
+      final fill = session().document.objects[roots().single]!.style!.fill;
+      expect(fill, isA<LinearGradientFill>());
+      expect(session().undoLabel, 'Fill');
+      await tester.tap(find.byTooltip('Radial gradient'));
+      await tester.pumpAndSettle();
+      expect(
+        session().document.objects[roots().single]!.style!.fill,
+        isA<RadialGradientFill>(),
+      );
+      await tester.tap(find.byTooltip('Solid colour'));
+      await tester.pumpAndSettle();
+      expect(
+        session().document.objects[roots().single]!.style!.fill,
+        isA<SolidFill>(),
+      );
+    });
+
+    testWidgets('colour: the picker applies swatches and saves colours', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertShape(ObjectType.rect);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Choose colour').first);
+      await tester.pumpAndSettle();
+      expect(find.text('My colours'), findsOneWidget);
+      await tester.tap(find.byTooltip('#E5484D'));
+      await tester.pumpAndSettle();
+      final fill = session().document.objects[roots().single]!.style!.fill;
+      expect(fill!.representative.value & 0xFFFFFF, 0xE5484D);
+      await tester.tap(find.byTooltip('Save this colour'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(customPaletteProvider).first.value & 0xFFFFFF,
+        0xE5484D,
+      );
+      expect(index.settings.get('palette.custom'), contains('e5484d'));
+    });
+
+    testWidgets('colour: text shows its contrast', (tester) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertText(TextRole.heading);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Contrast'), findsOneWidget);
+      expect(find.textContaining('AAA'), findsOneWidget);
+    });
+
+    testWidgets('colour: the eyedropper samples the canvas', (tester) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier)
+        ..insertShape(ObjectType.rect);
+      await tester.pumpAndSettle();
+      final id = roots().single;
+      editor.updateObject(
+        id,
+        (o) => o.copyWith(
+          style: ObjectStyle(fill: SolidFill(ArgbColor(0xFF12A594))),
+        ),
+        label: 'Fill',
+      );
+      editor.clearSelection();
+      await tester.pumpAndSettle();
+      ArgbColor? picked;
+      container.read(eyedropperProvider.notifier).pick = (c) => picked = c;
+      final canvas = tester.getRect(find.byType(DesignCanvas));
+      final viewport = container.read(viewportProvider);
+      final frame = layoutPages(session().document.pages).first;
+      final b = worldBounds(session().document, id)!;
+      final at =
+          canvas.topLeft +
+          viewport.toScreen(
+            frame.toWorkspace(
+              Point2D(b.left + b.width / 2, b.top + b.height / 2),
+            ),
+          );
+      await tester.runAsync(() async {
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        for (var i = 0; i < 20 && picked == null; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      });
+      expect(picked?.value, 0xFF12A594);
+      expect(container.read(eyedropperProvider), isNull);
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);

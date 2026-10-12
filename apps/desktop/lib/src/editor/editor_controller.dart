@@ -47,6 +47,21 @@ class NodeEdit {
   final int? anchor;
 }
 
+/// While set, the next canvas click samples a colour and passes it here
+/// (eyedropper, P1.7.1).
+final eyedropperProvider =
+    NotifierProvider<EyedropperController, ValueChanged<ArgbColor>?>(
+      EyedropperController.new,
+    );
+
+class EyedropperController extends Notifier<ValueChanged<ArgbColor>?> {
+  @override
+  ValueChanged<ArgbColor>? build() => null;
+
+  ValueChanged<ArgbColor>? get pick => state;
+  set pick(ValueChanged<ArgbColor>? value) => state = value;
+}
+
 final nodeEditProvider = NotifierProvider<NodeEditController, NodeEdit?>(
   NodeEditController.new,
 );

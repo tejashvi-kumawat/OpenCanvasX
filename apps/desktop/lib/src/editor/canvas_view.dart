@@ -126,7 +126,10 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       active: session.state.activePageId,
     );
     final colors = context.ocx;
-    final cursor = _drag == _Drag.none ? _cursorFor(tool) ?? _cursor : _cursor;
+    final cursor =
+        ref.watch(eyedropperProvider) != null
+            ? SystemMouseCursors.precise
+            : (_drag == _Drag.none ? _cursorFor(tool) ?? _cursor : _cursor);
 
     // While a text is edited inline the overlay draws it, not the painter.
     final document =
@@ -532,6 +535,14 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     final frame = _frameAt(event.localPosition, frames) ?? _activeFrame(frames);
     _dragFrame = frame;
     _downPage = _pagePoint(event.localPosition, frame);
+
+    if (ref.read(eyedropperProvider) case final pick?) {
+      ref.read(eyedropperProvider.notifier).pick = null;
+      _sampleColor(frame, _downPage).then((color) {
+        if (color != null) pick(color);
+      });
+      return;
+    }
 
     // Vector tools.
     if (_tool == EditorTool.pen) {
@@ -1189,6 +1200,34 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       );
     }
     return null;
+  }
+
+  /// The colour drawn at [point] on [frame]'s page (eyedropper): renders
+  /// one screen pixel of the page, background included.
+  Future<ArgbColor?> _sampleColor(PageFrame frame, Point2D point) async {
+    final session = ref.read(editorProvider);
+    if (session == null) return null;
+    final page = session.document.pages[frame.index];
+    final size = _unitsPerPixel(frame);
+    final image = await renderRegion(
+      session.document,
+      page,
+      region: Rect2D.fromLTWH(point.x, point.y, size, size),
+      roots: page.objectIds,
+      background: true,
+      width: 1,
+      height: 1,
+      media: ref.read(mediaCacheProvider),
+    );
+    final rgba = await imageRgba(image);
+    image.dispose();
+    if (rgba.length < 4) return null;
+    // Transparent pixels fall back to white (what the page shows).
+    final a = rgba[3];
+    int over(int v) => (v * a + 255 * (255 - a)) ~/ 255;
+    return ArgbColor(
+      0xFF000000 | (over(rgba[0]) << 16) | (over(rgba[1]) << 8) | over(rgba[2]),
+    );
   }
 
   /// Snapping is on unless Alt is held.

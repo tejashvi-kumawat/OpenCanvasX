@@ -8,6 +8,8 @@ import '../widgets/controls.dart';
 import '../widgets/number_field.dart';
 import '../widgets/object_icons.dart';
 import '../providers.dart';
+import '../widgets/color_picker.dart';
+import 'fill_editor.dart';
 import 'editor_controller.dart';
 
 /// Fonts offered until local font discovery lands (P1.5.5). Families that
@@ -49,15 +51,24 @@ class InspectorPanel extends ConsumerWidget {
     final session = ref.watch(editorProvider);
     if (session == null) return const SizedBox.shrink();
     final selected = session.state.selectedObjects;
-    return Container(
-      width: Chrome.inspector,
-      color: context.ocx.surface,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: Space.xl),
-        children:
-            selected.isEmpty
-                ? [_PageInspector(session: session)]
-                : [_SelectionInspector(session: session, objects: selected)],
+    return ColorPickerScope(
+      documentColors: documentColors(session.document),
+      customColors: ref.watch(customPaletteProvider),
+      onSaveColor: ref.read(customPaletteProvider.notifier).add,
+      // The next canvas click samples a colour (the open picker closes on
+      // that click as it lands outside the menu).
+      onEyedropper:
+          (onPicked) => ref.read(eyedropperProvider.notifier).pick = onPicked,
+      child: Container(
+        width: Chrome.inspector,
+        color: context.ocx.surface,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: Space.xl),
+          children:
+              selected.isEmpty
+                  ? [_PageInspector(session: session)]
+                  : [_SelectionInspector(session: session, objects: selected)],
+        ),
       ),
     );
   }
@@ -178,6 +189,15 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
         if (single?.payload case final FramePayload frame)
           _frameSection(single!, frame),
         if (allText) _TextSection(texts: texts, unit: unit),
+        if (allText && single != null)
+          _ContrastNote(
+            text: single.style?.fill?.representative,
+            background: _backgroundBehind(
+              widget.session.document,
+              page,
+              single,
+            ),
+          ),
         _appearanceSection(objects),
         if (!allLines && !anyGroup) _fillSection(objects, allText),
         if (single != null && !anyGroup) _strokeSection(single, style, unit),
@@ -435,32 +455,60 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
     );
   }
 
+  /// Shows [fill] on the selection live (one gesture until committed).
+  void _previewFill(Fill fill) {
+    final editor = ref.read(editorProvider.notifier);
+    if (!editor.isGestureActive) editor.beginGesture();
+    editor.previewObjects([
+      for (final o in widget.objects)
+        o.copyWith(
+          style: ObjectStyle(
+            fill: fill,
+            stroke: (o.style ?? ObjectStyle.none).stroke,
+            cornerRadius: (o.style ?? ObjectStyle.none).cornerRadius,
+          ),
+        ),
+    ]);
+  }
+
   Widget _fillSection(List<DesignObject> objects, bool allText) {
-    final fills = {
-      for (final o in objects)
-        switch (o.style?.fill) {
-          SolidFill(:final color) => color,
-          null => null,
-        },
-    };
-    final color = fills.length == 1 ? fills.first : null;
+    final fills = {for (final o in objects) o.style?.fill};
+    final fill = fills.length == 1 ? fills.first : null;
     final mixed = fills.length > 1;
-    void setFill(ArgbColor? c) => _style(
-      (s) => ObjectStyle(
-        fill: c == null ? null : SolidFill(c),
-        stroke: s.stroke,
-        cornerRadius: s.cornerRadius,
-      ),
-      'Fill',
-    );
+    void setFill(Fill? f) {
+      final editor = ref.read(editorProvider.notifier);
+      if (editor.isGestureActive) {
+        editor.previewObjects([
+          for (final o in widget.objects)
+            o.copyWith(
+              style: ObjectStyle(
+                fill: f,
+                stroke: (o.style ?? ObjectStyle.none).stroke,
+                cornerRadius: (o.style ?? ObjectStyle.none).cornerRadius,
+              ),
+            ),
+        ]);
+        editor.endGesture('Fill');
+        return;
+      }
+      _style(
+        (s) => ObjectStyle(
+          fill: f,
+          stroke: s.stroke,
+          cornerRadius: s.cornerRadius,
+        ),
+        'Fill',
+      );
+    }
+
     return PanelSection(
       title: allText ? 'Text colour' : 'Fill',
       trailing: [
-        if (color == null && !mixed)
+        if (fill == null && !mixed)
           OcxIconButton(
             icon: Icons.add,
             tooltip: 'Add fill',
-            onPressed: () => setFill(defaultShapeFill),
+            onPressed: () => setFill(SolidFill(defaultShapeFill)),
           ),
       ],
       child:
@@ -469,16 +517,13 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
                 'Mixed — pick a colour to apply to all',
                 style: OcxText.caption(context),
               )
-              : color == null
+              : fill == null
               ? null
-              : ColorRow(
-                color: color,
+              : FillEditor(
+                fill: fill,
                 onChanged: setFill,
-                trailing: OcxIconButton(
-                  icon: Icons.remove,
-                  tooltip: 'Remove fill',
-                  onPressed: () => setFill(null),
-                ),
+                onPreview: _previewFill,
+                onRemove: () => setFill(null),
               ),
     );
   }
@@ -1061,4 +1106,110 @@ class _AssetSource extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The solid colour behind [object]: the nearest enclosing frame's fill,
+/// else the page background (white when transparent).
+ArgbColor _backgroundBehind(
+  DesignDocument document,
+  DesignPage page,
+  DesignObject object,
+) {
+  var parent = object.parentId;
+  while (parent != null) {
+    final p = document.objects[parent];
+    if (p == null) break;
+    if (p.type == ObjectType.frame && p.style?.fill != null) {
+      return p.style!.fill!.representative;
+    }
+    parent = p.parentId;
+  }
+  return switch (page.background) {
+    SolidBackground(:final color) => color,
+    _ => ArgbColor.white,
+  };
+}
+
+/// WCAG contrast of text against what is behind it (P1.7.4).
+class _ContrastNote extends StatelessWidget {
+  const _ContrastNote({required this.text, required this.background});
+
+  final ArgbColor? text;
+  final ArgbColor background;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = text;
+    if (color == null) return const SizedBox.shrink();
+    final c = context.ocx;
+    final ratio = contrastRatio(
+      ArgbColor(color.value | 0xFF000000),
+      ArgbColor(background.value | 0xFF000000),
+    );
+    final (label, tone) = switch (ratio) {
+      >= 7 => ('AAA', c.success),
+      >= 4.5 => ('AA', c.success),
+      >= 3 => ('AA large text only', c.warning),
+      _ => ('Too low for reading', c.danger),
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Space.md,
+        Space.sm,
+        Space.md,
+        Space.sm,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            ratio >= 4.5 ? Icons.check_circle_outline : Icons.error_outline,
+            size: 14,
+            color: tone,
+          ),
+          const SizedBox(width: Space.xs),
+          Expanded(
+            child: Tooltip(
+              message:
+                  'Contrast with the background behind this text '
+                  '(WCAG 2: 4.5:1 for body text, 3:1 for large text).',
+              child: Text(
+                'Contrast ${ratio.toStringAsFixed(1)}:1 · $label',
+                style: OcxText.caption(context).copyWith(color: tone),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Colours used in [document] (fills, gradient stops, strokes, page
+/// backgrounds), most used first (P1.7.2).
+List<ArgbColor> documentColors(DesignDocument document) {
+  final counts = <ArgbColor, int>{};
+  void add(ArgbColor c) {
+    final opaque = ArgbColor(c.value | 0xFF000000);
+    counts[opaque] = (counts[opaque] ?? 0) + 1;
+  }
+
+  for (final o in document.objects.values) {
+    switch (o.style?.fill) {
+      case SolidFill(:final color):
+        add(color);
+      case LinearGradientFill(:final stops) || RadialGradientFill(:final stops):
+        for (final s in stops) {
+          add(s.color);
+        }
+      case null:
+        break;
+    }
+    if (o.style?.stroke case final stroke?) add(stroke.color);
+  }
+  for (final page in document.pages) {
+    if (page.background case SolidBackground(:final color)) add(color);
+  }
+  final sorted =
+      counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  return [for (final e in sorted.take(18)) e.key];
 }

@@ -277,4 +277,41 @@ void main() {
       expect(text, contains('OpenCanvasX'));
     });
   });
+
+  test('gradients become SVG gradient definitions', () {
+    final g = DesignObject(
+      id: const ObjectId('g'),
+      type: ObjectType.ellipse,
+      pageId: pageId,
+      transform: ObjectTransform(width: 100, height: 100),
+      style: ObjectStyle(
+        fill: RadialGradientFill([
+          GradientStop(0, ArgbColor(0xFFFFFFFF)),
+          GradientStop(1, ArgbColor(0x803256F0)),
+        ]),
+      ),
+    );
+    final gd = DesignDocument(
+      id: const DocumentId('g'),
+      metadata: const DocumentMetadata(title: 'g'),
+      pages: [
+        DesignPage(id: pageId, width: 100, height: 100, objectIds: [g.id]),
+      ],
+      objects: {g.id: g},
+    );
+    final target =
+        exportTargets(
+          gd,
+          scope: ExportScope.currentPage,
+          activePage: pageId,
+        ).single;
+    final svg = exportSvg(gd, target, assets: const {});
+    expect(
+      svg,
+      contains('<radialGradient id="grad0" cx="0.5" cy="0.5" r="0.5">'),
+    );
+    expect(svg, contains('stop-opacity="0.502"'));
+    expect(svg, contains('fill="url(#grad0)"'));
+    expect(svg.indexOf('<defs>'), lessThan(svg.indexOf('url(#grad0)')));
+  });
 }

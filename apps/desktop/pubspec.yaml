@@ -49,6 +49,9 @@ dependencies:
     path: ../../packages/asset_engine
   asset_packs:
     path: ../../packages/asset_packs
+  export_engine:
+    path: ../../packages/export_engine
+  flutter_svg: 2.3.0
 
 dev_dependencies:
   flutter_test:

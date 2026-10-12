@@ -1,7 +1,10 @@
 import 'dart:io';
 
+import 'package:asset_engine/asset_engine.dart';
+import 'package:asset_packs/asset_packs.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:storage/storage.dart';
@@ -31,6 +34,33 @@ final folderPickerProvider = Provider<FolderPicker>(
         initialDirectory: initialDirectory,
         confirmButtonText: 'Use this folder',
       ),
+);
+
+/// A file the user picked: its name and bytes.
+typedef PickedFile = ({String name, Uint8List bytes});
+
+/// Shows a native "open" dialog for images and SVGs (P1.6.1, P1.6.2);
+/// returns nothing if cancelled.
+final imagePickerProvider = Provider<Future<List<PickedFile>> Function()>(
+  (ref) => () async {
+    final files = await openFiles(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'],
+        ),
+      ],
+      confirmButtonText: 'Upload',
+    );
+    return [
+      for (final f in files) (name: f.name, bytes: await f.readAsBytes()),
+    ];
+  },
+);
+
+/// Bundled asset packs (icons, stickers) with licence metadata (P2.1).
+final assetCatalogProvider = FutureProvider<AssetCatalog>(
+  (ref) => loadBundledCatalog(rootBundle),
 );
 
 /// Checks a candidate projects folder; tests replace it.

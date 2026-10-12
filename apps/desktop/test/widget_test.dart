@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
+import 'package:export_engine/export_engine.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,8 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:opencanvasx/main.dart';
 import 'package:opencanvasx/src/editor/canvas_view.dart';
+import 'package:opencanvasx/src/export/exporter.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
-import 'package:opencanvasx/src/editor/left_panel.dart';
+import 'package:opencanvasx/src/editor/side_rail.dart';
 import 'package:opencanvasx/src/editor/tools.dart';
 import 'package:opencanvasx/src/editor/viewport.dart';
 import 'package:opencanvasx/src/providers.dart';
@@ -22,6 +26,7 @@ void main() {
   late AppIndex index;
   late InMemoryDesignLibrary library;
   late ProviderContainer container;
+  final exported = <(List<ExportedFile>, ExportFormat)>[];
 
   setUp(() {
     index = AppIndex.inMemory();
@@ -45,8 +50,13 @@ void main() {
         folderCreatorProvider.overrideWithValue((_) async {}),
         suggestedProjectsFolderProvider.overrideWith((ref) async => _folder),
         textMeasurerProvider.overrideWithValue(fakeMeasure),
+        exportSaverProvider.overrideWithValue((files, format) async {
+          exported.add((files, format));
+          return '/exports';
+        }),
       ],
     );
+    exported.clear();
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -67,10 +77,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> showElements(WidgetTester tester) async {
-    await tester.tap(find.text('Elements'));
+  Future<void> showTab(WidgetTester tester, RailTab tab) async {
+    container.read(railTabProvider.notifier).tab = tab;
     await tester.pumpAndSettle();
   }
+
+  Future<void> showElements(WidgetTester tester) =>
+      showTab(tester, RailTab.elements);
 
   Future<void> chord(
     WidgetTester tester,
@@ -193,8 +206,8 @@ void main() {
       tester,
     ) async {
       await openFirstDesign(tester);
-      await showElements(tester);
-      await tester.tap(find.text('Add heading'));
+      await showTab(tester, RailTab.text);
+      await tester.tap(find.text('Add a heading'));
       await tester.pumpAndSettle();
       final text = session().document.objects[roots().single]!;
       expect((text.payload as TextPayload).text, 'Heading');
@@ -279,6 +292,69 @@ void main() {
       expect(roots(), hasLength(2));
     });
 
+    testWidgets('export: SVG through the dialog', (tester) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertShape(ObjectType.star);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Export'));
+      await tester.pumpAndSettle();
+      expect(find.text('File type'), findsOneWidget);
+      await tester.tap(find.text('SVG'));
+      await tester.pumpAndSettle();
+      // The new star is selected, so the selection is exported.
+      expect(find.text('1 file · Selection'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Export').last);
+      await tester.pumpAndSettle();
+      final (files, format) = exported.single;
+      expect(format, ExportFormat.svg);
+      final svg = utf8.decode(files.single.bytes);
+      expect(svg, contains('<polygon points='));
+      expect(files.single.name, 'Selection.svg');
+      expect(find.text('Exported to /exports'), findsOneWidget);
+    });
+
+    testWidgets('export: PNG and PDF of the page render real pixels', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertShape(ObjectType.rect);
+      await tester.pumpAndSettle();
+      final s = session();
+      await tester.runAsync(() async {
+        final png = await buildExport(
+          s.document,
+          options: const ExportOptions(
+            scale: 0.25,
+          ),
+          activePage: s.state.activePageId,
+          selection: const {},
+          media: container.read(mediaCacheProvider),
+        );
+        expect(png.single.name, 'Page 1.png');
+        expect(png.single.bytes.sublist(1, 4), 'PNG'.codeUnits);
+        final pdf = await buildExport(
+          s.document,
+          options: const ExportOptions(
+            format: ExportFormat.pdf,
+            scope: ExportScope.allPages,
+            scale: 0.25,
+          ),
+          activePage: s.state.activePageId,
+          selection: const {},
+          media: container.read(mediaCacheProvider),
+        );
+        expect(latin1.decode(pdf.single.bytes.sublist(0, 5)), '%PDF-');
+        final jpg = await buildExport(
+          s.document,
+          options: const ExportOptions(format: ExportFormat.jpg, scale: 0.25),
+          activePage: s.state.activePageId,
+          selection: const {},
+          media: container.read(mediaCacheProvider),
+        );
+        expect(jpg.single.bytes.sublist(0, 2), [0xFF, 0xD8]);
+      });
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);
@@ -327,8 +403,7 @@ void main() {
       await showElements(tester);
       await tester.tap(find.byTooltip('Rectangle'));
       await tester.pumpAndSettle();
-      container.read(leftTabProvider.notifier).tab = LeftTab.layers;
-      await tester.pumpAndSettle();
+      await showTab(tester, RailTab.layers);
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(
         location: tester.getCenter(find.text('Rectangle 1').first),
@@ -340,9 +415,10 @@ void main() {
       await mouse.removePointer();
     });
 
-    testWidgets('pages: add from the Pages header', (tester) async {
+    testWidgets('pages: add from the Pages panel', (tester) async {
       await openFirstDesign(tester);
-      await tester.tap(find.byTooltip('Add page  (Ctrl+Enter)'));
+      await showTab(tester, RailTab.pages);
+      await tester.tap(find.text('Add page'));
       await tester.pumpAndSettle();
       expect(session().document.pages, hasLength(2));
       expect(find.text('Page 2'), findsWidgets);

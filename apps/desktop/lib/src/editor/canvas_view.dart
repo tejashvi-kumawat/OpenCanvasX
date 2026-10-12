@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:asset_engine/asset_engine.dart';
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
 import 'package:flutter/gestures.dart';
@@ -10,6 +11,7 @@ import 'package:renderer/renderer.dart';
 
 import '../theme/ocx_theme.dart';
 import 'editor_controller.dart';
+import 'panels/asset_tiles.dart';
 import 'text_overlay.dart';
 import 'tools.dart';
 import 'viewport.dart';
@@ -37,9 +39,17 @@ class ShapeDrag extends ElementDrag {
 }
 
 class TextDrag extends ElementDrag {
-  const TextDrag(this.role);
+  const TextDrag(this.role, {this.restyle});
 
   final TextRole role;
+  final TextPayload Function(TextPayload payload)? restyle;
+}
+
+/// An icon or sticker from an asset pack.
+class AssetDrag extends ElementDrag {
+  const AssetDrag(this.item);
+
+  final AssetItem item;
 }
 
 /// The editing surface: pages, selection, handles, tools and pointer input
@@ -920,15 +930,26 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     final frame = _frameAt(local, frames) ?? _activeFrame(frames);
     final page = ref.read(editorProvider)!.document.pages[frame.index];
     final p = _pagePoint(local, frame);
-    final at = Point2D(
-      p.x.clamp(0, page.width).toDouble(),
-      p.y.clamp(0, page.height).toDouble(),
-    );
+    // Boards have no edges; on pages, drops land inside the page.
+    final at =
+        page.isBoard
+            ? p
+            : Point2D(
+              p.x.clamp(0, page.width).toDouble(),
+              p.y.clamp(0, page.height).toDouble(),
+            );
     switch (details.data) {
       case ShapeDrag(:final type):
         _editor.insertShape(type, pageId: frame.pageId, at: at);
-      case TextDrag(:final role):
-        _editor.insertText(role, pageId: frame.pageId, center: at);
+      case TextDrag(:final role, :final restyle):
+        _editor.insertText(
+          role,
+          pageId: frame.pageId,
+          center: at,
+          restyle: restyle,
+        );
+      case AssetDrag(:final item):
+        insertAssetItem(context, ref, item, at: at, pageId: frame.pageId);
     }
     widget.focusNode.requestFocus();
   }

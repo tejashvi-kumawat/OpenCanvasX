@@ -7,6 +7,7 @@ import '../theme/ocx_theme.dart';
 import '../widgets/controls.dart';
 import '../widgets/number_field.dart';
 import '../widgets/object_icons.dart';
+import '../providers.dart';
 import 'editor_controller.dart';
 
 /// Fonts offered until local font discovery lands (P1.5.5). Families that
@@ -167,6 +168,11 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
                   : layerName(widget.session.document, page, single),
           subtitle: single == null ? null : typeLabel(single.type),
         ),
+        if (single?.payload case ImagePayload(:final assetHash))
+          _AssetSource(
+            info: widget.session.document.assets[assetHash],
+            colorable: single!.style?.fill != null,
+          ),
         _AlignmentSection(count: objects.length),
         if (single != null) _layoutSection(single, unit, decimals, step),
         if (single?.payload case final FramePayload frame)
@@ -1006,4 +1012,53 @@ class _NameFieldState extends State<_NameField> {
     decoration: InputDecoration(hintText: widget.hint),
     onSubmitted: widget.onSubmitted,
   );
+}
+
+/// Where a placed image came from and under which licence (P2.1.4).
+class _AssetSource extends ConsumerWidget {
+  const _AssetSource({required this.info, required this.colorable});
+
+  final AssetInfo? info;
+  final bool colorable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ocx;
+    final info = this.info;
+    if (info == null) return const SizedBox.shrink();
+    final ref0 = info.licenseRef;
+    String text;
+    if (ref0 != null && ref0.startsWith('pack:')) {
+      final id = ref0.substring(5).split('@').first;
+      final pack = ref.watch(assetCatalogProvider).value?.pack(id);
+      text =
+          pack == null
+              ? 'From the $id pack'
+              : pack.license.attributionRequired
+              ? '${pack.license.attribution}.'
+              : '${pack.name} ${pack.version} · ${pack.license.spdx} · '
+                  '${pack.license.author}';
+    } else {
+      final kind = switch (info.mime) {
+        'image/svg+xml' => 'SVG',
+        'image/png' => 'PNG',
+        'image/jpeg' => 'JPEG',
+        'image/webp' => 'WebP',
+        'image/gif' => 'GIF',
+        'image/bmp' => 'BMP',
+        _ => info.mime,
+      };
+      final kb = (info.byteLength / 1024).toStringAsFixed(0);
+      text = 'Uploaded $kind · $kb KB · stored in this design';
+    }
+    return PanelSection(
+      title: 'Source',
+      child: Text(
+        colorable ? '$text\nRecolour it with Fill below.' : text,
+        style: OcxText.caption(
+          context,
+        ).copyWith(color: c.textSecondary, fontWeight: FontWeight.w400),
+      ),
+    );
+  }
 }

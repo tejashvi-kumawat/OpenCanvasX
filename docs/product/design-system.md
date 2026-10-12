@@ -109,24 +109,29 @@ Flat by default. Shadows only for floating layers: menus/popovers (`0 4 16 rgba(
 ### Editor
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│ Toolbar 44: [Menu ▾] [Tools…]        Title · Saved        [↶ ↷] [Zoom ▾] [Export] │
-├────────────┬───────────────────────────────────────────┬─────────────┤
-│ Left 240   │                                           │ Right 248   │
-│ Pages      │              Canvas (workspace)           │ Inspector   │
-│ ───────    │                                           │ (selection  │
-│ Layers |   │                                           │  or page)   │
-│ Elements   │                                           │             │
-└────────────┴───────────────────────────────────────────┴─────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ Top bar 44: [⌂] [Menu ▾]          Title · Saved          [↶ ↷] [Zoom ▾] [☼] [Export] │
+├──────┬──────────────┬────────────────────────────────────────┬─────────────────┤
+│ Rail │ Panel 300    │                                        │ Inspector 248   │
+│ 72   │ (Design,     │            Canvas (workspace)          │ (selection or   │
+│ Design│ Elements,   │                                        │  page)          │
+│ Elem.│  Text,       │                                        │                 │
+│ Text │  Uploads,    │      ┌──────────────────────────┐      │                 │
+│ Upl. │  Layers,     │      │ ↖ ✋ │ # ▢▾ ╱▾ T          │      │                 │
+│ Lay. │  Pages)      │      └──────────────────────────┘      │                 │
+│ Pages│              │        floating tool bar               │                 │
+└──────┴──────────────┴────────────────────────────────────────┴─────────────────┘
 ```
 
-- **Toolbar (left → right):** main menu (File, Edit, View, Insert, Arrange as submenus) · tools (Move, Shapes ▾, Line ▾, Text, Hand) · *centre:* document title with save state · undo/redo · zoom menu · primary action (Export — appears with P1.9).
-- **Left sidebar:** tabs *Layers* and *Elements*. The Layers tab shows a collapsible **Pages** list on top and the **Layers** list of the current page below (one place to navigate a document).
+- **Top bar (left → right):** home · main menu (File, Edit, View, Insert, Arrange as submenus) · *centre:* document title with save state · undo/redo · zoom menu · theme · **Export** (the one primary button).
+- **Content rail (72 px):** icon + 10.5 px label per tab: *Design* (page/frame sizes, templates as they land), *Elements* (shapes, lines, frames, icons, stickers — searchable, "See all" opens a filtered browser with the pack's licence line), *Text* (text boxes and presets), *Uploads* (import files, reuse images in the design), *Layers* (layer tree of the active page), *Pages* (page/board thumbnails, add, duplicate, reorder, delete). Clicking the open tab collapses the 300 px panel.
+- **Floating tool bar:** centred 16 px above the canvas bottom, `surface`, 1 px border, radius 12, menu shadow. Order: Move, Hand · Frame ▾, Shapes ▾, Lines ▾, Text. Tools do not live in the top bar.
 - **Right sidebar (inspector):** always the same section order (below). Empty state = page properties.
-- No bottom bar: zoom lives in the toolbar, page navigation in the Pages list.
+- No bottom bar: zoom lives in the top bar, page navigation in the Pages panel.
 
 ### Inspector section order
 
+0. **Source** — only for placed images: pack, version, licence and author (attribution text when the licence needs it) or "Uploaded …".
 1. **Alignment** — one row: align left/centre/right/top/middle/bottom; distribute (when ≥ 3 selected).
 2. **Layout** — X, Y · W, H (+ lock ratio) · rotation, corner radius.
 3. **Text** — only for text: font, weight, size · alignment · line height, letter spacing.

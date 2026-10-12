@@ -107,13 +107,15 @@ DesignObject newText(
   required Point2D Function(TextPayload text) measure,
   String? text,
   Point2D? center,
+  TextPayload Function(TextPayload payload)? restyle,
 }) {
   final base = math.min(page.width, page.height);
-  final payload = TextPayload(
+  var payload = TextPayload(
     text ?? role.label,
     fontSize: _round(math.max(base * role.sizeFactor, 1)),
     fontWeight: role.weight,
   );
+  if (restyle != null) payload = restyle(payload);
   final size = measure(payload);
   final c = center ?? Point2D(page.width / 2, page.height / 2);
   return DesignObject(

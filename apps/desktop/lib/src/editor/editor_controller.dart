@@ -391,6 +391,7 @@ class EditorController extends Notifier<EditorSession?> {
     ArgbColor? tint,
     Point2D? at,
     double? size,
+    double? sizePx,
     PageId? pageId,
   }) {
     final check = checkMedia(bytes);
@@ -413,6 +414,7 @@ class EditorController extends Notifier<EditorSession?> {
     );
     final longest =
         size ??
+        (sizePx == null ? null : sizePx * pxToUnit) ??
         math.min(
           math.max(w, h) * pxToUnit,
           page.isBoard ? 800 * pxToUnit : math.min(page.width, page.height) / 2,
@@ -582,6 +584,7 @@ class EditorController extends Notifier<EditorSession?> {
     Point2D? center,
     PageId? pageId,
     String? text,
+    TextPayload Function(TextPayload payload)? restyle,
   }) {
     final document = _editor.document;
     final page =
@@ -596,6 +599,7 @@ class EditorController extends Notifier<EditorSession?> {
       text: text,
       center: center ?? (topLeft == null ? _boardCenter(page) : null),
       measure: measure,
+      restyle: restyle,
     );
     if (topLeft != null) {
       object = object.copyWith(
@@ -958,6 +962,21 @@ class EditorController extends Notifier<EditorSession?> {
   // --------------------------------------------------------------- pages
 
   /// Adds a blank page with the active page's size after it.
+  /// Adds a page of [preset]'s size after the active page (or a board).
+  void addPageFromPreset(PagePreset preset) {
+    final page = preset.createPage(PageId.generate());
+    _commit(
+      engine.addPage(
+        _editor.document,
+        page,
+        index: _editor.activePageIndex + 1,
+      ),
+      activePage: page.id,
+      select: const {},
+    );
+    ref.read(viewportProvider.notifier).reset();
+  }
+
   /// Adds an unbounded board (free canvas) after the active page.
   void addBoard() {
     final page = pagePresets

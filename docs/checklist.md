@@ -133,8 +133,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.5.6 Font license metadata check (no unlicensed bundling)
 
 ## P1.6 Images & SVG (Basic)
-- [ ] P1.6.1 Import PNG, JPEG, WebP, GIF, BMP
-- [ ] P1.6.2 Import SVG (validated, sanitized)
+- [x] P1.6.1 Import PNG, JPEG, WebP, GIF, BMP
+- [x] P1.6.2 Import SVG (validated, sanitized)
 - [ ] P1.6.3 Crop, resize, rotate, flip
 - [ ] P1.6.4 Rounded corners, mask, clipping
 - [ ] P1.6.5 Content-hash asset storage + thumbnail cache
@@ -151,9 +151,9 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.8.3 Named checkpoints + snapshots + restore
 
 ## P1.9 Export (Basic)
-- [ ] P1.9.1 PNG export (scale, DPI, transparency)
+- [x] P1.9.1 PNG export (scale, DPI, transparency)
 - [ ] P1.9.2 JPEG / WebP export
-- [ ] P1.9.3 SVG export (native vector preserved)
+- [x] P1.9.3 SVG export (native vector preserved)
 - [ ] P1.9.4 PDF export (vector, page size, metadata)
 - [ ] P1.9.5 Background export on worker thread
 
@@ -179,9 +179,9 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 
 ## P2.1 Asset Engine
 - [x] P2.1.1 Asset metadata schema (id, source, author, license, license URL, attribution, tags, dimensions, hash)
-- [ ] P2.1.2 Asset library panel (browse, search, filter, tags)
+- [x] P2.1.2 Asset library panel (browse, search, filter, tags)
 - [ ] P2.1.3 Asset types: photos, icons, shapes, stickers, patterns, textures, frames, backgrounds
-- [ ] P2.1.4 License inspector UI + attribution tracking
+- [x] P2.1.4 License inspector UI + attribution tracking
 - [x] P2.1.5 Reject assets lacking license metadata
 - [ ] P2.1.6 Asset validation pipeline (images, SVG, archives, fonts, metadata)
 - [x] P2.1.7 Seed original/openly-licensed asset pack with `licenses/` folder

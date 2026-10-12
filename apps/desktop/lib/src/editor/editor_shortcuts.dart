@@ -45,6 +45,7 @@ abstract final class EditorKeys {
   static final bringToFront = cmd(LogicalKeyboardKey.bracketRight, shift: true);
   static final sendToBack = cmd(LogicalKeyboardKey.bracketLeft, shift: true);
   static final group = cmd(LogicalKeyboardKey.keyG);
+  static final export = cmd(LogicalKeyboardKey.keyE, shift: true);
   static final frameSelection = SingleActivator(
     LogicalKeyboardKey.keyG,
     control: !_isMac,
@@ -78,7 +79,10 @@ bool _typing() {
 }
 
 /// Key bindings for [CallbackShortcuts] around the editor.
-Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
+Map<ShortcutActivator, VoidCallback> editorShortcuts(
+  WidgetRef ref, {
+  VoidCallback? onExport,
+}) {
   final editor = ref.read(editorProvider.notifier);
   final view = ref.read(viewportProvider.notifier);
   final tools = ref.read(toolProvider.notifier);
@@ -113,6 +117,7 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(WidgetRef ref) {
       editor.selectParentOrClear();
     },
     EditorKeys.group: editor.groupSelection,
+    if (onExport != null) EditorKeys.export: onExport,
     EditorKeys.frameSelection: editor.frameSelection,
     EditorKeys.ungroup: editor.ungroupSelection,
     EditorKeys.editText: unlessTyping(editSelectedText),

@@ -22,6 +22,11 @@ Build-time / runtime dependencies (Phase 0):
 - vector_graphics, vector_graphics_codec, vector_graphics_compiler, path_parsing — BSD-3-Clause, Copyright 2013 The Flutter Authors (transitive, via flutter_svg)
 - xml, petitparser — MIT, Copyright (c) 2006-2025 Lukas Renggli (transitive, via flutter_svg)
 - http — BSD-3-Clause, Copyright 2014 the Dart project authors (transitive, via flutter_svg; OpenCanvasX never loads SVGs from the network)
+- image — MIT, Copyright (c) 2013-2022 Brendan Duncan (https://pub.dev/packages/image)
+- pdf, barcode — Apache-2.0, Copyright (C) 2017 David PHAM-VAN (https://pub.dev/packages/pdf); no NOTICE file upstream
+- bidi — MIT, Copyright (c) 2020 Mahdi K. Fard (transitive, via pdf)
+- qr — BSD-3-Clause, Copyright 2014 the Dart QR project authors (transitive, via barcode)
+- vector_math — BSD-3-Clause, Copyright 2013 The Flutter Authors (transitive, via pdf)
 - Rust crates: see rust/Cargo.lock and https://crates.io per crate
 
 Bundled asset packs (packages/asset_packs/assets/packs/<id>/, each with its

@@ -40,6 +40,37 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
   ];
   static const _lines = [ObjectType.line, ObjectType.arrow];
 
+  /// Popular picks shown before searching.
+  static const _featuredIcons = [
+    'lucide/heart',
+    'lucide/star',
+    'lucide/check',
+    'lucide/arrow-right',
+    'lucide/sparkles',
+    'lucide/rocket',
+    'lucide/camera',
+    'lucide/music',
+    'lucide/sun',
+    'lucide/leaf',
+    'lucide/coffee',
+    'lucide/gift',
+    'lucide/map-pin',
+    'lucide/mail',
+    'lucide/phone',
+  ];
+  static const _featuredStickers = [
+    'twemoji/1f600',
+    'twemoji/1f60d',
+    'twemoji/1f602',
+    'twemoji/1f60e',
+    'twemoji/1f44d',
+    'twemoji/2764',
+    'twemoji/1f525',
+    'twemoji/2b50',
+    'twemoji/1f389',
+    'twemoji/1f680',
+  ];
+
   @override
   void dispose() {
     _search.dispose();
@@ -134,21 +165,17 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
     final frames =
         framePresets.where((p) => _matches('frame ${p.name}')).toList();
     final icons =
-        catalog?.search(
-          _query,
-          kind: AssetKind.icon,
-          packId: _query.isEmpty ? 'lucide' : null,
-          limit: _query.isEmpty ? 15 : 60,
-        ) ??
-        const <AssetItem>[];
+        catalog == null
+            ? const <AssetItem>[]
+            : _query.isEmpty
+            ? catalog.items(_featuredIcons)
+            : catalog.search(_query, kind: AssetKind.icon, limit: 60);
     final stickers =
-        catalog?.search(
-          _query,
-          kind: AssetKind.sticker,
-          category: _query.isEmpty ? 'Faces' : null,
-          limit: _query.isEmpty ? 10 : 40,
-        ) ??
-        const <AssetItem>[];
+        catalog == null
+            ? const <AssetItem>[]
+            : _query.isEmpty
+            ? catalog.items(_featuredStickers)
+            : catalog.search(_query, kind: AssetKind.sticker, limit: 40);
     final nothing =
         shapes.isEmpty &&
         lines.isEmpty &&

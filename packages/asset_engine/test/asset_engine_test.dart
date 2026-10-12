@@ -122,6 +122,15 @@ void main() {
       expect(catalog.search('heart house'), isEmpty);
     });
 
+    test('looks items up by id', () {
+      expect(catalog.item('demo/home')!.name, 'Home');
+      expect(catalog.item('demo/nope'), isNull);
+      expect(catalog.items(['demo/home', 'x', 'demo/heart']).map((i) => i.id), [
+        'demo/home',
+        'demo/heart',
+      ]);
+    });
+
     test('filters by kind, pack, category and style', () {
       expect(catalog.search(''), hasLength(3));
       expect(catalog.search('', kind: AssetKind.sticker), isEmpty);

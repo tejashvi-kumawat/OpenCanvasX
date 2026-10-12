@@ -7,6 +7,20 @@ final class AssetCatalog {
 
   final List<AssetPack> packs;
 
+  late final Map<String, AssetItem> _byId = {
+    for (final pack in packs)
+      for (final item in pack.items) item.id: item,
+  };
+
+  /// The item with [id] (`pack/stem`), if installed.
+  AssetItem? item(String id) => _byId[id];
+
+  /// Items for [ids] that are installed, in the given order.
+  List<AssetItem> items(Iterable<String> ids) => [
+    for (final id in ids)
+      if (_byId[id] case final item?) item,
+  ];
+
   AssetPack? pack(String id) => packs.where((p) => p.id == id).firstOrNull;
 
   /// Items matching every word of [query] (all items when blank), best

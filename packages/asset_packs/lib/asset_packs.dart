@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:asset_engine/asset_engine.dart';
 import 'package:flutter/services.dart';
+import 'package:template_engine/template_engine.dart';
 
 /// Bundle key of a pack file.
 String packAssetKey(String packId, String file) =>
@@ -44,5 +45,30 @@ Future<AssetCatalog> loadBundledCatalog(
 /// Bytes of [item].
 Future<Uint8List> loadItemBytes(AssetBundle bundle, AssetItem item) async {
   final data = await bundle.load(packAssetKey(item.packId, item.file));
+  return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+}
+
+/// Official templates bundled with the app (P2.2.6–P2.2.8), from
+/// `assets/templates/index.json`. Entries failing validation are skipped.
+Future<List<TemplateInfo>> loadBundledTemplates(AssetBundle bundle) async {
+  final json =
+      jsonDecode(
+            await bundle.loadString(
+              'packages/asset_packs/assets/templates/index.json',
+            ),
+          )
+          as Map<String, Object?>;
+  return parseTemplateIndex(json);
+}
+
+/// The `.opencanvasx` bytes of [template]; decode them with `storage`'s
+/// `decodeProject`.
+Future<Uint8List> loadTemplateBytes(
+  AssetBundle bundle,
+  TemplateInfo template,
+) async {
+  final data = await bundle.load(
+    'packages/asset_packs/assets/templates/${template.file}',
+  );
   return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }

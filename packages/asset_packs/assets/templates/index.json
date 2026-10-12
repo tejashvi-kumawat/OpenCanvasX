@@ -1,0 +1,485 @@
+{
+ "templates": [
+  {
+   "id": "social-bold-sale",
+   "name": "Bold sale",
+   "category": "social",
+   "file": "social-bold-sale.opencanvasx",
+   "width": 1080.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "instagram",
+    "sale",
+    "shop",
+    "discount"
+   ]
+  },
+  {
+   "id": "social-quote",
+   "name": "Quote card",
+   "category": "social",
+   "file": "social-quote.opencanvasx",
+   "width": 1080.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "instagram",
+    "quote",
+    "inspiration"
+   ]
+  },
+  {
+   "id": "social-launch",
+   "name": "Product launch",
+   "category": "social",
+   "file": "social-launch.opencanvasx",
+   "width": 1080.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "instagram",
+    "launch",
+    "tech",
+    "new"
+   ]
+  },
+  {
+   "id": "social-tips",
+   "name": "Tips carousel",
+   "category": "social",
+   "file": "social-tips.opencanvasx",
+   "width": 1080.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 4,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "instagram",
+    "carousel",
+    "tips",
+    "education"
+   ]
+  },
+  {
+   "id": "social-event",
+   "name": "Event announcement",
+   "category": "social",
+   "file": "social-event.opencanvasx",
+   "width": 1080.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "instagram",
+    "event",
+    "workshop",
+    "date"
+   ]
+  },
+  {
+   "id": "social-linkedin-hiring",
+   "name": "We are hiring",
+   "category": "social",
+   "file": "social-linkedin-hiring.opencanvasx",
+   "width": 1200.0,
+   "height": 627.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "linkedin",
+    "hiring",
+    "job",
+    "career"
+   ]
+  },
+  {
+   "id": "story-routine",
+   "name": "Morning routine",
+   "category": "story",
+   "file": "story-routine.opencanvasx",
+   "width": 1080.0,
+   "height": 1920.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "story",
+    "routine",
+    "checklist",
+    "wellness"
+   ]
+  },
+  {
+   "id": "story-poll",
+   "name": "Question poll",
+   "category": "story",
+   "file": "story-poll.opencanvasx",
+   "width": 1080.0,
+   "height": 1920.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "story",
+    "poll",
+    "question",
+    "engagement"
+   ]
+  },
+  {
+   "id": "story-travel",
+   "name": "Travel diary",
+   "category": "story",
+   "file": "story-travel.opencanvasx",
+   "width": 1080.0,
+   "height": 1920.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0 AND CC-BY-4.0",
+   "license_url": "https://creativecommons.org/licenses/by/4.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "story",
+    "travel",
+    "holiday",
+    "trip"
+   ]
+  },
+  {
+   "id": "video-tutorial",
+   "name": "Tutorial thumbnail",
+   "category": "video",
+   "file": "video-tutorial.opencanvasx",
+   "width": 1280.0,
+   "height": 720.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "youtube",
+    "thumbnail",
+    "tutorial",
+    "how to"
+   ]
+  },
+  {
+   "id": "video-podcast",
+   "name": "Podcast episode",
+   "category": "video",
+   "file": "video-podcast.opencanvasx",
+   "width": 1280.0,
+   "height": 720.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "youtube",
+    "podcast",
+    "episode",
+    "audio"
+   ]
+  },
+  {
+   "id": "deck-pitch",
+   "name": "Pitch deck",
+   "category": "presentation",
+   "file": "deck-pitch.opencanvasx",
+   "width": 1920.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 5,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "presentation",
+    "pitch",
+    "startup",
+    "slides"
+   ]
+  },
+  {
+   "id": "deck-lecture",
+   "name": "Minimal lecture",
+   "category": "presentation",
+   "file": "deck-lecture.opencanvasx",
+   "width": 1920.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 3,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "presentation",
+    "education",
+    "lecture",
+    "class"
+   ]
+  },
+  {
+   "id": "print-poster",
+   "name": "Event poster",
+   "category": "print",
+   "file": "print-poster.opencanvasx",
+   "width": 210.0,
+   "height": 297.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "poster",
+    "a4",
+    "event",
+    "concert",
+    "print"
+   ]
+  },
+  {
+   "id": "print-menu",
+   "name": "Cafe menu",
+   "category": "print",
+   "file": "print-menu.opencanvasx",
+   "width": 210.0,
+   "height": 297.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "menu",
+    "cafe",
+    "restaurant",
+    "food",
+    "a4"
+   ]
+  },
+  {
+   "id": "print-flyer",
+   "name": "Yoga class flyer",
+   "category": "print",
+   "file": "print-flyer.opencanvasx",
+   "width": 210.0,
+   "height": 297.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "flyer",
+    "yoga",
+    "fitness",
+    "class",
+    "a4"
+   ]
+  },
+  {
+   "id": "card-modern",
+   "name": "Modern business card",
+   "category": "business",
+   "file": "card-modern.opencanvasx",
+   "width": 85.0,
+   "height": 55.0,
+   "unit": "mm",
+   "pages": 2,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "business card",
+    "card",
+    "contact"
+   ]
+  },
+  {
+   "id": "card-classic",
+   "name": "Classic business card",
+   "category": "business",
+   "file": "card-classic.opencanvasx",
+   "width": 85.0,
+   "height": 55.0,
+   "unit": "mm",
+   "pages": 2,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "business card",
+    "card",
+    "elegant"
+   ]
+  },
+  {
+   "id": "doc-resume",
+   "name": "Clean resume",
+   "category": "document",
+   "file": "doc-resume.opencanvasx",
+   "width": 210.0,
+   "height": 297.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "resume",
+    "cv",
+    "job",
+    "a4"
+   ]
+  },
+  {
+   "id": "event-certificate",
+   "name": "Certificate of achievement",
+   "category": "event",
+   "file": "event-certificate.opencanvasx",
+   "width": 297.0,
+   "height": 210.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "certificate",
+    "award",
+    "achievement",
+    "a4"
+   ]
+  },
+  {
+   "id": "event-birthday",
+   "name": "Birthday invitation",
+   "category": "event",
+   "file": "event-birthday.opencanvasx",
+   "width": 127.0,
+   "height": 178.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0 AND CC-BY-4.0",
+   "license_url": "https://creativecommons.org/licenses/by/4.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "invitation",
+    "birthday",
+    "party"
+   ]
+  },
+  {
+   "id": "event-save-the-date",
+   "name": "Save the date",
+   "category": "event",
+   "file": "event-save-the-date.opencanvasx",
+   "width": 127.0,
+   "height": 178.0,
+   "unit": "mm",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "invitation",
+    "wedding",
+    "save the date"
+   ]
+  },
+  {
+   "id": "web-mobile-app",
+   "name": "Mobile app screens",
+   "category": "web",
+   "file": "web-mobile-app.opencanvasx",
+   "width": 1920.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "app",
+    "mobile",
+    "ui",
+    "prototype",
+    "board"
+   ],
+   "board": true
+  },
+  {
+   "id": "web-landing",
+   "name": "Landing page",
+   "category": "web",
+   "file": "web-landing.opencanvasx",
+   "width": 1920.0,
+   "height": 1080.0,
+   "unit": "px",
+   "pages": 1,
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "author": "OpenCanvasX contributors",
+   "version": "1.0.0",
+   "tags": [
+    "website",
+    "landing page",
+    "web",
+    "board"
+   ],
+   "board": true
+  }
+ ]
+}

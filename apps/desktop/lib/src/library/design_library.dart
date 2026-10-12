@@ -42,6 +42,14 @@ abstract interface class DesignLibrary {
     required DesignPage page,
   });
 
+  /// Saves [document] (e.g. made from a template) as a new design in
+  /// [folder]; returns its path.
+  Future<String> createFrom(
+    String folder,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  });
+
   /// Opens a design, with crash recovery (see `openProject`).
   Future<OpenedProject> open(String path);
 
@@ -106,6 +114,17 @@ class FileDesignLibrary implements DesignLibrary {
         pages: [page],
       ),
     );
+    return path;
+  }
+
+  @override
+  Future<String> createFrom(
+    String folder,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  }) async {
+    final path = newProjectPath(folder, document.metadata.title);
+    await saveProject(path, document, assets: assets);
     return path;
   }
 

@@ -1,5 +1,7 @@
-/// OpenCanvasX — `template_engine` package (Phase 0 skeleton).
+/// OpenCanvasX template engine (template-architecture.md): template
+/// metadata, validation, creating designs from templates and inserting
+/// template pages or frames into a design.
 library;
 
-/// Package marker for Phase 0; replaced with real APIs in later phases.
-String packageVersion() => '0.0.1';
+export 'src/template_apply.dart';
+export 'src/template_info.dart';

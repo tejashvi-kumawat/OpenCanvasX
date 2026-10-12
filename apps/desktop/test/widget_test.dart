@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:opencanvasx/main.dart';
 import 'package:opencanvasx/src/editor/canvas_view.dart';
 import 'package:opencanvasx/src/export/exporter.dart';
+import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
 import 'package:opencanvasx/src/editor/side_rail.dart';
 import 'package:opencanvasx/src/editor/tools.dart';
@@ -35,7 +36,11 @@ void main() {
 
   tearDown(() => index.close());
 
-  Future<void> pumpApp(WidgetTester tester, {bool withFolder = true}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    bool withFolder = true,
+    bool withTemplates = false,
+  }) async {
     tester.view
       ..physicalSize = const Size(1600, 1000)
       ..devicePixelRatio = 1;
@@ -50,6 +55,10 @@ void main() {
         folderCreatorProvider.overrideWithValue((_) async {}),
         suggestedProjectsFolderProvider.overrideWith((ref) async => _folder),
         textMeasurerProvider.overrideWithValue(fakeMeasure),
+        // The bundled gallery is tested on its own; elsewhere it would push
+        // recent designs below the test window.
+        if (!withTemplates)
+          templatesProvider.overrideWith((ref) async => const []),
         exportSaverProvider.overrideWithValue((files, format) async {
           exported.add((files, format));
           return '/exports';
@@ -73,6 +82,8 @@ void main() {
   Future<void> openFirstDesign(WidgetTester tester) async {
     library.seed(_folder, 'Launch poster');
     await pumpApp(tester);
+    await tester.ensureVisible(find.text('Launch poster'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Launch poster'));
     await tester.pumpAndSettle();
   }
@@ -112,7 +123,7 @@ void main() {
       await pumpApp(tester, withFolder: false);
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(find.text('Start a design'), findsOneWidget);
+      expect(find.text('What will you design today?'), findsOneWidget);
       expect(index.settings.get(AppSettings.projectsRootKey), _folder);
     });
   });
@@ -152,12 +163,35 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester);
-      await tester.tap(find.text('Story'));
+      await tester.tap(find.text('Story').first);
       await tester.pumpAndSettle();
       expect(library.files, hasLength(1));
       final page = session().activePage;
       expect((page.width, page.height), (1080.0, 1920.0));
       expect(find.text('Untitled story'), findsOneWidget);
+    });
+
+    testWidgets('templates: the gallery creates a design from a template', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        await pumpApp(tester, withTemplates: true);
+        // Let the bundled index and template files load.
+        for (var i = 0; i < 20; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('Start from a template'), findsOneWidget);
+      expect(find.text('Bold sale'), findsOneWidget);
+      await tester.tap(find.text('Bold sale'));
+      await tester.pumpAndSettle();
+      expect(library.files, hasLength(1));
+      final doc = session().document;
+      expect(doc.metadata.title, 'Bold sale');
+      expect(doc.pages.single.width, 1080);
+      expect(doc.objects.length, greaterThan(5));
     });
 
     testWidgets('the create dialog supports custom sizes', (tester) async {
@@ -323,9 +357,7 @@ void main() {
       await tester.runAsync(() async {
         final png = await buildExport(
           s.document,
-          options: const ExportOptions(
-            scale: 0.25,
-          ),
+          options: const ExportOptions(scale: 0.25),
           activePage: s.state.activePageId,
           selection: const {},
           media: container.read(mediaCacheProvider),
@@ -453,7 +485,7 @@ void main() {
       await tester.tap(find.byTooltip('Home'));
       await tester.pumpAndSettle();
       expect(container.read(editorProvider), isNull);
-      expect(find.text('Start a design'), findsOneWidget);
+      expect(find.text('What will you design today?'), findsOneWidget);
       final saved = library.files.values.single;
       expect(saved.objects.values.single.type, ObjectType.rect);
       expect(defaultShapeFill, isNotNull);

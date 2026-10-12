@@ -73,13 +73,30 @@ class InMemoryDesignLibrary implements DesignLibrary {
   }
 
   @override
+  Future<String> createFrom(
+    String folder,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  }) async {
+    final title = document.metadata.title;
+    var path = '$folder/$title$projectFileExtension';
+    for (var n = 2; files.containsKey(path); n++) {
+      path = '$folder/$title $n$projectFileExtension';
+    }
+    files[path] = document;
+    savedAssets[path] = assets;
+    modified[path] = _tick();
+    return path;
+  }
+
+  @override
   Future<OpenedProject> open(String path) async {
     final doc = files[path];
     if (doc == null) throw FileSystemException('No such design', path);
     return OpenedProject(
       contents: ProjectContents(
         document: doc,
-        assets: const {},
+        assets: savedAssets[path] ?? const {},
         missingAssets: const [],
         issues: const [],
       ),

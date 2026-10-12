@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../home/preset_frame.dart';
+import '../templates/template_gallery.dart';
 import '../theme/ocx_theme.dart';
 import 'editor_controller.dart';
 import 'left_panel.dart';
@@ -195,13 +196,20 @@ class _RailButton extends StatelessWidget {
   }
 }
 
-/// Design: start points for the open design — page and frame sizes now,
-/// the template library as it lands (P2.2).
-class TemplatesPanel extends ConsumerWidget {
+/// Design: the template library (P2.2.3) and page or frame sizes. On a
+/// board, templates and sizes arrive as frames; otherwise as new pages.
+class TemplatesPanel extends ConsumerStatefulWidget {
   const TemplatesPanel({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TemplatesPanel> createState() => _TemplatesPanelState();
+}
+
+class _TemplatesPanelState extends ConsumerState<TemplatesPanel> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(editorProvider);
     final editor = ref.read(editorProvider.notifier);
     final c = context.ocx;
@@ -211,12 +219,33 @@ class TemplatesPanel extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: Space.xl),
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(Space.md, Space.md, Space.md, 0),
+          padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, 0),
+          child: TextField(
+            onChanged: (v) => setState(() => _query = v.trim()),
+            style: OcxText.body(context),
+            decoration: const InputDecoration(
+              hintText: 'Search templates',
+              prefixIcon: Icon(Icons.search, size: Chrome.icon),
+              prefixIconConstraints: BoxConstraints(minWidth: 28),
+            ),
+          ),
+        ),
+        const SectionHeader(title: 'Templates'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.md),
+          child: TemplateGallery(
+            columns: 2,
+            shrinkWrap: true,
+            query: _query,
+            onUse: (_, contents) => editor.insertTemplate(contents),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, 0),
           child: Text(
             board
-                ? 'Add a frame to the board. Frames are screens, posts or '
-                    'slides you can design and export one by one.'
-                : 'Add a page of any size to this design.',
+                ? 'Templates and sizes are added to this board as frames.'
+                : 'Templates are added as new pages after this one.',
             style: OcxText.caption(
               context,
             ).copyWith(color: c.textTertiary, fontWeight: FontWeight.w400),
@@ -224,7 +253,7 @@ class TemplatesPanel extends ConsumerWidget {
         ),
         for (final category in PresetCategory.values)
           if (presets.any((p) => p.category == category)) ...[
-            SectionHeader(title: category.label),
+            SectionHeader(title: '${category.label} — blank'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.md),
               child: GridView.count(

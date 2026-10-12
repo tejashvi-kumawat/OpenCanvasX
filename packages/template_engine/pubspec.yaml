@@ -1,5 +1,5 @@
 name: template_engine
-description: OpenCanvasX — template_engine (skeleton).
+description: OpenCanvasX — template metadata, validation and application.
 version: 0.0.1
 publish_to: none
 
@@ -9,3 +9,9 @@ environment:
 dev_dependencies:
   test: ^1.25.0
   very_good_analysis: ^7.0.0
+dependencies:
+  design_engine:
+    path: ../design_engine
+  document_model:
+    path: ../document_model
+  meta: ^1.19.0

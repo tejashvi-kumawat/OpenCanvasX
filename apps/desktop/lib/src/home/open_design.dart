@@ -2,6 +2,7 @@ import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:storage/storage.dart';
+import 'package:template_engine/template_engine.dart';
 
 import '../editor/editor_controller.dart';
 import '../editor/editor_page.dart';
@@ -63,6 +64,31 @@ Future<void> createDesign(
   } on Object catch (error) {
     messenger.showSnackBar(
       SnackBar(content: Text('Could not create the design. $error')),
+    );
+  }
+}
+
+/// Creates a design from template [contents] (P2.2.4) — fresh ids, the
+/// template's assets — and opens it.
+Future<void> createFromTemplate(
+  BuildContext context,
+  WidgetRef ref, {
+  required String name,
+  required ProjectContents contents,
+}) async {
+  final folder = ref.read(projectsFolderProvider);
+  if (folder == null) return;
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final document = instantiateTemplate(contents.document, title: name);
+    final path = await ref
+        .read(designLibraryProvider)
+        .createFrom(folder, document, assets: contents.assets);
+    ref.invalidate(designsProvider);
+    if (context.mounted) await openDesign(context, ref, path);
+  } on Object catch (error) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('Could not use this template. $error')),
     );
   }
 }

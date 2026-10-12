@@ -29,7 +29,7 @@ Rules:
 
 - **No gradients** anywhere in the UI (backgrounds, buttons, logo, bars).
 - **One primary (accent) button per view.** Everything else is secondary or ghost.
-- The accent is never used for decoration, large background areas or illustrations.
+- The accent is never used for decoration, large background areas or illustrations — with one exception: the **home hero**, a single solid Cobalt panel (no gradient) at the top of Home, may carry flat accent tints of simple shapes.
 
 ### Neutrals
 
@@ -144,9 +144,9 @@ Each section: header row (title 11 px semibold + trailing actions such as `+`), 
 
 ### Home
 
-- Left sidebar 220 px: logo, primary "Create design" button, navigation (Home, Designs), storage status, theme.
-- Content max width 1200 px, 32 px gutters: heading + search, "Start a design" presets row, "Recent designs" grid.
-- Cards: thumbnail well (`surfaceSunken`), title (`title`), meta line (`caption`).
+- Left sidebar 220 px: logo, primary "Create design" button, navigation (Home, Templates, Your designs), storage status, theme.
+- Content max width 1240 px, 32 px gutters. **Home:** hero (solid accent panel, 220 px, radius 12: question in `display` on `onAccent`, one-line subtitle, 480 px search over templates and designs) · quick kinds (52 px round `surface` buttons with a 20 px accent icon and caption: Free canvas, Website & app, Social post, Story, Presentation, Video, Print, Custom size) · "Start from a template" (10 cards, See all) · "Blank sizes" row · "Recent designs" (8, See all). **Templates:** title, search, category chips, full gallery. **Your designs:** title, search, every design.
+- Cards: thumbnail well (`surfaceSunken`, live render of the first page or the board's frames), title (`bodyStrong`/`title`), meta line (`caption`); hover = accent border + light shadow.
 
 ## 6. Components
 

@@ -4,8 +4,11 @@ import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:renderer/renderer.dart';
+import 'package:storage/storage.dart';
+import 'package:template_engine/template_engine.dart';
 
 import '../library/design_library.dart';
+import '../templates/template_gallery.dart';
 import '../providers.dart';
 import '../theme/ocx_theme.dart';
 import '../widgets/brand_mark.dart';
@@ -15,9 +18,9 @@ import 'create_design_dialog.dart';
 import 'open_design.dart';
 import 'preset_frame.dart';
 
-enum _Section { home, all }
+enum _Section { home, templates, designs }
 
-/// Presets on the home row, most common first.
+/// Presets on the "Blank sizes" row, most common first.
 const _quickPresetIds = [
   'instagram_post',
   'instagram_story',
@@ -27,7 +30,19 @@ const _quickPresetIds = [
   'business_card',
 ];
 
-/// Home (design-system.md §5 "Home"): start a design or reopen one.
+/// Kinds of design offered under the hero, each starting a blank design.
+const _quickKinds = [
+  ('board', 'Free canvas', Icons.dashboard_outlined),
+  ('board_web', 'Website & app', Icons.web_outlined),
+  ('instagram_post', 'Social post', Icons.tag),
+  ('instagram_story', 'Story', Icons.smartphone_outlined),
+  ('presentation_16_9', 'Presentation', Icons.slideshow_outlined),
+  ('youtube_thumbnail', 'Video', Icons.smart_display_outlined),
+  ('a4', 'Print', Icons.print_outlined),
+];
+
+/// Home (design-system.md §5 "Home"): a hero to start from, quick design
+/// kinds, templates, blank sizes and recent designs.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -38,6 +53,13 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   _Section _section = _Section.home;
   String _query = '';
+  final TextEditingController _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   Future<void> _create({PagePreset? preset, bool custom = false}) async {
     final request = await showCreateDesignDialog(
@@ -56,6 +78,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     page: preset.createPage(PageId.generate()),
   );
 
+  void _useTemplate(TemplateInfo info, ProjectContents contents) =>
+      createFromTemplate(context, ref, name: info.name, contents: contents);
+
+  void _setQuery(String value) => setState(() => _query = value.trim());
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,7 +90,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         children: [
           _Sidebar(
             section: _section,
-            onSection: (s) => setState(() => _section = s),
+            onSection:
+                (s) => setState(() {
+                  _section = s;
+                  _search.clear();
+                  _query = '';
+                }),
             onCreate: _create,
           ),
           const VerticalDivider(width: 1),
@@ -78,29 +110,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final folderProblem = ref.watch(projectsFolderStatusProvider).asData?.value;
     final c = context.ocx;
 
-    final header = Row(
-      children: [
-        Expanded(
-          child: Text(
-            _section == _Section.home ? 'Home' : 'All designs',
-            style: OcxText.display(context),
-          ),
-        ),
-        SizedBox(
-          width: 260,
-          child: TextField(
-            onChanged: (v) => setState(() => _query = v.trim()),
-            style: OcxText.body(context),
-            decoration: const InputDecoration(
-              hintText: 'Search designs',
-              prefixIcon: Icon(Icons.search, size: Chrome.icon),
-              prefixIconConstraints: BoxConstraints(minWidth: 28),
-            ),
-          ),
-        ),
-      ],
-    );
-
     final list = designs.asData?.value ?? const <DesignSummary>[];
     final shown =
         _query.isEmpty
@@ -110,128 +119,360 @@ class _HomePageState extends ConsumerState<HomePage> {
                   (d) => d.title.toLowerCase().contains(_query.toLowerCase()),
                 )
                 .toList();
+    final recent =
+        _section == _Section.home && _query.isEmpty
+            ? shown.take(8).toList()
+            : shown;
+
+    final searchField = TextField(
+      controller: _search,
+      onChanged: _setQuery,
+      style: OcxText.body(context),
+      decoration: InputDecoration(
+        hintText: switch (_section) {
+          _Section.home => 'Search templates and your designs',
+          _Section.templates => 'Search templates',
+          _Section.designs => 'Search your designs',
+        },
+        prefixIcon: const Icon(Icons.search, size: Chrome.icon),
+        prefixIconConstraints: const BoxConstraints(minWidth: 28),
+      ),
+    );
+
+    final top = <Widget>[
+      if (_section == _Section.home)
+        _Hero(search: searchField)
+      else
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _section == _Section.templates ? 'Templates' : 'Your designs',
+                style: OcxText.display(context),
+              ),
+            ),
+            SizedBox(width: 300, child: searchField),
+          ],
+        ),
+      if (folderProblem != null) ...[
+        const SizedBox(height: Space.lg),
+        _Notice(
+          message:
+              '${describeFolderProblem(folderProblem)} Choose another '
+              'folder to see your designs.',
+          action: TextButton(
+            onPressed: () => ref.read(projectsFolderProvider.notifier).choose(),
+            child: const Text('Choose folder'),
+          ),
+        ),
+      ],
+      if (_section == _Section.home) ...[
+        const SizedBox(height: Space.xl),
+        _QuickKinds(
+          onPreset: _quickCreate,
+          onCustom: () => _create(custom: true),
+        ),
+      ],
+      if (_section != _Section.designs) ...[
+        const SizedBox(height: Space.xl),
+        _SectionTitle(
+          title:
+              _section == _Section.home
+                  ? 'Start from a template'
+                  : 'All templates',
+          action:
+              _section == _Section.home
+                  ? TextButton(
+                    onPressed:
+                        () => setState(() => _section = _Section.templates),
+                    child: const Text('See all'),
+                  )
+                  : null,
+        ),
+        const SizedBox(height: Space.sm),
+        TemplateGallery(
+          shrinkWrap: true,
+          tileWidth: _section == _Section.home ? 190 : 220,
+          query: _query,
+          limit: _section == _Section.home ? 10 : null,
+          showFilters: _section == _Section.templates,
+          onUse: _useTemplate,
+        ),
+      ],
+      if (_section == _Section.home) ...[
+        const SizedBox(height: Space.xl),
+        _SectionTitle(
+          title: 'Blank sizes',
+          action: TextButton(
+            onPressed: _create,
+            child: const Text('More sizes'),
+          ),
+        ),
+        const SizedBox(height: Space.sm),
+        _PresetRow(
+          onPreset: _quickCreate,
+          onCustom: () => _create(custom: true),
+        ),
+      ],
+      if (_section != _Section.templates) ...[
+        const SizedBox(height: Space.xl),
+        _SectionTitle(
+          title:
+              _section == _Section.home ? 'Recent designs' : 'In your folder',
+          count: designs.asData?.value.length,
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_section == _Section.home && list.length > recent.length)
+                TextButton(
+                  onPressed: () => setState(() => _section = _Section.designs),
+                  child: const Text('See all'),
+                ),
+              OcxIconButton(
+                icon: Icons.refresh,
+                tooltip: 'Refresh',
+                onPressed: () => ref.invalidate(designsProvider),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Space.sm),
+      ],
+    ];
 
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
+        constraints: const BoxConstraints(maxWidth: 1240),
         child: CustomScrollView(
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 Space.xxl,
-                Space.xxl,
+                Space.xl,
                 Space.xxl,
                 0,
               ),
-              sliver: SliverList.list(
-                children: [
-                  header,
-                  if (folderProblem != null) ...[
-                    const SizedBox(height: Space.lg),
-                    _Notice(
-                      message:
-                          '${describeFolderProblem(folderProblem)} Choose another '
-                          'folder to see your designs.',
-                      action: TextButton(
-                        onPressed:
-                            () =>
-                                ref
-                                    .read(projectsFolderProvider.notifier)
-                                    .choose(),
-                        child: const Text('Choose folder'),
-                      ),
-                    ),
-                  ],
-                  if (_section == _Section.home) ...[
-                    const SizedBox(height: Space.xl),
-                    _SectionTitle(
-                      title: 'Start a design',
-                      action: TextButton(
-                        onPressed: _create,
-                        child: const Text('More sizes'),
-                      ),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    _PresetRow(
-                      onPreset: _quickCreate,
-                      onCustom: () => _create(custom: true),
-                    ),
-                  ],
-                  const SizedBox(height: Space.xl),
-                  _SectionTitle(
-                    title:
-                        _section == _Section.home
-                            ? 'Recent designs'
-                            : 'Designs in your folder',
-                    count: designs.asData?.value.length,
-                    action: OcxIconButton(
-                      icon: Icons.refresh,
-                      tooltip: 'Refresh',
-                      onPressed: () => ref.invalidate(designsProvider),
-                    ),
-                  ),
-                  const SizedBox(height: Space.sm),
-                ],
-              ),
+              sliver: SliverList.list(children: top),
             ),
-            if (designs.isLoading)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(Space.xxxl),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              )
-            else if (designs.hasError)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
-                sliver: SliverToBoxAdapter(
-                  child: _Notice(
-                    message: 'Could not list your designs. ${designs.error}',
+            if (_section != _Section.templates)
+              if (designs.isLoading)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(Space.xxxl),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              else if (designs.hasError)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                  sliver: SliverToBoxAdapter(
+                    child: _Notice(
+                      message: 'Could not list your designs. ${designs.error}',
+                    ),
+                  ),
+                )
+              else if (list.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                  sliver: SliverToBoxAdapter(
+                    child: _EmptyDesigns(onCreate: _create),
+                  ),
+                )
+              else if (recent.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                  sliver: SliverToBoxAdapter(
+                    child: Text(
+                      'No designs match "$_query".',
+                      style: OcxText.body(
+                        context,
+                      ).copyWith(color: c.textSecondary),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                  sliver: SliverGrid.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 240,
+                          mainAxisSpacing: Space.lg,
+                          crossAxisSpacing: Space.lg,
+                          childAspectRatio: 0.95,
+                        ),
+                    itemCount: recent.length,
+                    itemBuilder:
+                        (context, i) => _DesignCard(
+                          summary: recent[i],
+                          onOpen:
+                              () => openDesign(context, ref, recent[i].path),
+                        ),
                   ),
                 ),
-              )
-            else if (list.isEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
-                sliver: SliverToBoxAdapter(
-                  child: _EmptyDesigns(onCreate: _create),
-                ),
-              )
-            else if (shown.isEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.all(Space.xxl),
-                sliver: SliverToBoxAdapter(
-                  child: Text(
-                    'No designs match "$_query".',
-                    style: OcxText.body(
-                      context,
-                    ).copyWith(color: c.textSecondary),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
-                sliver: SliverGrid.builder(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 240,
-                    mainAxisSpacing: Space.lg,
-                    crossAxisSpacing: Space.lg,
-                    childAspectRatio: 0.95,
-                  ),
-                  itemCount: shown.length,
-                  itemBuilder:
-                      (context, i) => _DesignCard(
-                        summary: shown[i],
-                        onOpen: () => openDesign(context, ref, shown[i].path),
-                      ),
-                ),
-              ),
             const SliverToBoxAdapter(child: SizedBox(height: Space.xxxl)),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The one accent-coloured panel in the app (design-system.md §2 "Home
+/// hero"): a solid Cobalt banner with the main question and search.
+class _Hero extends StatelessWidget {
+  const _Hero({required this.search});
+
+  final Widget search;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ocx;
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        color: c.accent,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Flat geometric marks in tints of the accent (no gradients).
+          Positioned(
+            right: -40,
+            top: -60,
+            child: _Mark(size: 220, color: c.onAccent.withValues(alpha: 0.08)),
+          ),
+          Positioned(
+            right: 150,
+            bottom: -70,
+            child: _Mark(size: 160, color: c.onAccent.withValues(alpha: 0.06)),
+          ),
+          Positioned(
+            right: 80,
+            top: 60,
+            child: Transform.rotate(
+              angle: 0.3,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: c.onAccent.withValues(alpha: 0.35),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(Radii.md),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(Space.xxl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'What will you design today?',
+                  style: OcxText.display(
+                    context,
+                  ).copyWith(color: c.onAccent, fontSize: 30),
+                ),
+                const SizedBox(height: Space.sm),
+                Text(
+                  'Start from a template, a blank size or a free canvas. '
+                  'Everything stays on this computer.',
+                  style: OcxText.body(
+                    context,
+                  ).copyWith(color: c.onAccent.withValues(alpha: 0.85)),
+                ),
+                const SizedBox(height: Space.lg),
+                SizedBox(
+                  width: 480,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      inputDecorationTheme: Theme.of(context)
+                          .inputDecorationTheme
+                          .copyWith(fillColor: c.surface, filled: true),
+                    ),
+                    child: search,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Mark extends StatelessWidget {
+  const _Mark({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+}
+
+/// Round buttons for the main kinds of design (blank starts).
+class _QuickKinds extends StatelessWidget {
+  const _QuickKinds({required this.onPreset, required this.onCustom});
+
+  final ValueChanged<PagePreset> onPreset;
+  final VoidCallback onCustom;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ocx;
+    Widget kind(String label, IconData icon, VoidCallback onTap) => SizedBox(
+      width: 104,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Space.sm),
+          child: Column(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: c.border),
+                ),
+                child: Icon(icon, size: 20, color: c.accent),
+              ),
+              const SizedBox(height: Space.sm),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: OcxText.caption(context).copyWith(color: c.text),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Wrap(
+      spacing: Space.sm,
+      runSpacing: Space.sm,
+      children: [
+        for (final (id, label, icon) in _quickKinds)
+          if (pagePresets.where((p) => p.id == id).firstOrNull
+              case final preset?)
+            kind(label, icon, () => onPreset(preset)),
+        kind('Custom size', Icons.crop_free, onCustom),
+      ],
     );
   }
 }
@@ -282,10 +523,16 @@ class _Sidebar extends StatelessWidget {
             onTap: () => onSection(_Section.home),
           ),
           _NavItem(
-            icon: Icons.grid_view_outlined,
-            label: 'All designs',
-            selected: section == _Section.all,
-            onTap: () => onSection(_Section.all),
+            icon: Icons.space_dashboard_outlined,
+            label: 'Templates',
+            selected: section == _Section.templates,
+            onTap: () => onSection(_Section.templates),
+          ),
+          _NavItem(
+            icon: Icons.folder_outlined,
+            label: 'Your designs',
+            selected: section == _Section.designs,
+            onTap: () => onSection(_Section.designs),
           ),
           const Spacer(),
           const _StorageStatus(),

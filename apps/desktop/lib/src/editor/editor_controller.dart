@@ -23,6 +23,7 @@ import 'package:document_model/document_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:storage/storage.dart';
+import 'package:template_engine/template_engine.dart' as tpl;
 
 import 'package:renderer/renderer.dart' as renderer;
 
@@ -454,6 +455,35 @@ class EditorController extends Notifier<EditorSession?> {
       select: {image.id},
     );
     return image.id;
+  }
+
+  /// Adds template [contents] (P2.2.4): as frames on a board, otherwise as
+  /// new pages after the active one. One undo step; selects new frames.
+  void insertTemplate(ProjectContents contents) {
+    final page = _editor.activePage;
+    final media = ref.read(mediaCacheProvider);
+    for (final MapEntry(key: hash, value: info)
+        in contents.document.assets.entries) {
+      if (contents.assets[hash] case final bytes?) {
+        media.register(hash, bytes, info.mime);
+      }
+    }
+    final result = tpl.insertTemplate(
+      _editor.document,
+      contents.document,
+      after: page.id,
+      asFramesOn: page.isBoard ? page.id : null,
+    );
+    // Moving between a board and stacked pages lays the view out anew.
+    final first = contents.document.pages.first;
+    if (!page.isBoard && first.isBoard) {
+      ref.read(viewportProvider.notifier).reset();
+    }
+    if (page.isBoard) {
+      _commit(result.change, select: result.frames.toSet());
+    } else {
+      _commit(result.change, activePage: result.pages.first, select: const {});
+    }
   }
 
   /// Adds a frame (artboard). Without [topLeft] it is centred in the view

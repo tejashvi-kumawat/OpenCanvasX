@@ -187,13 +187,13 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P2.1.7 Seed original/openly-licensed asset pack with `licenses/` folder
 
 ## P2.2 Template Engine
-- [ ] P2.2.1 Declarative template format (no code execution)
-- [ ] P2.2.2 Template metadata (id, author, version, license, category, tags, dimensions, required assets, font deps, preview, compat version)
-- [ ] P2.2.3 Template browser panel + search/filter
+- [x] P2.2.1 Declarative template format (no code execution)
+- [x] P2.2.2 Template metadata (id, author, version, license, category, tags, dimensions, required assets, font deps, preview, compat version)
+- [x] P2.2.3 Template browser panel + search/filter
 - [ ] P2.2.4 Create design from template; save design as private template
-- [ ] P2.2.5 Template validator + malicious-template tests
+- [x] P2.2.5 Template validator + malicious-template tests
 - [ ] P2.2.6 Original official templates: social (Instagram, Facebook, LinkedIn, YouTube, TikTok, X)
-- [ ] P2.2.7 Original official templates: posters, flyers, resumes, certificates, invitations, business cards
+- [x] P2.2.7 Original official templates: posters, flyers, resumes, certificates, invitations, business cards
 - [ ] P2.2.8 Original official templates: presentations/pitch decks, reports, infographics, menus, newsletters
 
 ## P2.3 Brand Kit

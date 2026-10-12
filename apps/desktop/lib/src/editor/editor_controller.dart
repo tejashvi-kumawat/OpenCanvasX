@@ -688,6 +688,63 @@ class EditorController extends Notifier<EditorSession?> {
         o.copyWith(payload: p.copyWith(adjust: change(p.adjust))),
   ];
 
+  /// Uses component [componentId] from another design [source] (the UI
+  /// kit): the first time it is copied in as a main component (with its
+  /// images); afterwards an instance of the copy is added.
+  ObjectId? importComponent(ProjectContents source, ObjectId componentId) {
+    final component = source.document.objects[componentId];
+    if (!isComponent(component)) return null;
+    final existing =
+        componentsIn(
+          _editor.document,
+        ).where((c) => c.name == component!.name).firstOrNull;
+    if (existing != null) return insertInstance(existing.id);
+
+    final page = _editor.activePage;
+    final clipboard = copySubtrees(source.document, [componentId]);
+    final (paste, ids) = pasteObjects(
+      _editor.document,
+      page.id,
+      clipboard,
+      label: 'Add ${component!.name ?? 'component'}',
+    );
+    final root = paste.objects[ids.single]!;
+    final t = root.transform;
+    final center =
+        _boardCenter(page) ?? Point2D(page.width / 2, page.height / 2);
+    final media = ref.read(mediaCacheProvider);
+    final assets = <String, AssetInfo?>{};
+    for (final o in clipboard) {
+      if (o.payload case ImagePayload(:final assetHash)) {
+        final info = source.document.assets[assetHash];
+        final bytes = source.assets[assetHash];
+        if (info == null || bytes == null) continue;
+        media.register(assetHash, bytes, info.mime);
+        if (!_editor.document.assets.containsKey(assetHash)) {
+          assets[assetHash] = info;
+        }
+      }
+    }
+    _commit(
+      Change(
+        label: paste.label,
+        objects: {
+          ...paste.objects,
+          root.id: root.copyWith(
+            transform: t.copyWith(
+              x: center.x - t.width / 2,
+              y: center.y - t.height / 2,
+            ),
+          ),
+        },
+        pages: paste.pages,
+        assets: assets,
+      ),
+      select: {root.id},
+    );
+    return root.id;
+  }
+
   /// Turns the selection into a main component (Ctrl+Alt+K).
   void createComponent() {
     final selected = _editor.selectedObjects;

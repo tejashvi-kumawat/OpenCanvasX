@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:design_engine/design_engine.dart';
@@ -562,6 +563,28 @@ void main() {
         isTrue,
       );
     });
+  });
+
+  test('UI kit components import once, then add instances', () {
+    final kit = decodeProject(
+      File('../../templates/official/ui-kit.opencanvasx').readAsBytesSync(),
+    );
+    final card = componentsIn(
+      kit.document,
+    ).firstWhere((c) => c.name == 'Card / Product');
+    final imported = editor().importComponent(kit, card.id)!;
+    final copy = doc().objects[imported]!;
+    expect(isComponent(copy), isTrue);
+    expect(copy.name, 'Card / Product');
+    // The camera icon came with its asset.
+    expect(doc().assets, isNotEmpty);
+    final instance = editor().importComponent(kit, card.id)!;
+    expect(doc().objects[instance]!.type, ObjectType.instance);
+    expect(
+      (doc().objects[instance]!.payload as InstancePayload).componentId,
+      imported,
+    );
+    expect(validatePages(doc().pages, doc().objects), isEmpty);
   });
 
   test('distribute needs three or more', () {

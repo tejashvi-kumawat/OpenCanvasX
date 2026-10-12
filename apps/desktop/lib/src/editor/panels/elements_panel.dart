@@ -10,6 +10,7 @@ import '../../widgets/shape_preview.dart';
 import '../canvas_view.dart';
 import '../editor_controller.dart';
 import 'asset_tiles.dart';
+import 'ui_kit.dart';
 
 /// What the Elements panel shows: the overview or one browser.
 enum _View { overview, icons, stickers }
@@ -254,6 +255,7 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
             ),
           ),
         ],
+        UiKitSection(query: _query),
         if (components.isNotEmpty) ...[
           const SectionHeader(title: 'Components in this design'),
           Padding(

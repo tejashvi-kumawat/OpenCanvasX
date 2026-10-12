@@ -261,8 +261,9 @@ class Page {
     double w,
     double h,
     void Function() build, {
-    int fill = 0xFFFFFFFF,
+    int? fill = 0xFFFFFFFF,
     double r = 0,
+    bool component = false,
   }) {
     final id = doc.next();
     final children = <ObjectId>[];
@@ -284,8 +285,11 @@ class Page {
       parentId: _stack.isEmpty ? null : _stack.last.$1,
       childIds: children,
       name: frameName,
-      style: ObjectStyle(fill: SolidFill(ArgbColor(fill)), cornerRadius: r),
-      payload: const FramePayload(),
+      style: ObjectStyle(
+        fill: fill == null ? null : SolidFill(ArgbColor(fill)),
+        cornerRadius: r,
+      ),
+      payload: FramePayload(clipContent: !component, component: component),
     );
     (_stack.isEmpty ? roots : _stack.last.$2).add(id);
   }
@@ -1567,6 +1571,120 @@ final templates = <Template>[
           ..text('© 2026 Orbit · Privacy · Terms', 120, 1760, 1200, size: 15, color: grey, align: TextAlignment.center);
       });
     board.done();
+  }),
+  // ---- UI kit: every frame is a main component (Figma-style)
+  Template('ui-kit', 'UI kit', 'web', [
+    'ui kit',
+    'components',
+    'button',
+    'input',
+    'card',
+    'navbar',
+    'app',
+    'board',
+  ], (d) {
+    final b = d.page(1920, 1080, bg: 0xFFF1F2F4, kind: PageKind.board, name: 'UI kit');
+    const border = 0xFFD8DBE2;
+    // Row 1: buttons and small controls.
+    b
+      ..frame('Button / Primary', 0, 0, 160, 48, () {
+        b.text('Button', 0, 13, 160, size: 16, weight: 600, color: paper, align: TextAlignment.center);
+      }, fill: cobalt, r: 10, component: true)
+      ..frame('Button / Secondary', 200, 0, 160, 48, () {
+        b
+          ..rect(0, 0, 160, 48, stroke: border, sw: 1.5, r: 10)
+          ..text('Button', 0, 13, 160, size: 16, weight: 600, align: TextAlignment.center);
+      }, r: 10, component: true)
+      ..frame('Button / Ghost', 400, 0, 160, 48, () {
+        b.text('Button', 0, 13, 160, size: 16, weight: 600, color: cobalt, align: TextAlignment.center);
+      }, fill: null, r: 10, component: true)
+      ..frame('Badge', 600, 10, 72, 28, () {
+        b.text('New', 0, 5, 72, size: 13, weight: 700, color: cobalt, align: TextAlignment.center);
+      }, fill: 0xFFEBEFFE, r: 14, component: true)
+      ..frame('Avatar', 712, 0, 48, 48, () {
+        b.text('AR', 0, 13, 48, size: 16, weight: 700, color: paper, align: TextAlignment.center);
+      }, fill: plum, r: 24, component: true)
+      ..frame('Toggle / On', 800, 10, 52, 30, () {
+        b.circle(25, 3, 24, 24, fill: paper);
+      }, fill: mint, r: 15, component: true)
+      ..frame('Checkbox / Checked', 892, 0, 180, 48, () {
+        b
+          ..rect(0, 12, 24, 24, fill: cobalt, r: 6)
+          ..icon('check', 3, 15, 18, color: paper)
+          ..text('Remember me', 36, 13, 140, size: 16);
+      }, fill: null, component: true);
+    // Row 2: form fields and alerts.
+    b
+      ..frame('Input / Text field', 0, 100, 320, 76, () {
+        b
+          ..text('Email', 0, 0, 320, size: 14, weight: 600, color: grey)
+          ..rect(0, 24, 320, 52, fill: paper, stroke: border, sw: 1.5, r: 10)
+          ..text('you@example.com', 16, 39, 280, size: 16, color: 0xFF8A909C);
+      }, fill: null, component: true)
+      ..frame('Search bar', 360, 124, 360, 52, () {
+        b
+          ..icon('search', 16, 14, 24, color: grey)
+          ..text('Search', 52, 15, 280, size: 16, color: 0xFF8A909C);
+      }, fill: mist, r: 26, component: true)
+      ..frame('Alert / Success', 760, 112, 380, 64, () {
+        b
+          ..rect(0, 0, 6, 64, fill: mint)
+          ..icon('circle-check', 22, 18, 28, color: mint)
+          ..text('Changes saved', 64, 12, 300, size: 16, weight: 700)
+          ..text('Everything is up to date.', 64, 34, 300, size: 14, color: grey);
+      }, fill: 0xFFE6F6EF, r: 10, component: true);
+    // Row 3: cards.
+    b
+      ..frame('Card / Product', 0, 240, 300, 380, () {
+        b
+          ..rect(0, 0, 300, 180, fill: sky)
+          ..icon('camera', 125, 65, 50, color: cobalt)
+          ..text('Product name', 20, 200, 260, size: 20, weight: 700)
+          ..text('A short description of what makes it great.', 20, 234, 260, size: 15, color: grey, lh: 1.4)
+          ..text('\$49', 20, 312, 120, size: 22, weight: 800)
+          ..rect(170, 304, 110, 44, fill: cobalt, r: 10)
+          ..text('Buy', 170, 315, 110, size: 16, weight: 700, color: paper, align: TextAlignment.center);
+      }, r: 16, component: true)
+      ..frame('Card / Pricing', 340, 240, 300, 420, () {
+        b
+          ..text('Pro', 28, 28, 240, size: 18, weight: 700, color: cobalt)
+          ..text('\$12 / month', 28, 64, 240, size: 30, weight: 800)
+          ..text('✓ Unlimited designs\n✓ Version history\n✓ Priority support', 28, 130, 240, size: 16, lh: 1.8)
+          ..rect(28, 330, 244, 52, fill: cobalt, r: 12)
+          ..text('Choose plan', 28, 345, 244, size: 16, weight: 700, color: paper, align: TextAlignment.center);
+      }, r: 18, component: true)
+      ..frame('Card / Testimonial', 680, 240, 380, 220, () {
+        b
+          ..text('“The easiest design tool our team has used.”', 28, 28, 324, size: 20, family: serif, lh: 1.4)
+          ..circle(28, 150, 44, 44, fill: blush)
+          ..text('Maya Chen', 86, 152, 240, size: 16, weight: 700)
+          ..text('Head of design', 86, 174, 240, size: 14, color: grey);
+      }, r: 18, component: true);
+    // Row 4: navigation.
+    b
+      ..frame('Navbar / Desktop', 0, 720, 1440, 72, () {
+        b
+          ..icon('sparkles', 40, 22, 28, color: cobalt)
+          ..text('Brand', 78, 24, 200, size: 20, weight: 800)
+          ..text('Product      Pricing      About', 760, 26, 400, size: 16, color: grey)
+          ..rect(1260, 14, 140, 44, fill: cobalt, r: 10)
+          ..text('Sign up', 1260, 26, 140, size: 16, weight: 700, color: paper, align: TextAlignment.center);
+      }, component: true)
+      ..frame('Status bar / Phone', 0, 840, 390, 47, () {
+        b
+          ..text('9:41', 24, 14, 80, size: 16, weight: 700)
+          ..icon('wifi', 316, 15, 18, color: ink)
+          ..icon('battery-full', 342, 13, 24, color: ink);
+      }, component: true)
+      ..frame('Tab bar / Mobile', 440, 820, 390, 84, () {
+        b
+          ..rect(0, 0, 390, 1, fill: border)
+          ..icon('house', 40, 18, 26, color: cobalt)
+          ..icon('search', 136, 18, 26, color: grey)
+          ..icon('bell', 232, 18, 26, color: grey)
+          ..icon('user', 326, 18, 26, color: grey);
+      }, component: true);
+    b.done();
   }),
 ];
 

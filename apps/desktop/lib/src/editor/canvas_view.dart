@@ -182,6 +182,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                             colors: colors,
                             titles: _frameTitles(session, frames, viewport),
                             guides: _drag == _Drag.none ? const [] : _guides,
+                            links: _linkArrows(session, frames, viewport),
                             media: ref.watch(mediaCacheProvider),
                           ),
                         ),
@@ -1157,6 +1158,35 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     );
   }
 
+  /// Screen arrows for prototype links whose source (or its frame) is
+  /// selected, from the source's right edge to the target frame's left.
+  List<(Offset, Offset)> _linkArrows(
+    EditorSession session,
+    List<PageFrame> frames,
+    ViewportState viewport,
+  ) {
+    final page = session.activePage;
+    if (page.links.isEmpty || session.selection.isEmpty) return const [];
+    final frame = frames.where((f) => f.pageId == page.id).firstOrNull;
+    if (frame == null) return const [];
+    final document = session.document;
+    final arrows = <(Offset, Offset)>[];
+    for (final link in page.links) {
+      final path = ancestorPath(document, link.source);
+      if (!path.any(session.selection.contains)) continue;
+      final from = worldBounds(document, link.source);
+      final to = worldBounds(document, link.target);
+      if (from == null || to == null) continue;
+      Offset screen(double x, double y) =>
+          viewport.toScreen(frame.toWorkspace(Point2D(x, y)));
+      arrows.add((
+        screen(from.right, from.top + from.height / 2),
+        screen(to.left, to.top + math.min(to.height / 2, 120)),
+      ));
+    }
+    return arrows;
+  }
+
   /// What the painter draws for the pen, pencil and node editing.
   _VectorOverlay? _vectorOverlay(
     EditorSession session,
@@ -1442,11 +1472,13 @@ class _WorkspacePainter extends CustomPainter {
     required this.media,
     this.guides = const [],
     this.vector,
+    this.links = const [],
   }) : super(repaint: media);
 
   final List<_FrameTitle> titles;
   final List<SnapGuide> guides;
   final _VectorOverlay? vector;
+  final List<(Offset, Offset)> links;
   final MediaCache media;
   final DesignDocument document;
   final List<PageFrame> frames;
@@ -1573,6 +1605,7 @@ class _WorkspacePainter extends CustomPainter {
     }
 
     if (vector case final v?) _paintVector(canvas, v);
+    _paintLinks(canvas);
 
     // Smart guides (P1.4.4): 1 px accent lines with end ticks.
     if (guides.isNotEmpty) {
@@ -1663,6 +1696,40 @@ class _WorkspacePainter extends CustomPainter {
       ..scale(frame.unitScale);
     paintPageContent(canvas, document, page, media: media);
     canvas.restore();
+  }
+
+  /// Prototype links as curved accent arrows from source to frame.
+  void _paintLinks(Canvas canvas) {
+    final paint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = colors.accent;
+    for (final (from, to) in links) {
+      final bend = math.max(40, (to.dx - from.dx).abs() / 2).toDouble();
+      final path =
+          Path()
+            ..moveTo(from.dx, from.dy)
+            ..cubicTo(
+              from.dx + bend,
+              from.dy,
+              to.dx - bend,
+              to.dy,
+              to.dx,
+              to.dy,
+            );
+      canvas
+        ..drawPath(path, paint)
+        ..drawCircle(from, 3.5, Paint()..color = colors.accent)
+        ..drawPath(
+          Path()
+            ..moveTo(to.dx, to.dy)
+            ..lineTo(to.dx - 8, to.dy - 5)
+            ..lineTo(to.dx - 8, to.dy + 5)
+            ..close(),
+          Paint()..color = colors.accent,
+        );
+    }
   }
 
   /// Pen path in progress (with a rubber band to the pointer), pencil

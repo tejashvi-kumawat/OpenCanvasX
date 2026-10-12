@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/ocx_theme.dart';
 import '../export/export_dialog.dart';
+import '../present/present_page.dart';
 import 'canvas_view.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
@@ -61,6 +62,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         bindings: editorShortcuts(
           ref,
           onExport: () => showExportDialog(context),
+          onPresent: () => presentDesign(context),
         ),
         child: Focus(
           focusNode: _focus,

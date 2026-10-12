@@ -46,6 +46,7 @@ abstract final class EditorKeys {
   static final sendToBack = cmd(LogicalKeyboardKey.bracketLeft, shift: true);
   static final group = cmd(LogicalKeyboardKey.keyG);
   static final export = cmd(LogicalKeyboardKey.keyE, shift: true);
+  static const present = SingleActivator(LogicalKeyboardKey.f5);
   static final frameSelection = SingleActivator(
     LogicalKeyboardKey.keyG,
     control: !_isMac,
@@ -82,6 +83,7 @@ bool _typing() {
 Map<ShortcutActivator, VoidCallback> editorShortcuts(
   WidgetRef ref, {
   VoidCallback? onExport,
+  VoidCallback? onPresent,
 }) {
   final editor = ref.read(editorProvider.notifier);
   final view = ref.read(viewportProvider.notifier);
@@ -137,6 +139,7 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     },
     EditorKeys.group: editor.groupSelection,
     if (onExport != null) EditorKeys.export: onExport,
+    if (onPresent != null) EditorKeys.present: onPresent,
     EditorKeys.frameSelection: editor.frameSelection,
     EditorKeys.ungroup: editor.ungroupSelection,
     EditorKeys.editText: unlessTyping(() {

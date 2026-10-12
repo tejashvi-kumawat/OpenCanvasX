@@ -198,6 +198,8 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
               single,
             ),
           ),
+        if (single != null && page.isBoard)
+          _InteractionSection(session: widget.session, object: single),
         _appearanceSection(objects),
         if (!allLines && !anyGroup) _fillSection(objects, allText),
         if (single != null && !anyGroup) _strokeSection(single, style, unit),
@@ -1212,4 +1214,96 @@ List<ArgbColor> documentColors(DesignDocument document) {
   final sorted =
       counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
   return [for (final e in sorted.take(18)) e.key];
+}
+
+/// Prototype interaction of the selected object (on boards): click → go
+/// to a frame, with a transition.
+class _InteractionSection extends ConsumerWidget {
+  const _InteractionSection({required this.session, required this.object});
+
+  final EditorSession session;
+  final DesignObject object;
+
+  static String _transitionLabel(PrototypeTransition t) => switch (t) {
+    PrototypeTransition.instant => 'Instant',
+    PrototypeTransition.dissolve => 'Dissolve',
+    PrototypeTransition.slideLeft => 'Slide left',
+    PrototypeTransition.slideRight => 'Slide right',
+    PrototypeTransition.slideUp => 'Slide up',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final editor = ref.read(editorProvider.notifier);
+    final page = session.activePage;
+    final document = session.document;
+    final frames = [
+      for (final id in page.objectIds)
+        if (document.objects[id] case final o?
+            when o.type == ObjectType.frame && o.id != object.id)
+          o,
+    ];
+    if (frames.isEmpty) return const SizedBox.shrink();
+    final link = page.links.where((l) => l.source == object.id).firstOrNull;
+    return PanelSection(
+      title: 'Prototype',
+      trailing: [
+        if (link == null)
+          OcxIconButton(
+            icon: Icons.add_link,
+            tooltip: 'Go to a frame on click',
+            onPressed: () => editor.setLink(object.id, frames.first.id),
+          )
+        else
+          OcxIconButton(
+            icon: Icons.link_off,
+            tooltip: 'Remove link',
+            onPressed: () => editor.setLink(object.id, null),
+          ),
+      ],
+      child:
+          link == null
+              ? null
+              : FieldColumn(
+                children: [
+                  OcxSelect<ObjectId>(
+                    value: link.target,
+                    label: 'Missing frame',
+                    tooltip: 'On click, go to',
+                    options: [
+                      for (final f in frames)
+                        SelectOption(f.id, layerName(document, page, f)),
+                    ],
+                    onChanged:
+                        (target) => editor.setLink(
+                          object.id,
+                          target,
+                          transition: link.transition,
+                        ),
+                  ),
+                  OcxSelect<PrototypeTransition>(
+                    value: link.transition,
+                    tooltip: 'Transition',
+                    options: [
+                      for (final t in PrototypeTransition.values)
+                        SelectOption(t, _transitionLabel(t)),
+                    ],
+                    onChanged:
+                        (t) => editor.setLink(
+                          object.id,
+                          link.target,
+                          transition: t,
+                        ),
+                  ),
+                  Text(
+                    'Press Present (F5) and click this to follow the link.',
+                    style: OcxText.caption(context).copyWith(
+                      color: context.ocx.textTertiary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+    );
+  }
 }

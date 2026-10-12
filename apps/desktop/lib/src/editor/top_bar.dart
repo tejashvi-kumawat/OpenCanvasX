@@ -7,6 +7,7 @@ import '../providers.dart';
 import '../theme/ocx_theme.dart';
 import '../widgets/brand_mark.dart';
 import '../export/export_dialog.dart';
+import '../present/present_page.dart';
 import '../widgets/controls.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
@@ -70,6 +71,15 @@ class EditorToolbar extends ConsumerWidget {
           const _ZoomMenu(),
           const SizedBox(width: Space.xs),
           const _ThemeToggle(),
+          const SizedBox(width: Space.sm),
+          Tooltip(
+            message: 'Present  (F5)',
+            child: OutlinedButton.icon(
+              onPressed: () => presentDesign(context),
+              icon: const Icon(Icons.play_arrow_outlined, size: Chrome.icon),
+              label: const Text('Present'),
+            ),
+          ),
           const SizedBox(width: Space.sm),
           Tooltip(
             message: 'Export  (Ctrl+Shift+E)',

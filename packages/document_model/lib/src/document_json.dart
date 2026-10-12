@@ -5,6 +5,7 @@ import 'ids.dart';
 import 'migration.dart';
 import 'object_type.dart';
 import 'page.dart';
+import 'prototype.dart';
 import 'payload.dart';
 import 'style.dart';
 import 'transform.dart';
@@ -153,6 +154,15 @@ Map<String, Object?> _encodePage(DesignPage page) => {
       {'axis': guide.axis.name, 'position': guide.position},
   ],
   'object_ids': [for (final id in page.objectIds) id.value],
+  if (page.links.isNotEmpty)
+    'links': [
+      for (final l in page.links)
+        {
+          'source': l.source.value,
+          'target': l.target.value,
+          'transition': _snake(l.transition.name),
+        },
+    ],
 };
 
 Map<String, Object?> _encodeInsets(PageInsets i) => {
@@ -272,6 +282,22 @@ DesignPage _decodePage(_Json j) => j.guard(() {
     objectIds: [
       for (final (i, id) in j.optList('object_ids').indexed)
         ObjectId(_asString(id, '${j.path}.object_ids[$i]')),
+    ],
+    links: [
+      for (final (i, raw) in j.optList('links').indexed)
+        () {
+          final l = _Json.root(raw, '${j.path}.links[$i]');
+          return l.guard(
+            () => PrototypeLink(
+              source: ObjectId(l.string('source')),
+              target: ObjectId(l.string('target')),
+              transition:
+                  l.has('transition')
+                      ? _enumByName(PrototypeTransition.values, l, 'transition')
+                      : PrototypeTransition.dissolve,
+            ),
+          );
+        }(),
     ],
   );
 });

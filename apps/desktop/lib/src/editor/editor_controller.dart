@@ -563,6 +563,22 @@ class EditorController extends Notifier<EditorSession?> {
     return path.id;
   }
 
+  /// Links [source] to frame [target] on the active page (prototyping);
+  /// a `null` target removes the link.
+  void setLink(
+    ObjectId source,
+    ObjectId? target, {
+    PrototypeTransition transition = PrototypeTransition.dissolve,
+  }) => _commit(
+    setPrototypeLink(
+      _editor.document,
+      _editor.activePageId,
+      source,
+      target,
+      transition: transition,
+    ),
+  );
+
   /// Removes anchor [index] of path [id] (at least two stay).
   void deletePathAnchor(ObjectId id, int index) {
     final object = _editor.document.objects[id];

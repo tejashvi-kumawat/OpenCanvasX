@@ -262,7 +262,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 ## P3.6 Presentations
 - [ ] P3.6.1 Slide master + layouts
 - [ ] P3.6.2 Presenter notes
-- [ ] P3.6.3 Full-screen present mode + speaker view
+- [ ] P3.6.3 Full-screen present mode + speaker view (present mode done: slideshow + board prototypes; speaker view pending)
 - [ ] P3.6.4 Export slides to PDF and images
 - [ ] P3.6.5 PPTX export/import (best fidelity, documented gaps)
 

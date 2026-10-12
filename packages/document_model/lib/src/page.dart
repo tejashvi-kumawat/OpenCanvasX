@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 
 import 'color.dart';
 import 'ids.dart';
+import 'prototype.dart';
 import 'units.dart';
 import 'validation.dart';
 
@@ -38,6 +39,7 @@ final class DesignPage {
     Iterable<Guide> guides = const [],
     Iterable<ObjectId> objectIds = const [],
     PageKind kind = PageKind.fixed,
+    Iterable<PrototypeLink> links = const [],
   }) {
     checkPositive(width, 'width');
     checkPositive(height, 'height');
@@ -63,6 +65,8 @@ final class DesignPage {
       guides: List.unmodifiable(guides),
       objectIds: roots,
       kind: kind,
+      // One click link per source: later entries win.
+      links: List.unmodifiable({for (final l in links) l.source: l}.values),
     );
   }
 
@@ -79,6 +83,7 @@ final class DesignPage {
     required this.guides,
     required this.objectIds,
     required this.kind,
+    required this.links,
   });
 
   final PageId id;
@@ -110,6 +115,9 @@ final class DesignPage {
   /// Root objects on this page, back-to-front.
   final List<ObjectId> objectIds;
 
+  /// Prototype interactions between objects and frames on this page.
+  final List<PrototypeLink> links;
+
   /// Page size expressed in [target] units, using this page's [dpi].
   ({double width, double height}) sizeIn(LengthUnit target) => (
     width: convertLength(width, from: unit, to: target, dpi: dpi),
@@ -139,6 +147,7 @@ final class DesignPage {
     Iterable<Guide>? guides,
     Iterable<ObjectId>? objectIds,
     PageKind? kind,
+    Iterable<PrototypeLink>? links,
   }) {
     return DesignPage(
       id: id,
@@ -153,6 +162,7 @@ final class DesignPage {
       guides: guides ?? this.guides,
       objectIds: objectIds ?? this.objectIds,
       kind: kind ?? this.kind,
+      links: links ?? this.links,
     );
   }
 
@@ -170,7 +180,8 @@ final class DesignPage {
       other.bleed == bleed &&
       other.margins == margins &&
       listEquals(other.guides, guides) &&
-      listEquals(other.objectIds, objectIds);
+      listEquals(other.objectIds, objectIds) &&
+      listEquals(other.links, links);
 
   @override
   int get hashCode => Object.hash(
@@ -186,6 +197,7 @@ final class DesignPage {
     margins,
     Object.hashAll(guides),
     Object.hashAll(objectIds),
+    Object.hashAll(links),
   );
 
   @override

@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:opencanvasx/main.dart';
 import 'package:opencanvasx/src/editor/canvas_view.dart';
 import 'package:opencanvasx/src/export/exporter.dart';
+import 'package:opencanvasx/src/present/present_page.dart';
 import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
 import 'package:opencanvasx/src/editor/side_rail.dart';
@@ -634,6 +635,71 @@ void main() {
       });
       expect(picked?.value, 0xFF12A594);
       expect(container.read(eyedropperProvider), isNull);
+    });
+
+    testWidgets('present: pages play as a slideshow', (tester) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).addPage();
+      await tester.pumpAndSettle();
+      container
+          .read(editorProvider.notifier)
+          .setActivePage(session().document.pages.first.id);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.f5);
+      await tester.pumpAndSettle();
+      expect(find.text('1 / 2'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(find.text('2 / 2'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('2 / 2'), findsNothing);
+      expect(find.byType(DesignCanvas), findsOneWidget);
+    });
+
+    testWidgets('prototype: clicking a linked object opens its frame', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier)..addBoard();
+      await tester.pumpAndSettle();
+      final home = editor.insertFrame(
+        width: 400,
+        height: 800,
+        name: 'Home',
+        topLeft: Point2D.zero,
+      );
+      final next = editor.insertFrame(
+        width: 400,
+        height: 800,
+        name: 'Details',
+        topLeft: const Point2D(600, 0),
+      );
+      editor.insertDrawnShape(
+        ObjectType.rect,
+        ObjectTransform(x: 100, y: 300, width: 200, height: 200),
+        pageId: session().activePage.id,
+      );
+      final button = session().selection.single;
+      expect(session().document.objects[button]!.parentId, home);
+      editor.setLink(button, next, transition: PrototypeTransition.instant);
+      await tester.pumpAndSettle();
+      expect(find.text('Prototype'), findsOneWidget);
+
+      editor.clearSelection();
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Present'));
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+      // The 400 × 800 frame is fitted to the window; tap the button's
+      // centre (page point 200, 400 = the frame's centre).
+      final size = tester.getSize(find.byType(PresentPage));
+      await tester.tapAt(Offset(size.width / 2, size.height / 2));
+      await tester.pumpAndSettle();
+      expect(find.text('Details'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
     });
 
     testWidgets('tool shortcuts switch tools', (tester) async {

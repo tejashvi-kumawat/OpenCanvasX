@@ -67,6 +67,7 @@ Encoding rules (schema version 1, implemented in `document_model/lib/src/documen
 | Page kind | `kind: "board"` for unbounded boards; omitted for fixed pages (schema 2) | `"kind": "board"` |
 | Frame payload | `{ clip_content }` (schema 2) | `{"clip_content": true}` |
 | Fill | `{type: "solid", color}`, `{type: "linear", angle, stops: [{offset, color}]}` (angle in degrees, 0 = left→right) or `{type: "radial", center_x, center_y, radius, stops}` (fractions of the box) | `{"type":"linear","angle":90,"stops":[{"offset":0,"color":"#ff0000ff"},{"offset":1,"color":"#0000ffff"}]}` |
+| Prototype links | `pages[].links: [{source, target, transition}]`; `transition` ∈ instant, dissolve, slide_left, slide_right, slide_up; one link per source | `{"source": "btn", "target": "frame2", "transition": "dissolve"}` |
 | Path payload | `{ segments, view_width?, view_height? }`; segments `["M",x,y]`, `["L",x,y]`, `["Q",cx,cy,x,y]`, `["C",c1x,c1y,c2x,c2y,x,y]`, `["Z"]`; with a view box the path is scaled from it to the object's box | `{"segments": [["M",0,0],["L",10,0]], "view_width": 10, "view_height": 1}` |
 
 Optional fields fall back to the model defaults (opacity `1`, anchor `0.5`, dpi `96`, white background, …). Unknown keys are ignored so minor additions stay readable by older builds; anything that changes meaning bumps `schema_version`.

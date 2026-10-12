@@ -241,6 +241,15 @@ DesignObject _reparent(DesignObject o, ObjectId parent) => DesignObject(
           for (final id in page.objectIds)
             if (source.objects.containsKey(id)) map(id),
         ],
+        links: [
+          for (final l in page.links)
+            if (ids.containsKey(l.source) && ids.containsKey(l.target))
+              PrototypeLink(
+                source: ids[l.source]!,
+                target: ids[l.target]!,
+                transition: l.transition,
+              ),
+        ],
       ),
     );
   }

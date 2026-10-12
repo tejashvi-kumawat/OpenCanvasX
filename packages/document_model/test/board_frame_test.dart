@@ -70,4 +70,34 @@ void main() {
       hasLength(1),
     );
   });
+
+  test('prototype links round-trip and keep one link per source', () {
+    final page = doc.pages.single.copyWith(
+      links: const [
+        PrototypeLink(source: ObjectId('r'), target: ObjectId('f')),
+        PrototypeLink(
+          source: ObjectId('r'),
+          target: ObjectId('f'),
+          transition: PrototypeTransition.slideLeft,
+        ),
+      ],
+    );
+    expect(page.links.single.transition, PrototypeTransition.slideLeft);
+    final linked = DesignDocument(
+      id: doc.id,
+      metadata: doc.metadata,
+      pages: [page],
+      objects: doc.objects,
+    );
+    final body = encodeDocumentBody(linked);
+    final pageJson = (body['pages']! as List).single as Map;
+    expect(
+      ((pageJson['links']! as List).single as Map)['transition'],
+      'slide_left',
+    );
+    expect(
+      decodeDocument(manifest: encodeManifest(linked), body: body),
+      linked,
+    );
+  });
 }

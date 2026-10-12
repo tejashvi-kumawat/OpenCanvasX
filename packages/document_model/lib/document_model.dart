@@ -17,6 +17,7 @@ export 'src/page.dart';
 export 'src/page_graph.dart';
 export 'src/payload.dart';
 export 'src/presets.dart';
+export 'src/prototype.dart';
 export 'src/style.dart';
 export 'src/transform.dart';
 export 'src/units.dart';

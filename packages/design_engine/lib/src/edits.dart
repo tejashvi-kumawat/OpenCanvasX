@@ -206,19 +206,22 @@ Change deleteObjects(
       );
     }
   }
-  final pages =
-      document.pages
-          .map(
-            (page) =>
-                page.objectIds.any(doomed.contains)
-                    ? page.copyWith(
-                      objectIds: page.objectIds.where(
-                        (id) => !doomed.contains(id),
-                      ),
-                    )
-                    : page,
-          )
-          .toList();
+  // Roots and prototype links of deleted objects go too.
+  final pages = [
+    for (final page in document.pages)
+      if (page.objectIds.any(doomed.contains) ||
+          page.links.any(
+            (l) => doomed.contains(l.source) || doomed.contains(l.target),
+          ))
+        page.copyWith(
+          objectIds: page.objectIds.where((id) => !doomed.contains(id)),
+          links: page.links.where(
+            (l) => !doomed.contains(l.source) && !doomed.contains(l.target),
+          ),
+        )
+      else
+        page,
+  ];
   return Change(label: label, objects: objects, pages: pages);
 }
 
@@ -639,3 +642,25 @@ double _pixelsPerUnit(DesignPage page) =>
     convertLength(1, from: page.unit, to: LengthUnit.px, dpi: page.dpi);
 
 double _round(double v) => (v * 10).roundToDouble() / 10;
+
+/// Sets (or with a `null` [target] removes) the click link of [source] on
+/// [pageId] (prototyping).
+Change setPrototypeLink(
+  DesignDocument document,
+  PageId pageId,
+  ObjectId source,
+  ObjectId? target, {
+  PrototypeTransition transition = PrototypeTransition.dissolve,
+}) {
+  final page = _page(document, pageId);
+  final links = [
+    for (final l in page.links)
+      if (l.source != source) l,
+    if (target != null)
+      PrototypeLink(source: source, target: target, transition: transition),
+  ];
+  return Change(
+    label: target == null ? 'Remove link' : 'Link to frame',
+    pages: _replacePage(document, page.copyWith(links: links)),
+  );
+}

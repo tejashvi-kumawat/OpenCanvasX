@@ -157,4 +157,30 @@ void main() {
     expect((f.transform.x, f.transform.y), (-100.0, 50.0));
     expect(f.type, ObjectType.frame);
   });
+
+  test('prototype links are set, replaced, removed and pruned on delete', () {
+    var d = apply(
+      doc,
+      setPrototypeLink(doc, page1, const ObjectId('r'), const ObjectId('f')),
+    );
+    expect(d.pages.first.links.single.target, const ObjectId('f'));
+    d = apply(
+      d,
+      setPrototypeLink(
+        d,
+        page1,
+        const ObjectId('r'),
+        const ObjectId('f'),
+        transition: PrototypeTransition.instant,
+      ),
+    );
+    expect(d.pages.first.links.single.transition, PrototypeTransition.instant);
+    final removed = apply(
+      d,
+      setPrototypeLink(d, page1, const ObjectId('r'), null),
+    );
+    expect(removed.pages.first.links, isEmpty);
+    final deleted = apply(d, deleteObjects(d, const [ObjectId('r')]));
+    expect(deleted.pages.first.links, isEmpty);
+  });
 }

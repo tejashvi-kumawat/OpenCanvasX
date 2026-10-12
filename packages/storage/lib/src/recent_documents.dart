@@ -37,53 +37,19 @@ final class RecentDocument {
 }
 
 /// Most-recently-opened projects, stored in the app-wide SQLite index
-/// (storage-architecture.md, table `recent`).
+/// (storage-architecture.md, table `recent`). Obtain it from
+/// `AppIndex.recent`.
 ///
 /// The database is local only; nothing here leaves the device.
 final class RecentDocuments {
-  RecentDocuments._(this._db, this.limit) {
-    _migrate();
-  }
-
-  /// Opens (or creates) the index at [databasePath].
-  factory RecentDocuments.open(String databasePath, {int limit = 20}) {
-    File(databasePath).parent.createSync(recursive: true);
-    return _openChecked(sqlite3.open(databasePath), limit);
-  }
-
-  /// A throwaway index, for tests and previews.
-  factory RecentDocuments.inMemory({int limit = 20}) =>
-      _openChecked(sqlite3.openInMemory(), limit);
-
-  /// Schema version stored in `PRAGMA user_version`.
-  static const int schemaVersion = 1;
+  /// Used by `AppIndex`, which owns [_db] and its schema.
+  @internal
+  RecentDocuments.attach(this._db, {this.limit = 20});
 
   final Database _db;
 
   /// Entries kept; older ones are dropped on [record].
   final int limit;
-
-  void _migrate() {
-    final version = _db.select('PRAGMA user_version').first.columnAt(0) as int;
-    if (version > schemaVersion) {
-      throw StateError(
-        'Recent-documents index was created by a newer OpenCanvasX '
-        '(schema $version, supported $schemaVersion)',
-      );
-    }
-    if (version < 1) {
-      _db.execute('''
-        CREATE TABLE IF NOT EXISTS recent (
-          path TEXT PRIMARY KEY NOT NULL,
-          title TEXT NOT NULL,
-          document_id TEXT,
-          opened_at INTEGER NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS recent_opened_at ON recent (opened_at DESC);
-        PRAGMA user_version = 1;
-      ''');
-    }
-  }
 
   /// Records that [path] was opened (or saved) now, moving it to the top.
   void record({
@@ -154,16 +120,4 @@ final class RecentDocuments {
 
   /// Empties the list.
   void clear() => _db.execute('DELETE FROM recent');
-
-  void close() => _db.close();
-}
-
-/// Wraps [db]; closes it if migration fails so the file is not left locked.
-RecentDocuments _openChecked(Database db, int limit) {
-  try {
-    return RecentDocuments._(db, limit);
-  } on Object {
-    db.close();
-    rethrow;
-  }
 }

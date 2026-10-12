@@ -10,6 +10,8 @@ enum ObjectType {
   path,
   image,
   group,
+  polygon,
+  star,
 }
 
 /// Compositing mode used when drawing an object over what is beneath it.

@@ -190,13 +190,32 @@ Map<String, Object?> _encodeStyle(ObjectStyle s) => {
   if (s.fill case SolidFill(:final color))
     'fill': {'type': 'solid', 'color': _encodeColor(color)},
   if (s.stroke case final stroke?)
-    'stroke': {'color': _encodeColor(stroke.color), 'width': stroke.width},
+    'stroke': {
+      'color': _encodeColor(stroke.color),
+      'width': stroke.width,
+      if (stroke.dash != StrokeDash.solid) 'dash': stroke.dash.name,
+    },
   'corner_radius': s.cornerRadius,
 };
 
 Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
   NoPayload() => const {},
-  TextPayload(:final text) => {'text': text},
+  final TextPayload t => {
+    'text': t.text,
+    if (t.fontFamily case final family?) 'font_family': family,
+    'font_size': t.fontSize,
+    'font_weight': t.fontWeight,
+    if (t.italic) 'italic': true,
+    'align': t.align.name,
+    'line_height': t.lineHeight,
+    'letter_spacing': t.letterSpacing,
+    'sizing': _snake(t.sizing.name),
+  },
+  PolygonPayload(:final sides) => {'sides': sides},
+  StarPayload(:final points, :final innerRatio) => {
+    'points': points,
+    'inner_ratio': innerRatio,
+  },
   ImagePayload(:final assetHash) => {'asset': assetHash},
   PathPayload(:final segments) => {
     'segments': [for (final s in segments) _encodeSegment(s)],
@@ -327,6 +346,10 @@ ObjectStyle _decodeStyle(_Json j) => j.guard(() {
       () => Stroke(
         color: _decodeColor(stroke, 'color'),
         width: stroke.optNumber('width') ?? 1,
+        dash:
+            stroke.has('dash')
+                ? _enumByName(StrokeDash.values, stroke, 'dash')
+                : StrokeDash.solid,
       ),
     ),
     cornerRadius: j.optNumber('corner_radius') ?? 0,
@@ -341,7 +364,37 @@ Fill _decodeFill(_Json j) => switch (j.string('type')) {
 ObjectPayload _decodePayload(ObjectType type, _Json object) {
   switch (type) {
     case ObjectType.text:
-      return TextPayload(object.object('payload').string('text'));
+      final p = object.object('payload');
+      return p.guard(
+        () => TextPayload(
+          p.string('text'),
+          fontFamily: p.optString('font_family'),
+          fontSize: p.optNumber('font_size') ?? 24,
+          fontWeight: p.has('font_weight') ? p.integer('font_weight') : 400,
+          italic: p.optBool('italic') ?? false,
+          align:
+              p.has('align')
+                  ? _enumByName(TextAlignment.values, p, 'align')
+                  : TextAlignment.left,
+          lineHeight: p.optNumber('line_height') ?? 1.2,
+          letterSpacing: p.optNumber('letter_spacing') ?? 0,
+          sizing:
+              p.has('sizing')
+                  ? _enumByName(TextSizing.values, p, 'sizing')
+                  : TextSizing.autoWidth,
+        ),
+      );
+    case ObjectType.polygon:
+      final p = object.object('payload');
+      return p.guard(() => PolygonPayload(sides: p.integer('sides')));
+    case ObjectType.star:
+      final p = object.object('payload');
+      return p.guard(
+        () => StarPayload(
+          points: p.integer('points'),
+          innerRatio: p.optNumber('inner_ratio') ?? 0.5,
+        ),
+      );
     case ObjectType.image:
       final p = object.object('payload');
       return p.guard(() => ImagePayload(p.string('asset')));

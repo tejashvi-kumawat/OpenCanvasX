@@ -39,7 +39,7 @@ DesignDocument sampleDocument() {
       transform: box,
       parentId: const ObjectId('group'),
       styleId: 'brand',
-      payload: const TextPayload('Hello "OpenCanvasX" ✓'),
+      payload: TextPayload('Hello "OpenCanvasX" ✓'),
     ),
     DesignObject(
       id: const ObjectId('photo'),

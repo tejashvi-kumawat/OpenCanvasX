@@ -129,8 +129,8 @@ void main() {
     });
 
     test('fits matches each object type', () {
-      expect(const TextPayload('hi').fits(ObjectType.text), isTrue);
-      expect(const TextPayload('hi').fits(ObjectType.rect), isFalse);
+      expect(TextPayload('hi').fits(ObjectType.text), isTrue);
+      expect(TextPayload('hi').fits(ObjectType.rect), isFalse);
       expect(ImagePayload(hash).fits(ObjectType.image), isTrue);
       expect(PathPayload(const []).fits(ObjectType.path), isTrue);
       for (final type in [

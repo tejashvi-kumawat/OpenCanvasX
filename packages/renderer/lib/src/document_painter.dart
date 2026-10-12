@@ -144,62 +144,156 @@ void _paintShape(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
     SolidFill(:final color) => ui.Paint()..color = toUiColor(color),
     null => null,
   };
-  final stroke = switch (style.stroke) {
-    final s? when s.width > 0 =>
-      ui.Paint()
-        ..style = ui.PaintingStyle.stroke
-        ..strokeWidth = s.width
-        ..color = toUiColor(s.color)
-        ..strokeJoin = ui.StrokeJoin.round,
-    _ => null,
-  };
+  final stroke = style.stroke;
+  final strokePaint =
+      stroke != null && stroke.width > 0
+          ? (ui.Paint()
+            ..style = ui.PaintingStyle.stroke
+            ..strokeWidth = stroke.width
+            ..color = toUiColor(stroke.color)
+            ..strokeJoin = ui.StrokeJoin.round
+            ..strokeCap =
+                stroke.dash == StrokeDash.dotted
+                    ? ui.StrokeCap.round
+                    : ui.StrokeCap.butt)
+          : null;
 
   switch (object.type) {
-    case ObjectType.rect || ObjectType.roundedRect:
-      final radius = cornerRadiusOf(object, style);
-      final shape = ui.RRect.fromRectAndRadius(box, ui.Radius.circular(radius));
-      if (fill != null) canvas.drawRRect(shape, fill);
-      if (stroke != null) canvas.drawRRect(shape, stroke);
-    case ObjectType.ellipse:
-      if (fill != null) canvas.drawOval(box, fill);
-      if (stroke != null) canvas.drawOval(box, stroke);
-    case ObjectType.line:
-      if (stroke != null) {
-        canvas.drawLine(
-          ui.Offset.zero,
-          ui.Offset(t.width, t.height),
-          stroke..strokeCap = ui.StrokeCap.round,
-        );
-      }
-    case ObjectType.arrow:
-      if (stroke != null) _paintArrow(canvas, t, stroke);
-    case ObjectType.path:
-      final path = _pathOf(object.payload);
-      if (path != null) {
-        if (fill != null) canvas.drawPath(path, fill);
-        if (stroke != null) canvas.drawPath(path, stroke);
-      }
     case ObjectType.text:
       _paintText(canvas, object, style);
     case ObjectType.image:
       _paintImagePlaceholder(canvas, box);
+    case ObjectType.arrow:
+      if (strokePaint != null) _paintArrow(canvas, t, strokePaint, stroke!);
     case ObjectType.group:
       break;
+    case ObjectType.line:
+      if (strokePaint != null) {
+        final line =
+            ui.Path()
+              ..moveTo(0, 0)
+              ..lineTo(t.width, t.height);
+        if (stroke!.dash == StrokeDash.solid) {
+          strokePaint.strokeCap = ui.StrokeCap.round;
+        }
+        canvas.drawPath(_dashed(line, stroke), strokePaint);
+      }
+    case ObjectType.rect ||
+        ObjectType.roundedRect ||
+        ObjectType.ellipse ||
+        ObjectType.path ||
+        ObjectType.polygon ||
+        ObjectType.star:
+      final path = shapePath(object, style);
+      if (path == null) return;
+      if (fill != null) canvas.drawPath(path, fill);
+      if (strokePaint != null) {
+        canvas.drawPath(_dashed(path, stroke!), strokePaint);
+      }
   }
 }
 
-void _paintArrow(ui.Canvas canvas, ObjectTransform t, ui.Paint stroke) {
+/// Outline of a closed shape in its local box, or `null` for types that are
+/// not closed shapes. Shared by drawing and (later) export.
+ui.Path? shapePath(DesignObject object, ObjectStyle style) {
+  final t = object.transform;
+  final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
+  switch (object.type) {
+    case ObjectType.rect || ObjectType.roundedRect:
+      final radius = cornerRadiusOf(object, style);
+      return ui.Path()
+        ..addRRect(ui.RRect.fromRectAndRadius(box, ui.Radius.circular(radius)));
+    case ObjectType.ellipse:
+      return ui.Path()..addOval(box);
+    case ObjectType.path:
+      return _pathOf(object.payload);
+    case ObjectType.polygon:
+      final sides = switch (object.payload) {
+        PolygonPayload(:final sides) => sides,
+        _ => 6,
+      };
+      return _regularPath(box, [for (var i = 0; i < sides; i++) 1.0]);
+    case ObjectType.star:
+      final (points, inner) = switch (object.payload) {
+        StarPayload(:final points, :final innerRatio) => (points, innerRatio),
+        _ => (5, 0.5),
+      };
+      return _regularPath(box, [
+        for (var i = 0; i < points * 2; i++)
+          if (i.isEven) 1.0 else inner,
+      ]);
+    case ObjectType.text ||
+        ObjectType.image ||
+        ObjectType.line ||
+        ObjectType.arrow ||
+        ObjectType.group:
+      return null;
+  }
+}
+
+/// Polygon whose vertices sit at [radii] (fractions of the box's half size)
+/// around the centre, starting straight up.
+ui.Path _regularPath(ui.Rect box, List<double> radii) {
+  final path = ui.Path();
+  final c = box.center;
+  for (var i = 0; i < radii.length; i++) {
+    final angle = -math.pi / 2 + 2 * math.pi * i / radii.length;
+    final p = ui.Offset(
+      c.dx + math.cos(angle) * box.width / 2 * radii[i],
+      c.dy + math.sin(angle) * box.height / 2 * radii[i],
+    );
+    if (i == 0) {
+      path.moveTo(p.dx, p.dy);
+    } else {
+      path.lineTo(p.dx, p.dy);
+    }
+  }
+  return path..close();
+}
+
+/// [path] split into dashes for [stroke]'s pattern; solid strokes return
+/// [path] unchanged. Dash lengths scale with the stroke width.
+ui.Path _dashed(ui.Path path, Stroke stroke) {
+  final w = math.max(stroke.width, 0.0001);
+  final (on, off) = switch (stroke.dash) {
+    StrokeDash.solid => (0.0, 0.0),
+    StrokeDash.dashed => (w * 4, w * 2.5),
+    // Near-zero dashes with round caps draw as dots.
+    StrokeDash.dotted => (w * 0.001, w * 2),
+  };
+  if (on == 0) return path;
+  final result = ui.Path();
+  for (final metric in path.computeMetrics()) {
+    var distance = 0.0;
+    while (distance < metric.length) {
+      result.addPath(
+        metric.extractPath(distance, math.min(distance + on, metric.length)),
+        ui.Offset.zero,
+      );
+      distance += on + off;
+    }
+  }
+  return result;
+}
+
+void _paintArrow(
+  ui.Canvas canvas,
+  ObjectTransform t,
+  ui.Paint paint,
+  Stroke stroke,
+) {
   final end = ui.Offset(t.width, t.height);
   final length = end.distance;
   if (length == 0) return;
-  final headLength = math.min(math.max<double>(stroke.strokeWidth * 4, 6), length);
+  final headLength = math.min(math.max<double>(stroke.width * 4, 6), length);
   final direction = end / length;
   final shaftEnd = end - direction * (headLength * 0.6);
-  canvas.drawLine(
-    ui.Offset.zero,
-    shaftEnd,
-    stroke..strokeCap = ui.StrokeCap.round,
-  );
+  final shaft =
+      ui.Path()
+        ..moveTo(0, 0)
+        ..lineTo(shaftEnd.dx, shaftEnd.dy);
+  if (stroke.dash == StrokeDash.solid) paint.strokeCap = ui.StrokeCap.round;
+  canvas.drawPath(_dashed(shaft, stroke), paint);
   final normal = ui.Offset(-direction.dy, direction.dx);
   final base = end - direction * headLength;
   final head =
@@ -217,7 +311,7 @@ void _paintArrow(ui.Canvas canvas, ObjectTransform t, ui.Paint stroke) {
   canvas.drawPath(
     head,
     ui.Paint()
-      ..color = stroke.color
+      ..color = paint.color
       ..style = ui.PaintingStyle.fill,
   );
 }
@@ -249,25 +343,84 @@ ui.Path? _pathOf(ObjectPayload payload) {
   return path;
 }
 
-/// Plain-text placeholder rendering until typography lands (P1.5).
+/// Font used when a text has no family or the family is not installed.
+const String defaultFontFamily = 'Segoe UI';
+
+/// Builds a laid-out paragraph for [text]. [width] constrains wrapping;
+/// `null` lays out on one line per paragraph (auto width).
+ui.Paragraph layoutText(TextPayload text, {double? width, ui.Color? color}) {
+  final builder =
+      ui.ParagraphBuilder(
+          ui.ParagraphStyle(
+            textAlign: switch (text.align) {
+              TextAlignment.left => ui.TextAlign.left,
+              TextAlignment.center => ui.TextAlign.center,
+              TextAlignment.right => ui.TextAlign.right,
+              TextAlignment.justify => ui.TextAlign.justify,
+            },
+            fontFamily: text.fontFamily ?? defaultFontFamily,
+            fontSize: text.fontSize,
+            height: text.lineHeight,
+            fontWeight: ui.FontWeight.values[(text.fontWeight ~/ 100) - 1],
+            fontStyle: text.italic ? ui.FontStyle.italic : ui.FontStyle.normal,
+          ),
+        )
+        ..pushStyle(
+          ui.TextStyle(
+            color: color ?? const ui.Color(0xFF16181D),
+            fontFamily: text.fontFamily ?? defaultFontFamily,
+            fontSize: text.fontSize,
+            height: text.lineHeight,
+            letterSpacing: text.letterSpacing,
+            fontWeight: ui.FontWeight.values[(text.fontWeight ~/ 100) - 1],
+            fontStyle: text.italic ? ui.FontStyle.italic : ui.FontStyle.normal,
+          ),
+        )
+        // An empty paragraph still has the height of one line.
+        ..addText(text.text.isEmpty ? ' ' : text.text);
+  return builder.build()
+    ..layout(ui.ParagraphConstraints(width: width ?? double.infinity));
+}
+
+/// Box size of [text] in its own units: natural size for auto width, the
+/// wrapped height at [width] otherwise (P1.5.1).
+Point2D measureText(TextPayload text, {double? width}) {
+  if (text.sizing == TextSizing.autoWidth || width == null) {
+    final paragraph = layoutText(text);
+    final w = paragraph.maxIntrinsicWidth.ceilToDouble();
+    final h = paragraph.height.ceilToDouble();
+    paragraph.dispose();
+    return Point2D(math.max(w, 1), math.max(h, 1));
+  }
+  final paragraph = layoutText(text, width: width);
+  final h = paragraph.height.ceilToDouble();
+  paragraph.dispose();
+  return Point2D(width, math.max(h, 1));
+}
+
 void _paintText(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
   final payload = object.payload;
-  if (payload is! TextPayload || payload.text.isEmpty) return;
+  if (payload is! TextPayload) return;
   final t = object.transform;
   final color = switch (style.fill) {
     SolidFill(:final color) => toUiColor(color),
-    null => const ui.Color(0xFF1F2430),
+    null => const ui.Color(0x00000000),
   };
-  final builder =
-      ui.ParagraphBuilder(
-          ui.ParagraphStyle(fontSize: math.max(t.height * 0.7, 1)),
-        )
-        ..pushStyle(ui.TextStyle(color: color))
-        ..addText(payload.text);
-  final paragraph =
-      builder.build()
-        ..layout(ui.ParagraphConstraints(width: math.max(t.width, 1)));
+  final paragraph = layoutText(
+    payload,
+    // Auto-width boxes are kept at the text's natural width by the editor;
+    // laying out unconstrained keeps lines unwrapped even if they lag.
+    width: payload.sizing == TextSizing.autoWidth ? null : math.max(t.width, 1),
+    color: color,
+  );
+  if (payload.sizing == TextSizing.fixed) {
+    canvas
+      ..save()
+      ..clipRect(ui.Rect.fromLTWH(0, 0, t.width, t.height));
+  }
   canvas.drawParagraph(paragraph, ui.Offset.zero);
+  if (payload.sizing == TextSizing.fixed) canvas.restore();
+  paragraph.dispose();
 }
 
 /// Neutral box with a cross until image decoding lands (P1.6).

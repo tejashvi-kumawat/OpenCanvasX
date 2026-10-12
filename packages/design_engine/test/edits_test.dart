@@ -320,4 +320,87 @@ void main() {
       expect(renameDocument(doc, '   ').isEmpty, isTrue);
     });
   });
+
+  group('new shape types and text', () {
+    final page = DesignPage(id: page1, width: 1000, height: 500);
+
+    test('polygons and stars get their payloads', () {
+      final polygon = newShape(
+        ObjectType.polygon,
+        page,
+        id: const ObjectId('p'),
+      );
+      final star = newShape(ObjectType.star, page, id: const ObjectId('s'));
+      expect(polygon.payload, PolygonPayload());
+      expect(star.payload, StarPayload());
+    });
+
+    test('newText sizes from the role and the measurer, centred', () {
+      final text = newText(
+        page,
+        id: const ObjectId('t'),
+        role: TextRole.heading,
+        measure: (p) => Point2D(p.fontSize * 4, p.fontSize * 1.2),
+      );
+      final payload = text.payload as TextPayload;
+      expect(payload.text, 'Heading');
+      expect(payload.fontWeight, 700);
+      expect(payload.fontSize, closeTo(500 * 0.075, 0.1));
+      expect(text.transform.width, payload.fontSize * 4);
+      expect(text.transform.x + text.transform.width / 2, closeTo(500, 0.1));
+      expect(text.style!.fill, SolidFill(defaultTextColor));
+    });
+  });
+
+  group('distributeObjects', () {
+    test('spaces objects evenly between the outermost', () {
+      final doc = documentWith([
+        rect('a', w: 10),
+        rect('b', x: 15, w: 20),
+        rect('c', x: 90, w: 10),
+      ]);
+      final next = apply(
+        doc,
+        distributeObjects(doc, [
+          const ObjectId('c'),
+          const ObjectId('a'),
+          const ObjectId('b'),
+        ], DistributeAxis.horizontal),
+      );
+      double x(String id) => next.objects[ObjectId(id)]!.transform.x;
+      expect(x('a'), 0);
+      expect(x('c'), 90);
+      // Span 100, widths 40 → gap 30: b starts at 10 + 30.
+      expect(x('b'), 40);
+    });
+
+    test('needs at least three objects', () {
+      final doc = documentWith([rect('a'), rect('b')]);
+      expect(
+        distributeObjects(doc, [
+          const ObjectId('a'),
+          const ObjectId('b'),
+        ], DistributeAxis.vertical).isEmpty,
+        isTrue,
+      );
+    });
+
+    test('vertical distribution moves y only', () {
+      final doc = documentWith([
+        rect('a', h: 10),
+        rect('b', y: 70, h: 10),
+        rect('c', y: 100, h: 10),
+      ]);
+      final next = apply(
+        doc,
+        distributeObjects(doc, [
+          const ObjectId('a'),
+          const ObjectId('b'),
+          const ObjectId('c'),
+        ], DistributeAxis.vertical),
+      );
+      expect(next.objects[const ObjectId('b')]!.transform.y, 50);
+      expect(next.objects[const ObjectId('b')]!.transform.x, 0);
+    });
+  });
 }

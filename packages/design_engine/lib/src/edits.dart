@@ -14,8 +14,12 @@ typedef PageIdFactory = PageId Function();
 ObjectId _newObjectId() => ObjectId.generate();
 PageId _newPageId() => PageId.generate();
 
-/// Default fill for new shapes.
-final ArgbColor defaultShapeFill = ArgbColor(0xFF7B61FF);
+/// Default fill for new shapes: a neutral grey, so the user's own colours
+/// are the first colour on the page.
+final ArgbColor defaultShapeFill = ArgbColor(0xFFC4C9D4);
+
+/// Default colour for new text.
+final ArgbColor defaultTextColor = ArgbColor(0xFF16181D);
 
 /// Default colour for new lines and arrows.
 final ArgbColor defaultLineColor = ArgbColor(0xFF1F2430);
@@ -25,6 +29,24 @@ enum ZOrderMove { forward, backward, toFront, toBack }
 
 /// Alignment targets (P1.4.2).
 enum AlignEdge { left, centerHorizontal, right, top, centerVertical, bottom }
+
+/// Axis for distributing objects with equal spacing (P1.4.3).
+enum DistributeAxis { horizontal, vertical }
+
+/// Text presets offered in the Elements panel.
+enum TextRole {
+  heading('Heading', 0.075, 700),
+  subheading('Subheading', 0.045, 600),
+  body('Body text', 0.028, 400);
+
+  const TextRole(this.label, this.sizeFactor, this.weight);
+
+  final String label;
+
+  /// Font size as a fraction of the page's shorter side.
+  final double sizeFactor;
+  final int weight;
+}
 
 // ----------------------------------------------------------------- objects
 
@@ -58,6 +80,11 @@ DesignObject newShape(
   return DesignObject(
     id: id,
     type: type,
+    payload: switch (type) {
+      ObjectType.polygon => PolygonPayload(),
+      ObjectType.star => StarPayload(),
+      _ => const NoPayload(),
+    },
     pageId: page.id,
     transform: ObjectTransform(
       x: _round(c.x - width / 2),
@@ -66,6 +93,40 @@ DesignObject newShape(
       height: height,
     ),
     style: style,
+  );
+}
+
+/// A new text box with [role]'s size and weight, centred on [center]
+/// (page centre by default). [measure] returns the box size of the text in
+/// page units; the renderer provides it in the app.
+DesignObject newText(
+  DesignPage page, {
+  required ObjectId id,
+  required TextRole role,
+  required Point2D Function(TextPayload text) measure,
+  String? text,
+  Point2D? center,
+}) {
+  final base = math.min(page.width, page.height);
+  final payload = TextPayload(
+    text ?? role.label,
+    fontSize: _round(math.max(base * role.sizeFactor, 1)),
+    fontWeight: role.weight,
+  );
+  final size = measure(payload);
+  final c = center ?? Point2D(page.width / 2, page.height / 2);
+  return DesignObject(
+    id: id,
+    type: ObjectType.text,
+    pageId: page.id,
+    transform: ObjectTransform(
+      x: _round(c.x - size.x / 2),
+      y: _round(c.y - size.y / 2),
+      width: size.x,
+      height: size.y,
+    ),
+    style: ObjectStyle(fill: SolidFill(defaultTextColor)),
+    payload: payload,
   );
 }
 
@@ -340,6 +401,50 @@ Change alignObjects(
     );
   }
   return updateObjects(document, moved, label: 'Align');
+}
+
+/// Spaces three or more objects evenly along [axis], keeping the first and
+/// last in place (P1.4.3). Uses each object's rotated bounds.
+Change distributeObjects(
+  DesignDocument document,
+  Iterable<ObjectId> ids,
+  DistributeAxis axis,
+) {
+  final items = [
+    for (final id in ids)
+      if ((document.objects[id], worldBounds(document, id)) case (
+        final o?,
+        final b?,
+      ))
+        (o, b),
+  ];
+  if (items.length < 3) return Change(label: 'Distribute');
+  final horizontal = axis == DistributeAxis.horizontal;
+  double start(Rect2D b) => horizontal ? b.left : b.top;
+  double end(Rect2D b) => horizontal ? b.right : b.bottom;
+  items.sort((a, b) => start(a.$2).compareTo(start(b.$2)));
+  final span = end(items.last.$2) - start(items.first.$2);
+  final occupied = items.fold<double>(
+    0,
+    (sum, item) => sum + end(item.$2) - start(item.$2),
+  );
+  final gap = (span - occupied) / (items.length - 1);
+  var cursor = start(items.first.$2);
+  final moved = <DesignObject>[];
+  for (final (object, bounds) in items) {
+    final delta = cursor - start(bounds);
+    final t = object.transform;
+    moved.add(
+      object.copyWith(
+        transform:
+            horizontal
+                ? t.copyWith(x: t.x + delta)
+                : t.copyWith(y: t.y + delta),
+      ),
+    );
+    cursor += end(bounds) - start(bounds) + gap;
+  }
+  return updateObjects(document, moved, label: 'Distribute');
 }
 
 // ------------------------------------------------------------------- pages

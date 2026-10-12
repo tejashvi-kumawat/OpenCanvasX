@@ -13,11 +13,7 @@ Matcher closeToPoint(Point2D expected) => isA<Point2D>()
 void main() {
   group('geometry', () {
     test('localToParent rotates around the centre by default', () {
-      final t = ObjectTransform(
-        width: 100,
-        height: 50,
-        rotation: 90,
-      );
+      final t = ObjectTransform(width: 100, height: 50, rotation: 90);
       final m = localToParent(t);
       expect(
         m.apply(const Point2D(50, 25)),
@@ -133,9 +129,7 @@ void main() {
     });
 
     test('rotated objects are hit in their rotated shape', () {
-      final doc = documentWith([
-        rect('r', w: 200, h: 20, rotation: 90),
-      ]);
+      final doc = documentWith([rect('r', w: 200, h: 20, rotation: 90)]);
       final page = doc.pages.first;
       // After 90° about the centre (100, 10) the bar spans y -90…110.
       expect(hitTest(doc, page, const Point2D(100, -80)), isNotNull);

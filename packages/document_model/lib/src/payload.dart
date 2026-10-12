@@ -13,6 +13,8 @@ sealed class ObjectPayload {
     ObjectType.text => this is TextPayload,
     ObjectType.image => this is ImagePayload,
     ObjectType.path => this is PathPayload,
+    ObjectType.polygon => this is PolygonPayload,
+    ObjectType.star => this is StarPayload,
     ObjectType.rect ||
     ObjectType.roundedRect ||
     ObjectType.ellipse ||
@@ -37,19 +39,194 @@ final class NoPayload extends ObjectPayload {
 }
 
 /// Plain text content. Rich text (paragraphs, spans) replaces this in P1.5.
+/// How a text box takes its size (P1.5.1).
+enum TextSizing {
+  /// Width and height follow the text; no wrapping.
+  autoWidth,
+
+  /// Fixed width, wraps lines; height follows the text.
+  autoHeight,
+
+  /// Fixed box; text may overflow.
+  fixed,
+}
+
+/// Horizontal alignment of text lines.
+enum TextAlignment { left, center, right, justify }
+
+/// Text content and its formatting (P1.5.1–P1.5.3). The text colour is the
+/// object's fill. Character-level runs arrive with P1.5.4.
 final class TextPayload extends ObjectPayload {
-  const TextPayload(this.text);
+  factory TextPayload(
+    String text, {
+    String? fontFamily,
+    double fontSize = 24,
+    int fontWeight = 400,
+    bool italic = false,
+    TextAlignment align = TextAlignment.left,
+    double lineHeight = 1.2,
+    double letterSpacing = 0,
+    TextSizing sizing = TextSizing.autoWidth,
+  }) {
+    checkPositive(fontSize, 'fontSize');
+    if (fontWeight < 100 || fontWeight > 900 || fontWeight % 100 != 0) {
+      throw ArgumentError.value(
+        fontWeight,
+        'fontWeight',
+        'must be 100, 200, … 900',
+      );
+    }
+    checkPositive(lineHeight, 'lineHeight');
+    checkFinite(letterSpacing, 'letterSpacing');
+    final family = fontFamily?.trim();
+    return TextPayload._(
+      text,
+      family == null || family.isEmpty ? null : family,
+      fontSize,
+      fontWeight,
+      italic,
+      align,
+      lineHeight,
+      letterSpacing,
+      sizing,
+    );
+  }
+
+  const TextPayload._(
+    this.text,
+    this.fontFamily,
+    this.fontSize,
+    this.fontWeight,
+    this.italic,
+    this.align,
+    this.lineHeight,
+    this.letterSpacing,
+    this.sizing,
+  );
 
   final String text;
 
-  @override
-  bool operator ==(Object other) => other is TextPayload && other.text == text;
+  /// Family name; `null` uses the app's default font.
+  final String? fontFamily;
+
+  /// In the page's unit.
+  final double fontSize;
+  final int fontWeight;
+  final bool italic;
+  final TextAlignment align;
+
+  /// Multiple of the font size.
+  final double lineHeight;
+
+  /// Extra space between characters, in the page's unit.
+  final double letterSpacing;
+  final TextSizing sizing;
+
+  TextPayload copyWith({
+    String? text,
+    Object? fontFamily = _keep,
+    double? fontSize,
+    int? fontWeight,
+    bool? italic,
+    TextAlignment? align,
+    double? lineHeight,
+    double? letterSpacing,
+    TextSizing? sizing,
+  }) => TextPayload(
+    text ?? this.text,
+    fontFamily: fontFamily == _keep ? this.fontFamily : fontFamily as String?,
+    fontSize: fontSize ?? this.fontSize,
+    fontWeight: fontWeight ?? this.fontWeight,
+    italic: italic ?? this.italic,
+    align: align ?? this.align,
+    lineHeight: lineHeight ?? this.lineHeight,
+    letterSpacing: letterSpacing ?? this.letterSpacing,
+    sizing: sizing ?? this.sizing,
+  );
 
   @override
-  int get hashCode => text.hashCode;
+  bool operator ==(Object other) =>
+      other is TextPayload &&
+      other.text == text &&
+      other.fontFamily == fontFamily &&
+      other.fontSize == fontSize &&
+      other.fontWeight == fontWeight &&
+      other.italic == italic &&
+      other.align == align &&
+      other.lineHeight == lineHeight &&
+      other.letterSpacing == letterSpacing &&
+      other.sizing == sizing;
 
   @override
-  String toString() => 'TextPayload(${text.length} chars)';
+  int get hashCode => Object.hash(
+    text,
+    fontFamily,
+    fontSize,
+    fontWeight,
+    italic,
+    align,
+    lineHeight,
+    letterSpacing,
+    sizing,
+  );
+
+  @override
+  String toString() => 'TextPayload(${text.length} chars, $fontSize)';
+}
+
+const Object _keep = Object();
+
+/// Regular polygon inscribed in the object's box (P1.3.2).
+final class PolygonPayload extends ObjectPayload {
+  factory PolygonPayload({int sides = 6}) {
+    RangeError.checkValueInInterval(sides, 3, 64, 'sides');
+    return PolygonPayload._(sides);
+  }
+
+  const PolygonPayload._(this.sides);
+
+  final int sides;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PolygonPayload && other.sides == sides;
+
+  @override
+  int get hashCode => Object.hash(PolygonPayload, sides);
+
+  @override
+  String toString() => 'PolygonPayload($sides)';
+}
+
+/// Star inscribed in the object's box (P1.3.2).
+final class StarPayload extends ObjectPayload {
+  factory StarPayload({int points = 5, double innerRatio = 0.5}) {
+    RangeError.checkValueInInterval(points, 3, 64, 'points');
+    checkUnitInterval(innerRatio, 'innerRatio');
+    if (innerRatio == 0) {
+      throw ArgumentError.value(innerRatio, 'innerRatio', 'must be > 0');
+    }
+    return StarPayload._(points, innerRatio);
+  }
+
+  const StarPayload._(this.points, this.innerRatio);
+
+  final int points;
+
+  /// Inner radius as a fraction of the outer radius.
+  final double innerRatio;
+
+  @override
+  bool operator ==(Object other) =>
+      other is StarPayload &&
+      other.points == points &&
+      other.innerRatio == innerRatio;
+
+  @override
+  int get hashCode => Object.hash(StarPayload, points, innerRatio);
+
+  @override
+  String toString() => 'StarPayload($points, $innerRatio)';
 }
 
 /// Reference to image bytes stored under `assets/sha256/<assetHash>`.

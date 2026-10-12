@@ -71,7 +71,43 @@ DesignDocument _everything() {
         const ClosePath(),
       ]),
     ),
-    _object('text', ObjectType.text, payload: const TextPayload('Hello')),
+    _object(
+      'text',
+      ObjectType.text,
+      style: ObjectStyle(fill: const SolidFill(ArgbColor.black)),
+      payload: TextPayload(
+        'Hello\nworld',
+        fontWeight: 700,
+        italic: true,
+        align: TextAlignment.center,
+        sizing: TextSizing.fixed,
+      ),
+    ),
+    _object(
+      'polygon',
+      ObjectType.polygon,
+      style: ObjectStyle(
+        fill: const SolidFill(ArgbColor.black),
+        stroke: Stroke(
+          color: ArgbColor.white,
+          width: 2,
+          dash: StrokeDash.dashed,
+        ),
+      ),
+      payload: PolygonPayload(sides: 5),
+    ),
+    _object(
+      'star',
+      ObjectType.star,
+      style: ObjectStyle(
+        stroke: Stroke(
+          color: ArgbColor.black,
+          width: 2,
+          dash: StrokeDash.dotted,
+        ),
+      ),
+      payload: StarPayload(),
+    ),
     _object(
       'image',
       ObjectType.image,
@@ -139,9 +175,7 @@ void main() {
     final image = await tester.runAsync(
       () => recorder.endRecording().toImage(10, 10),
     );
-    final bytes = await tester.runAsync(
-      () => image!.toByteData(),
-    );
+    final bytes = await tester.runAsync(() => image!.toByteData());
     expect(bytes!.getUint8(0), 255);
     expect(bytes.getUint8(1), 0);
     image!.dispose();
@@ -202,5 +236,46 @@ void main() {
     expect(toUiColor(ArgbColor(0x80112233)), const Color(0x80112233));
     expect(toUiBlendMode(ObjectBlendMode.normal), BlendMode.srcOver);
     expect(toUiBlendMode(ObjectBlendMode.luminosity), BlendMode.luminosity);
+  });
+
+  group('text', () {
+    test('auto width measures the natural size', () {
+      final short = measureText(TextPayload('Hi', fontSize: 20));
+      final long = measureText(TextPayload('Hello there', fontSize: 20));
+      expect(long.x, greaterThan(short.x));
+      expect(short.y, greaterThanOrEqualTo(20));
+    });
+
+    test('auto height wraps to the given width', () {
+      final text = TextPayload(
+        'a b c d e f g h i j k l m n o p',
+        fontSize: 20,
+        sizing: TextSizing.autoHeight,
+      );
+      final one = measureText(text.copyWith(sizing: TextSizing.autoWidth));
+      final wrapped = measureText(text, width: one.x / 3);
+      expect(wrapped.x, one.x / 3);
+      expect(wrapped.y, greaterThan(one.y * 2));
+    });
+
+    test('empty text still has one line of height', () {
+      expect(
+        measureText(TextPayload('', fontSize: 30)).y,
+        greaterThanOrEqualTo(30),
+      );
+    });
+  });
+
+  test('shapePath covers closed shapes only', () {
+    const style = ObjectStyle.none;
+    expect(shapePath(_object('r', ObjectType.rect), style), isNotNull);
+    expect(
+      shapePath(
+        _object('p', ObjectType.polygon, payload: PolygonPayload()),
+        style,
+      )!.getBounds().width,
+      closeTo(80 * 0.866, 0.5),
+    );
+    expect(shapePath(_object('l', ObjectType.line), style), isNull);
   });
 }

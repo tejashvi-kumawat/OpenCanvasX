@@ -107,7 +107,7 @@ void main() {
       type: ObjectType.text,
       transform: box,
       pageId: page,
-      payload: const TextPayload('Hello'),
+      payload: TextPayload('Hello'),
     );
     expect((text.payload as TextPayload).text, 'Hello');
   });

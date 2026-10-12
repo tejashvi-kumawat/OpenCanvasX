@@ -128,6 +128,8 @@ bool _hits(
         ObjectType.text ||
         ObjectType.image ||
         ObjectType.path ||
+        ObjectType.polygon ||
+        ObjectType.star ||
         ObjectType.group:
       return local.x >= -slack &&
           local.x <= w + slack &&

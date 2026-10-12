@@ -26,28 +26,46 @@ final class SolidFill extends Fill {
   String toString() => 'SolidFill($color)';
 }
 
-/// Outline paint. Dash patterns arrive with P1.3.5.
+/// Line pattern of a stroke (P1.3.5). Dash lengths scale with the width.
+enum StrokeDash { solid, dashed, dotted }
+
+/// Outline paint.
 @immutable
 final class Stroke {
-  factory Stroke({required ArgbColor color, double width = 1}) {
+  factory Stroke({
+    required ArgbColor color,
+    double width = 1,
+    StrokeDash dash = StrokeDash.solid,
+  }) {
     checkNonNegative(width, 'width');
-    return Stroke._(color, width);
+    return Stroke._(color, width, dash);
   }
 
-  const Stroke._(this.color, this.width);
+  const Stroke._(this.color, this.width, this.dash);
 
   final ArgbColor color;
   final double width;
+  final StrokeDash dash;
+
+  Stroke copyWith({ArgbColor? color, double? width, StrokeDash? dash}) =>
+      Stroke(
+        color: color ?? this.color,
+        width: width ?? this.width,
+        dash: dash ?? this.dash,
+      );
 
   @override
   bool operator ==(Object other) =>
-      other is Stroke && other.color == color && other.width == width;
+      other is Stroke &&
+      other.color == color &&
+      other.width == width &&
+      other.dash == dash;
 
   @override
-  int get hashCode => Object.hash(color, width);
+  int get hashCode => Object.hash(color, width, dash);
 
   @override
-  String toString() => 'Stroke(color: $color, width: $width)';
+  String toString() => 'Stroke(color: $color, width: $width, ${dash.name})';
 }
 
 /// Visual appearance of an object, used inline or as a named shared style.

@@ -32,6 +32,8 @@ final class TemplateInfo {
     this.version = '1.0.0',
     this.tags = const [],
     this.board = false,
+    this.sha256,
+    this.bytes,
   });
 
   /// Parses one `index.json` entry. Entries without licence metadata or
@@ -84,6 +86,14 @@ final class TemplateInfo {
             if (t is String) t.toLowerCase(),
       ],
       board: json['board'] == true,
+      sha256:
+          json['sha256'] is String &&
+                  RegExp(
+                    r'^[0-9a-fA-F]{64}$',
+                  ).hasMatch(json['sha256']! as String)
+              ? json['sha256']! as String
+              : null,
+      bytes: json['bytes'] is int ? json['bytes']! as int : null,
     );
   }
 
@@ -108,6 +118,11 @@ final class TemplateInfo {
   /// Whether the template is a board of frames rather than pages.
   final bool board;
 
+  /// SHA-256 (hex) and size of the file, checked before use; required for
+  /// remote repositories.
+  final String? sha256;
+  final int? bytes;
+
   String get categoryLabel => templateCategories[category] ?? category;
 
   Map<String, Object?> toJson() => {
@@ -125,6 +140,8 @@ final class TemplateInfo {
     'version': version,
     'tags': tags,
     if (board) 'board': true,
+    if (sha256 != null) 'sha256': sha256,
+    if (bytes != null) 'bytes': bytes,
   };
 
   /// Whether [query] matches the name, category or tags.

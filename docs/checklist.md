@@ -435,8 +435,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P6.1.5 Malicious-plugin tests
 
 ## P6.2 Community Repositories
-- [ ] P6.2.1 Repository format (`index.json`, `templates/`, `assets/`, `previews/`, `licenses/`)
-- [ ] P6.2.2 Add repository by URL (Git, static HTTPS, local folder)
+- [x] P6.2.1 Repository format (`index.json`, `templates/`, `assets/`, `previews/`, `licenses/`) — templates; asset repositories pending
+- [x] P6.2.2 Add repository by URL (Git, static HTTPS, local folder)
 - [ ] P6.2.3 Publish, unpublish, fork, rate, tag, report
 - [ ] P6.2.4 License enforcement on ingest
 - [ ] P6.2.5 Contributor terms doc

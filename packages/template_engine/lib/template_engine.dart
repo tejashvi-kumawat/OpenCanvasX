@@ -3,5 +3,6 @@
 /// template pages or frames into a design.
 library;
 
+export 'src/repositories.dart';
 export 'src/template_apply.dart';
 export 'src/template_info.dart';

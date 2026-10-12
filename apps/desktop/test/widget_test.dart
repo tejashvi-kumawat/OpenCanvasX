@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
@@ -19,6 +20,7 @@ import 'package:opencanvasx/src/editor/tools.dart';
 import 'package:opencanvasx/src/editor/viewport.dart';
 import 'package:opencanvasx/src/providers.dart';
 import 'package:storage/storage.dart';
+import 'package:template_engine/template_engine.dart';
 
 import 'support/fakes.dart';
 
@@ -58,8 +60,18 @@ void main() {
         textMeasurerProvider.overrideWithValue(fakeMeasure),
         // The bundled gallery is tested on its own; elsewhere it would push
         // recent designs below the test window.
-        if (!withTemplates)
-          templatesProvider.overrideWith((ref) async => const []),
+        // The official templates come from the repository folder; other
+        // tests leave them out so recent designs stay on screen.
+        defaultTemplateRepositoriesProvider.overrideWithValue([
+          if (withTemplates)
+            const FolderTemplateRepository(
+              '../../templates/official',
+              label: 'OpenCanvasX',
+            ),
+        ]),
+        templateCacheDirProvider.overrideWith(
+          (ref) async => Directory.systemTemp.path,
+        ),
         exportSaverProvider.overrideWithValue((files, format) async {
           exported.add((files, format));
           return '/exports';
@@ -186,7 +198,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Start from a template'), findsOneWidget);
       expect(find.text('Bold sale'), findsOneWidget);
-      await tester.tap(find.text('Bold sale'));
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Bold sale'));
+        for (var i = 0; i < 40 && library.files.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await tester.pump();
+        }
+      });
       await tester.pumpAndSettle();
       expect(library.files, hasLength(1));
       final doc = session().document;

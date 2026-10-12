@@ -13,6 +13,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "c02096724aeada922ec4fd55741b7c1758ae702e22194324939fdbe301060fdf",
+   "bytes": 1524,
    "tags": [
     "instagram",
     "sale",
@@ -33,6 +35,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "2b131dcd7dc105639967eac5fadd99913d7da228e66ab2ae7a2cffb345a164c7",
+   "bytes": 1380,
    "tags": [
     "instagram",
     "quote",
@@ -52,6 +56,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "eec416773c05d15d604dd2a08ba56b036bc24a12e96acb37bc9ccd82ebdc27fb",
+   "bytes": 2162,
    "tags": [
     "instagram",
     "launch",
@@ -72,6 +78,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "72717497606a7bd8bbe9e05337c32fde1107da213ea698d9f7ba8282d2bf10ff",
+   "bytes": 2504,
    "tags": [
     "instagram",
     "carousel",
@@ -92,6 +100,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "b871082c5da647afeb2150bb5174c50d0c2dc7d0030cee5bdbd602e7d1647519",
+   "bytes": 2687,
    "tags": [
     "instagram",
     "event",
@@ -112,6 +122,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "25df5a65a08ff5e9d5bfe6733df818550aa3d3e4df75e489212de3855e62df86",
+   "bytes": 2087,
    "tags": [
     "linkedin",
     "hiring",
@@ -132,6 +144,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "817f50f681f3bd8b528bb55dc103bd8fefb4c23b92fa1c2010431012dc64ae93",
+   "bytes": 4427,
    "tags": [
     "story",
     "routine",
@@ -152,6 +166,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "e28ffb9d048b58a6cad9d0680bb975bef5952b627d6300a0b816552604383613",
+   "bytes": 1326,
    "tags": [
     "story",
     "poll",
@@ -172,6 +188,8 @@
    "license_url": "https://creativecommons.org/licenses/by/4.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "b6830cce8761b3298c0921f8ff357b11e77ead94e641c12f6550f22d39e79d12",
+   "bytes": 2122,
    "tags": [
     "story",
     "travel",
@@ -192,6 +210,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "c8fbdff34761893f2a0358381287c94243811c20506f2bd659403f134aa597ac",
+   "bytes": 1949,
    "tags": [
     "youtube",
     "thumbnail",
@@ -212,6 +232,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "4fbbaa35b7cca6ab99704d31441a1a8c706724ca06f41e7cd036d66f3a97ba98",
+   "bytes": 2100,
    "tags": [
     "youtube",
     "podcast",
@@ -232,6 +254,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "8147308deaee6c91bb764460137daf6ed9afb1954cec748caeed4dc907b324e7",
+   "bytes": 4565,
    "tags": [
     "presentation",
     "pitch",
@@ -252,6 +276,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "c94589bf974f297a132081d07e8e37742012b5f5b429b0f391f98e8b09d7409d",
+   "bytes": 1780,
    "tags": [
     "presentation",
     "education",
@@ -272,6 +298,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "32a55cfafd2cc158c526b183f6fa5d47af92c9083d3f2738195d33e3966f6455",
+   "bytes": 1507,
    "tags": [
     "poster",
     "a4",
@@ -293,6 +321,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "08ffe34f256881b8bfc14742d39b49a26a6edfa0140599b655eebf7801f4f835",
+   "bytes": 2631,
    "tags": [
     "menu",
     "cafe",
@@ -314,6 +344,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "525abb7af06b74a1af322102d77c34deddecad10d13ef3d5bf66b7183e7b6b67",
+   "bytes": 1998,
    "tags": [
     "flyer",
     "yoga",
@@ -335,6 +367,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "4a51b1de5837190b8bce5227b211fe31ba57eeb575f8facd522958f42fd855a8",
+   "bytes": 3080,
    "tags": [
     "business card",
     "card",
@@ -354,6 +388,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "25036fd517728884ebf3b36d10ca20cf339f8d36ebfb0b9c19f28d878b635ae8",
+   "bytes": 1323,
    "tags": [
     "business card",
     "card",
@@ -373,6 +409,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "5ac4ece5c8d94647dbd3a4cac570f6ed60f876903cbda37c64f43592420ac946",
+   "bytes": 2788,
    "tags": [
     "resume",
     "cv",
@@ -393,6 +431,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "735b71fea63eba2061fd56d1f21a8bfa0e3c802b5fda7820997800b334e20fa1",
+   "bytes": 2265,
    "tags": [
     "certificate",
     "award",
@@ -413,6 +453,8 @@
    "license_url": "https://creativecommons.org/licenses/by/4.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "9a2fd496f41d61612be453c7a2ed1287cc81e0e91646559a61ae595a27b1d9ca",
+   "bytes": 2118,
    "tags": [
     "invitation",
     "birthday",
@@ -432,6 +474,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "3318b6648ceff29bbf08018c88d4b4f0abaeebf3a26795ff527afed10997656f",
+   "bytes": 1973,
    "tags": [
     "invitation",
     "wedding",
@@ -451,6 +495,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "8901f0fbcff29b8de5e4849b1a3e0c90b36c5b3ad1a68937d3301c8f214cf942",
+   "bytes": 9610,
    "tags": [
     "app",
     "mobile",
@@ -473,6 +519,8 @@
    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
    "author": "OpenCanvasX contributors",
    "version": "1.0.0",
+   "sha256": "e99508c1c45afe55d6295eebcf0b9328adf5d6733aec0eee4f13be83405b670c",
+   "bytes": 5163,
    "tags": [
     "website",
     "landing page",

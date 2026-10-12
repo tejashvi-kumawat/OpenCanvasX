@@ -1,5 +1,6 @@
 import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
+import 'package:template_engine/template_engine.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../home/preset_frame.dart';
@@ -207,6 +208,7 @@ class TemplatesPanel extends ConsumerStatefulWidget {
 
 class _TemplatesPanelState extends ConsumerState<TemplatesPanel> {
   String _query = '';
+  String? _category;
 
   @override
   Widget build(BuildContext context) {
@@ -215,73 +217,127 @@ class _TemplatesPanelState extends ConsumerState<TemplatesPanel> {
     final c = context.ocx;
     final board = session?.activePage.isBoard ?? false;
     final presets = board ? framePresets : pagePresets;
-    return ListView(
-      padding: const EdgeInsets.only(bottom: Space.xl),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, 0),
-          child: TextField(
-            onChanged: (v) => setState(() => _query = v.trim()),
-            style: OcxText.body(context),
-            decoration: const InputDecoration(
-              hintText: 'Search templates',
-              prefixIcon: Icon(Icons.search, size: Chrome.icon),
-              prefixIconConstraints: BoxConstraints(minWidth: 28),
+    final all = ref.watch(templatesProvider).value ?? const <TemplateEntry>[];
+    final shown = filterTemplates(all, query: _query, category: _category);
+    return CustomScrollView(
+      slivers: [
+        SliverList.list(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.md,
+                Space.sm,
+                Space.md,
+                0,
+              ),
+              child: TextField(
+                onChanged: (v) => setState(() => _query = v.trim()),
+                style: OcxText.body(context),
+                decoration: const InputDecoration(
+                  hintText: 'Search templates',
+                  prefixIcon: Icon(Icons.search, size: Chrome.icon),
+                  prefixIconConstraints: BoxConstraints(minWidth: 28),
+                ),
+              ),
             ),
-          ),
+            const Row(
+              children: [
+                Expanded(child: SectionHeader(title: 'Templates')),
+                Padding(
+                  padding: EdgeInsets.only(right: Space.xs, top: Space.xs),
+                  child: TemplateSourcesButton(),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.md,
+                0,
+                Space.md,
+                Space.md,
+              ),
+              child: TemplateCategoryChips(
+                entries: all,
+                selected: _category,
+                onSelected: (v) => setState(() => _category = v),
+              ),
+            ),
+            if (shown.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.md),
+                child: Text(
+                  all.isEmpty
+                      ? 'No template sources yet. Use Sources to add a '
+                          'folder or repository.'
+                      : 'No templates match "$_query".',
+                  style: OcxText.caption(context).copyWith(
+                    color: c.textTertiary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+          ],
         ),
-        const SectionHeader(title: 'Templates'),
-        Padding(
+        SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: Space.md),
-          child: TemplateGallery(
+          sliver: SliverTemplateGrid(
+            entries: shown,
             columns: 2,
-            shrinkWrap: true,
-            query: _query,
             onUse: (_, contents) => editor.insertTemplate(contents),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, 0),
-          child: Text(
-            board
-                ? 'Templates and sizes are added to this board as frames.'
-                : 'Templates are added as new pages after this one.',
-            style: OcxText.caption(
-              context,
-            ).copyWith(color: c.textTertiary, fontWeight: FontWeight.w400),
-          ),
-        ),
-        for (final category in PresetCategory.values)
-          if (presets.any((p) => p.category == category)) ...[
-            SectionHeader(title: '${category.label} — blank'),
+        SliverList.list(
+          children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.md),
-              child: GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: Space.sm,
-                crossAxisSpacing: Space.sm,
-                childAspectRatio: 0.82,
-                children: [
-                  for (final p in presets)
-                    if (p.category == category)
-                      _PresetCard(
-                        preset: p,
-                        onTap:
-                            () =>
-                                board
-                                    ? editor.insertFrame(
-                                      width: p.width,
-                                      height: p.height,
-                                      name: p.name,
-                                    )
-                                    : editor.addPageFromPreset(p),
-                      ),
-                ],
+              padding: const EdgeInsets.fromLTRB(
+                Space.md,
+                Space.md,
+                Space.md,
+                0,
+              ),
+              child: Text(
+                board
+                    ? 'Templates and sizes are added to this board as frames.'
+                    : 'Templates are added as new pages after this one.',
+                style: OcxText.caption(
+                  context,
+                ).copyWith(color: c.textTertiary, fontWeight: FontWeight.w400),
               ),
             ),
+            for (final category in PresetCategory.values)
+              if (presets.any((p) => p.category == category)) ...[
+                SectionHeader(title: '${category.label}: blank'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.md),
+                  child: GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: Space.sm,
+                    crossAxisSpacing: Space.sm,
+                    childAspectRatio: 0.82,
+                    children: [
+                      for (final p in presets)
+                        if (p.category == category)
+                          _PresetCard(
+                            preset: p,
+                            onTap:
+                                () =>
+                                    board
+                                        ? editor.insertFrame(
+                                          width: p.width,
+                                          height: p.height,
+                                          name: p.name,
+                                        )
+                                        : editor.addPageFromPreset(p),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
+            const SizedBox(height: Space.xl),
           ],
+        ),
       ],
     );
   }

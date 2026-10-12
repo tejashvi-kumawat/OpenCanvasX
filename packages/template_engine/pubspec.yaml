@@ -7,9 +7,12 @@ environment:
   sdk: ^3.7.0
 
 dev_dependencies:
+  storage:
+    path: ../storage
   test: ^1.25.0
   very_good_analysis: ^7.0.0
 dependencies:
+  crypto: ^3.0.7
   design_engine:
     path: ../design_engine
   document_model:

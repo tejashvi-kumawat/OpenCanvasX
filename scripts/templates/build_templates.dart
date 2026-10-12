@@ -1,5 +1,7 @@
 // Builds OpenCanvasX's official, original templates (P2.2.6–P2.2.8) as
-// ordinary `.opencanvasx` files plus `index.json` (template-architecture.md).
+// ordinary `.opencanvasx` files plus `index.json` in `templates/official/`,
+// a template repository (template-architecture.md, P6.2.1) that the app
+// reads from a folder or downloads from a URL.
 //
 //   dart --packages=packages/storage/.dart_tool/package_config.json \
 //       scripts/templates/build_templates.dart
@@ -16,7 +18,7 @@ import 'package:storage/storage.dart';
 
 final root = File.fromUri(Platform.script).parent.parent.parent.path;
 final packs = '$root/packages/asset_packs/assets/packs';
-final out = '$root/packages/asset_packs/assets/templates';
+final out = '$root/templates/official';
 
 const author = 'OpenCanvasX contributors';
 const sans = null;
@@ -1606,6 +1608,8 @@ Future<void> main() async {
               : 'https://creativecommons.org/publicdomain/zero/1.0/',
       'author': author,
       'version': '1.0.0',
+      'sha256': sha256Hex(bytes),
+      'bytes': bytes.length,
       'tags': t.tags,
       if (first.isBoard) 'board': true,
     });

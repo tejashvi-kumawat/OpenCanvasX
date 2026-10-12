@@ -53,6 +53,7 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   _Section _section = _Section.home;
   String _query = '';
+  String? _category;
   final TextEditingController _search = TextEditingController();
 
   @override
@@ -124,6 +125,17 @@ class _HomePageState extends ConsumerState<HomePage> {
             ? shown.take(8).toList()
             : shown;
 
+    final allTemplates =
+        ref.watch(templatesProvider).value ?? const <TemplateEntry>[];
+    var shownTemplates = filterTemplates(
+      allTemplates,
+      query: _query,
+      category: _section == _Section.templates ? _category : null,
+    );
+    if (_section == _Section.home) {
+      shownTemplates = shownTemplates.take(10).toList();
+    }
+
     final searchField = TextField(
       controller: _search,
       onChanged: _setQuery,
@@ -187,18 +199,41 @@ class _HomePageState extends ConsumerState<HomePage> {
                         () => setState(() => _section = _Section.templates),
                     child: const Text('See all'),
                   )
-                  : null,
+                  : const TemplateSourcesButton(),
         ),
         const SizedBox(height: Space.sm),
-        TemplateGallery(
-          shrinkWrap: true,
-          tileWidth: _section == _Section.home ? 190 : 220,
-          query: _query,
-          limit: _section == _Section.home ? 10 : null,
-          showFilters: _section == _Section.templates,
-          onUse: _useTemplate,
-        ),
+        if (_section == _Section.templates)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.md),
+            child: TemplateCategoryChips(
+              entries: allTemplates,
+              selected: _category,
+              onSelected: (c) => setState(() => _category = c),
+            ),
+          ),
+        if (shownTemplates.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.md),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    allTemplates.isEmpty
+                        ? 'No template sources yet. Add a folder or a '
+                            'repository address to get templates.'
+                        : 'No templates match "$_query".',
+                    style: OcxText.body(
+                      context,
+                    ).copyWith(color: c.textSecondary),
+                  ),
+                ),
+                if (allTemplates.isEmpty) const TemplateSourcesButton(),
+              ],
+            ),
+          ),
       ],
+    ];
+    final afterTemplates = <Widget>[
       if (_section == _Section.home) ...[
         const SizedBox(height: Space.xl),
         _SectionTitle(
@@ -254,6 +289,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                 0,
               ),
               sliver: SliverList.list(children: top),
+            ),
+            // Only the cards on screen are built and load their files.
+            if (_section != _Section.designs)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                sliver: SliverTemplateGrid(
+                  entries: shownTemplates,
+                  tileWidth: _section == _Section.home ? 190 : 220,
+                  onUse: _useTemplate,
+                ),
+              ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+              sliver: SliverList.list(children: afterTemplates),
             ),
             if (_section != _Section.templates)
               if (designs.isLoading)

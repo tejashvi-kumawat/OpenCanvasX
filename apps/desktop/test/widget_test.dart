@@ -387,6 +387,46 @@ void main() {
       });
     });
 
+    testWidgets('dragging snaps to the page centre unless Alt is held', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertShape(ObjectType.rect);
+      await tester.pumpAndSettle();
+      final id = roots().single;
+      final before = session().document.objects[id]!.transform.x;
+      final canvas = tester.getRect(find.byType(DesignCanvas));
+      final viewport = container.read(viewportProvider);
+      final frame = layoutPages(session().document.pages).first;
+      final b = worldBounds(session().document, id)!;
+      final centre =
+          canvas.topLeft +
+          viewport.toScreen(
+            frame.toWorkspace(
+              Point2D(b.left + b.width / 2, b.top + b.height / 2),
+            ),
+          );
+      Future<void> drag(Offset by) async {
+        final gesture = await tester.startGesture(
+          centre,
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.moveBy(by / 2);
+        await gesture.moveBy(by / 2);
+        await gesture.up();
+        await tester.pumpAndSettle();
+      }
+
+      await drag(const Offset(4, 0));
+      expect(session().document.objects[id]!.transform.x, before);
+      expect(session().undoLabel, isNot('Move'));
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await drag(const Offset(4, 0));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+      expect(session().document.objects[id]!.transform.x, greaterThan(before));
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);

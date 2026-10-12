@@ -73,6 +73,11 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
   PageFrame? _dragFrame;
   Map<ObjectId, DesignObject> _dragStart = const {};
   late DesignDocument _dragDocument;
+
+  /// Smart-guide targets for the current drag (P1.4.4) and what to show.
+  SnapTargets? _snapTargets;
+  Rect2D? _dragStartBounds;
+  List<SnapGuide> _guides = const [];
   bool _dragMoved = false;
   Rect? _marquee;
   ObjectId? _hovered;
@@ -143,6 +148,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                             showHandles: editingText == null,
                             colors: colors,
                             titles: _frameTitles(session, frames, viewport),
+                            guides: _drag == _Drag.none ? const [] : _guides,
                             media: ref.watch(mediaCacheProvider),
                           ),
                         ),
@@ -578,6 +584,12 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       return;
     }
     _dragDocument = session.document;
+    _snapTargets = SnapTargets.collect(
+      session.document,
+      session.activePage,
+      exclude: _dragStart.keys.toSet(),
+    );
+    _dragStartBounds = selectionBounds(session.document, _dragStart.keys);
     _editor.beginGesture();
   }
 
@@ -611,13 +623,38 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       case _Drag.move:
         var dx = p.x - _downPage.x;
         var dy = p.y - _downPage.y;
+        var lockX = false;
+        var lockY = false;
         if (shift) {
           // Constrain to the dominant axis.
           if (dx.abs() > dy.abs()) {
             dy = 0;
+            lockY = true;
           } else {
             dx = 0;
+            lockX = true;
           }
+        }
+        final targets = _snapTargets;
+        final start = _dragStartBounds;
+        if (_snapping && targets != null && start != null) {
+          final snap = targets.snapRect(
+            Rect2D.fromLTWH(
+              start.left + dx,
+              start.top + dy,
+              start.width,
+              start.height,
+            ),
+            threshold: _snapDistance(frame),
+          );
+          if (!lockX) dx += snap.dx;
+          if (!lockY) dy += snap.dy;
+          _guides = [
+            for (final g in snap.guides)
+              if (g.vertical ? !lockX : !lockY) g,
+          ];
+        } else {
+          _guides = const [];
         }
         _editor.previewObjects([
           for (final o in _dragStart.values)
@@ -625,9 +662,22 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
         ]);
       case _Drag.resize:
         final o = _dragStart.values.first;
-        // Handles work in the object's parent space (groups may be
-        // rotated or scaled).
-        final local = pageToParent(_dragDocument, o.id, p);
+        // Snap the dragged edge(s) to guides, then work in the object's
+        // parent space (groups may be rotated or scaled).
+        var point = p;
+        final targets = _snapTargets;
+        if (_snapping && targets != null) {
+          final handle = _handle!;
+          final snap = targets.snapPoint(
+            p,
+            threshold: _snapDistance(frame),
+            snapX: handle.movesLeft || handle.movesRight,
+            snapY: handle.movesTop || handle.movesBottom,
+          );
+          point = snap.point;
+          _guides = snap.guides;
+        }
+        final local = pageToParent(_dragDocument, o.id, point);
         final transform = resizeTransform(
           o.transform,
           _handle!,
@@ -760,8 +810,19 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       // A click places a default-sized shape centred on the pointer.
       _editor.insertShape(type, at: _downPage, pageId: frame.pageId);
     } else {
-      final a = _pagePoint(preview.$1, frame);
-      final b = _pagePoint(preview.$2, frame);
+      var a = _pagePoint(preview.$1, frame);
+      var b = _pagePoint(preview.$2, frame);
+      if (_snapping) {
+        final page = ref.read(editorProvider)!.document.pages[frame.index];
+        final targets = SnapTargets.collect(
+          ref.read(editorProvider)!.document,
+          page,
+        );
+        a = targets.snapPoint(a, threshold: _snapDistance(frame)).point;
+        if (!tool.isLine) {
+          b = targets.snapPoint(b, threshold: _snapDistance(frame)).point;
+        }
+      }
       final transform =
           tool.isLine ? _lineTransform(a, b) : _boxTransform(a, b);
       _editor.insertDrawnShape(type, transform, pageId: frame.pageId);
@@ -809,7 +870,16 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     }
   }
 
+  /// Snapping is on unless Alt is held.
+  bool get _snapping => !HardwareKeyboard.instance.isAltPressed;
+
+  /// Snap distance: 6 screen pixels in page units.
+  double _snapDistance(PageFrame frame) => 6 * _unitsPerPixel(frame);
+
   void _resetDrag({bool cancel = false}) {
+    _snapTargets = null;
+    _dragStartBounds = null;
+    _guides = const [];
     if (cancel && _editor.isGestureActive) _editor.endGesture('Move');
     setState(() {
       _drag = _Drag.none;
@@ -1010,9 +1080,11 @@ class _WorkspacePainter extends CustomPainter {
     required this.colors,
     required this.titles,
     required this.media,
+    this.guides = const [],
   }) : super(repaint: media);
 
   final List<_FrameTitle> titles;
+  final List<SnapGuide> guides;
   final MediaCache media;
   final DesignDocument document;
   final List<PageFrame> frames;
@@ -1135,6 +1207,44 @@ class _WorkspacePainter extends CustomPainter {
           geometry.rotateHandle + const Offset(0, 20),
           dragLabel!,
         );
+      }
+    }
+
+    // Smart guides (P1.4.4): 1 px accent lines with end ticks.
+    if (guides.isNotEmpty) {
+      final guide =
+          Paint()
+            ..strokeWidth = 1
+            ..color = colors.accent;
+      for (final g in guides) {
+        final a = viewport.toScreen(
+          active.toWorkspace(
+            g.vertical
+                ? Point2D(g.position, g.start)
+                : Point2D(g.start, g.position),
+          ),
+        );
+        final b = viewport.toScreen(
+          active.toWorkspace(
+            g.vertical
+                ? Point2D(g.position, g.end)
+                : Point2D(g.end, g.position),
+          ),
+        );
+        canvas.drawLine(a, b, guide);
+        for (final end in [a, b]) {
+          canvas
+            ..drawLine(
+              end - const Offset(3, 3),
+              end + const Offset(3, 3),
+              guide,
+            )
+            ..drawLine(
+              end - const Offset(3, -3),
+              end + const Offset(3, -3),
+              guide,
+            );
+        }
       }
     }
 

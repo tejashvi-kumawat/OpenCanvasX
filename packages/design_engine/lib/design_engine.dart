@@ -10,6 +10,7 @@ export 'src/edits.dart';
 export 'src/groups.dart';
 export 'src/history.dart';
 export 'src/scene.dart';
+export 'src/snapping.dart';
 export 'src/transform_tools.dart';
 
 /// Package version.

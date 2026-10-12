@@ -122,7 +122,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.4.1 Layer tree panel (rename, lock, hide, reorder)
 - [x] P1.4.2 Align (left/center/right/top/middle/bottom)
 - [x] P1.4.3 Distribute + equal spacing
-- [ ] P1.4.4 Snap to page / object / grid + smart guides
+- [x] P1.4.4 Snap to page / object / grid + smart guides
 
 ## P1.5 Text (Basic)
 - [x] P1.5.1 Text box (auto width/height, fixed)

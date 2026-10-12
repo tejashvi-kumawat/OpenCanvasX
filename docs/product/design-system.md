@@ -177,6 +177,7 @@ Hover = 6 % `text` overlay · pressed = 10 % · selected = `accentSubtle` · foc
 - Selection: 1 px accent outline; handles 7 × 7 px white squares with 1 px accent border; rotation handle 8 px circle 20 px below the box.
 - Hover: 1 px accent outline at 60 % opacity.
 - Marquee: accent at 8 % fill, 1 px accent border.
+- Smart guides: 1 px accent lines across the snapped edges with small × ticks at both ends; shown only while dragging.
 - Measurement labels (size while resizing, angle while rotating): dark tooltip style, 11 px.
 - Pages: white (or the page background) with a soft shadow on `workspace`; the page title sits above the page in `caption` style; the active page title uses `text`, others `textSecondary`.
 

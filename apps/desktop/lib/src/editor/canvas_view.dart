@@ -133,6 +133,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                             showHandles: editingText == null,
                             colors: colors,
                             titles: _frameTitles(session, frames, viewport),
+                            media: ref.watch(mediaCacheProvider),
                           ),
                         ),
                       ),
@@ -987,9 +988,11 @@ class _WorkspacePainter extends CustomPainter {
     required this.showHandles,
     required this.colors,
     required this.titles,
-  });
+    required this.media,
+  }) : super(repaint: media);
 
   final List<_FrameTitle> titles;
+  final MediaCache media;
   final DesignDocument document;
   final List<PageFrame> frames;
   final ViewportState viewport;
@@ -1030,7 +1033,7 @@ class _WorkspacePainter extends CustomPainter {
         ..translate(rect.left, rect.top)
         ..scale(viewport.zoom * frame.unitScale);
       paintPageBackground(canvas, page);
-      paintPageContent(canvas, document, page);
+      paintPageContent(canvas, document, page, media: media);
       canvas.restore();
     }
     if (active == null) return;
@@ -1163,7 +1166,7 @@ class _WorkspacePainter extends CustomPainter {
       ..scale(viewport.zoom)
       ..translate(frame.rect.left, frame.rect.top)
       ..scale(frame.unitScale);
-    paintPageContent(canvas, document, page);
+    paintPageContent(canvas, document, page, media: media);
     canvas.restore();
   }
 

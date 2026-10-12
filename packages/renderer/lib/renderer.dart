@@ -3,6 +3,7 @@
 library;
 
 export 'src/document_painter.dart';
+export 'src/media_cache.dart';
 export 'src/page_thumbnail_painter.dart';
 
 /// Package version.

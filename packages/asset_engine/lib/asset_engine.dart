@@ -1,5 +1,7 @@
-/// OpenCanvasX — `asset_engine` package (Phase 0 skeleton).
+/// OpenCanvasX asset engine: pack manifests with licence metadata, catalog
+/// search and import validation (asset-architecture.md).
 library;
 
-/// Package marker for Phase 0; replaced with real APIs in later phases.
-String packageVersion() => '0.0.1';
+export 'src/asset_catalog.dart';
+export 'src/asset_pack.dart';
+export 'src/media_check.dart';

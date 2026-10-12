@@ -220,6 +220,33 @@ Change deleteObjects(
   return Change(label: label, objects: objects, pages: pages);
 }
 
+/// A placed image (raster or SVG) showing asset [assetHash] in a
+/// [width] × [height] box centred on [center]. Monochrome SVG icons get
+/// [tint] as their fill, which the renderer uses as `currentColor`.
+DesignObject newImage({
+  required ObjectId id,
+  required PageId pageId,
+  required String assetHash,
+  required double width,
+  required double height,
+  required Point2D center,
+  String? name,
+  ArgbColor? tint,
+}) => DesignObject(
+  id: id,
+  type: ObjectType.image,
+  pageId: pageId,
+  name: name,
+  transform: ObjectTransform(
+    x: center.x - width / 2,
+    y: center.y - height / 2,
+    width: width,
+    height: height,
+  ),
+  style: tint == null ? null : ObjectStyle(fill: SolidFill(tint)),
+  payload: ImagePayload(assetHash),
+);
+
 /// Every object in the subtrees of [ids], roots first, in z-order — what
 /// the clipboard holds (P1.3.7).
 List<DesignObject> copySubtrees(

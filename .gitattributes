@@ -1,0 +1,2 @@
+# Asset packs are hashed byte-for-byte (pack.json sha256): never convert line endings.
+packages/asset_packs/assets/** -text

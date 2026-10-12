@@ -45,8 +45,12 @@ abstract interface class DesignLibrary {
   /// Opens a design, with crash recovery (see `openProject`).
   Future<OpenedProject> open(String path);
 
-  /// Saves atomically.
-  Future<void> save(String path, DesignDocument document);
+  /// Saves atomically, with the bytes of the document's assets.
+  Future<void> save(
+    String path,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  });
 }
 
 /// [DesignLibrary] backed by `.opencanvasx` files.
@@ -109,6 +113,9 @@ class FileDesignLibrary implements DesignLibrary {
   Future<OpenedProject> open(String path) => openProject(path);
 
   @override
-  Future<void> save(String path, DesignDocument document) =>
-      saveProject(path, document);
+  Future<void> save(
+    String path,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  }) => saveProject(path, document, assets: assets);
 }

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -408,6 +411,73 @@ void main() {
       expect(editor().canUngroup, isTrue);
       editor().ungroupSelection();
       expect(doc().objects[roots().single]!.type, ObjectType.rect);
+    });
+  });
+
+  group('images', () {
+    final svg = Uint8List.fromList(
+      utf8.encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+        ' <path d="M0 0h24v24" stroke="currentColor"/></svg>',
+      ),
+    );
+
+    test(
+      'insertImage stores the asset, sizes the box and saves bytes',
+      () async {
+        final id = editor().insertImage(
+          svg,
+          name: 'Heart',
+          licenseRef: 'pack:lucide@1.55.0',
+          tint: ArgbColor.black,
+          size: 240,
+        );
+        final image = doc().objects[id]!;
+        final payload = image.payload as ImagePayload;
+        expect(image.type, ObjectType.image);
+        expect(image.transform.width, 240);
+        expect(image.transform.height, 240);
+        expect(image.style!.fill, const SolidFill(ArgbColor.black));
+        expect(
+          doc().assets[payload.assetHash]!.licenseRef,
+          'pack:lucide@1.55.0',
+        );
+        expect(doc().assets[payload.assetHash]!.mime, 'image/svg+xml');
+        await settle();
+        expect(library.savedAssets[path]!.keys, [payload.assetHash]);
+
+        editor().undo();
+        expect(doc().objects.containsKey(id), isFalse);
+        expect(doc().assets, isEmpty);
+      },
+    );
+
+    test('the same file is stored once', () {
+      editor()
+        ..insertImage(svg)
+        ..insertImage(svg);
+      expect(doc().assets, hasLength(1));
+      expect(roots(), hasLength(2));
+    });
+
+    test('rejects unsafe or unknown files with a message', () {
+      expect(
+        () => editor().insertImage(
+          Uint8List.fromList(utf8.encode('<svg><script/></svg>')),
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('scripts'),
+          ),
+        ),
+      );
+      expect(
+        () => editor().insertImage(Uint8List.fromList([1, 2, 3])),
+        throwsFormatException,
+      );
+      expect(roots(), isEmpty);
     });
   });
 

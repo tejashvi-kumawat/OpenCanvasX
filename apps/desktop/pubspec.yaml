@@ -45,6 +45,10 @@ dependencies:
     path: ../../packages/document_model
   renderer:
     path: ../../packages/renderer
+  asset_engine:
+    path: ../../packages/asset_engine
+  asset_packs:
+    path: ../../packages/asset_packs
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:document_model/document_model.dart';
 
+import 'media_cache.dart';
+
 /// Deepest group nesting drawn; protects against cyclic files.
 const _maxDepth = 64;
 
@@ -87,14 +89,18 @@ void paintPageBackground(
 
 /// Draws all objects of [page] in page units, back to front. Hidden objects
 /// are skipped.
+///
+/// Images and SVGs come from [media]; without it (or while decoding) they
+/// draw as placeholders.
 void paintPageContent(
   ui.Canvas canvas,
   DesignDocument document,
-  DesignPage page,
-) {
+  DesignPage page, {
+  MediaCache? media,
+}) {
   for (final id in page.objectIds) {
     final object = document.objects[id];
-    if (object != null) paintObject(canvas, document, object);
+    if (object != null) paintObject(canvas, document, object, media: media);
   }
 }
 
@@ -104,6 +110,7 @@ void paintObject(
   DesignDocument document,
   DesignObject object, {
   int depth = 0,
+  MediaCache? media,
 }) {
   if (object.hidden || depth > _maxDepth) return;
   final t = object.transform;
@@ -123,9 +130,22 @@ void paintObject(
   }
 
   if (object.type == ObjectType.group) {
-    _paintChildren(canvas, document, object, depth);
+    _paintChildren(canvas, document, object, depth, media);
   } else if (object.type == ObjectType.frame) {
-    _paintFrame(canvas, document, object, depth);
+    _paintFrame(canvas, document, object, depth, media);
+  } else if (object.payload case ImagePayload(:final assetHash)) {
+    _paintImage(
+      canvas,
+      object,
+      effectiveStyle(object, document.styles),
+      media?.resolve(
+        assetHash,
+        currentColor: switch (object.style?.fill) {
+          SolidFill(:final color) => color.value,
+          null => null,
+        },
+      ),
+    );
   } else {
     _paintShape(canvas, object, effectiveStyle(object, document.styles));
   }
@@ -139,10 +159,13 @@ void _paintChildren(
   DesignDocument document,
   DesignObject object,
   int depth,
+  MediaCache? media,
 ) {
   for (final childId in object.childIds) {
     final child = document.objects[childId];
-    if (child != null) paintObject(canvas, document, child, depth: depth + 1);
+    if (child != null) {
+      paintObject(canvas, document, child, depth: depth + 1, media: media);
+    }
   }
 }
 
@@ -153,6 +176,7 @@ void _paintFrame(
   DesignDocument document,
   DesignObject object,
   int depth,
+  MediaCache? media,
 ) {
   final style = effectiveStyle(object, document.styles);
   final outline = shapePath(object, style)!;
@@ -168,7 +192,7 @@ void _paintFrame(
       ..save()
       ..clipPath(outline);
   }
-  _paintChildren(canvas, document, object, depth);
+  _paintChildren(canvas, document, object, depth, media);
   if (clip) canvas.restore();
   final stroke = style.stroke;
   if (stroke != null && stroke.width > 0) {
@@ -468,7 +492,53 @@ void _paintText(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
   paragraph.dispose();
 }
 
-/// Neutral box with a cross until image decoding lands (P1.6).
+/// Draws a decoded image or SVG stretched to the object's box, rounded by
+/// the corner radius and outlined by the stroke; a placeholder while it
+/// decodes.
+void _paintImage(
+  ui.Canvas canvas,
+  DesignObject object,
+  ObjectStyle style,
+  MediaDrawable? drawable,
+) {
+  final t = object.transform;
+  final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
+  if (box.isEmpty) return;
+  final radius = math.min(style.cornerRadius, math.min(t.width, t.height) / 2);
+  final rounded = ui.RRect.fromRectAndRadius(box, ui.Radius.circular(radius));
+  canvas.save();
+  if (radius > 0) canvas.clipRRect(rounded);
+  switch (drawable) {
+    case RasterMedia(:final image):
+      canvas.drawImageRect(
+        image,
+        ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+        box,
+        ui.Paint()..filterQuality = ui.FilterQuality.medium,
+      );
+    case VectorMedia(:final picture, :final size):
+      if (size.width > 0 && size.height > 0) {
+        canvas
+          ..scale(t.width / size.width, t.height / size.height)
+          ..drawPicture(picture);
+      }
+    case null:
+      _paintImagePlaceholder(canvas, box);
+  }
+  canvas.restore();
+  final stroke = style.stroke;
+  if (stroke != null && stroke.width > 0) {
+    canvas.drawPath(
+      _dashed(ui.Path()..addRRect(rounded), stroke),
+      ui.Paint()
+        ..style = ui.PaintingStyle.stroke
+        ..strokeWidth = stroke.width
+        ..color = toUiColor(stroke.color),
+    );
+  }
+}
+
+/// Neutral box with a cross while an image decodes or is missing.
 void _paintImagePlaceholder(ui.Canvas canvas, ui.Rect box) {
   canvas.drawRect(box, ui.Paint()..color = const ui.Color(0xFFE3E6EC));
   final lines =

@@ -178,13 +178,13 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 # PHASE 2 — Templates, Assets, Brand, Search (MVP Completion)
 
 ## P2.1 Asset Engine
-- [ ] P2.1.1 Asset metadata schema (id, source, author, license, license URL, attribution, tags, dimensions, hash)
+- [x] P2.1.1 Asset metadata schema (id, source, author, license, license URL, attribution, tags, dimensions, hash)
 - [ ] P2.1.2 Asset library panel (browse, search, filter, tags)
 - [ ] P2.1.3 Asset types: photos, icons, shapes, stickers, patterns, textures, frames, backgrounds
 - [ ] P2.1.4 License inspector UI + attribution tracking
-- [ ] P2.1.5 Reject assets lacking license metadata
+- [x] P2.1.5 Reject assets lacking license metadata
 - [ ] P2.1.6 Asset validation pipeline (images, SVG, archives, fonts, metadata)
-- [ ] P2.1.7 Seed original/openly-licensed asset pack with `licenses/` folder
+- [x] P2.1.7 Seed original/openly-licensed asset pack with `licenses/` folder
 
 ## P2.2 Template Engine
 - [ ] P2.2.1 Declarative template format (no code execution)

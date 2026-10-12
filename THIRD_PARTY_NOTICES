@@ -18,6 +18,19 @@ Build-time / runtime dependencies (Phase 0):
 - flutter_riverpod / riverpod (Dart packages) — MIT, Copyright (c) 2020 Remi Rousselet (https://pub.dev/packages/flutter_riverpod)
 - file_selector, path_provider (Flutter plugins) — BSD-3-Clause, Copyright 2013 The Flutter Authors
 - jni, jni_flutter (transitive, via path_provider) — BSD-3-Clause, Copyright 2022 the Dart project authors
+- flutter_svg — MIT, Copyright (c) 2018 Dan Field (https://pub.dev/packages/flutter_svg)
+- vector_graphics, vector_graphics_codec, vector_graphics_compiler, path_parsing — BSD-3-Clause, Copyright 2013 The Flutter Authors (transitive, via flutter_svg)
+- xml, petitparser — MIT, Copyright (c) 2006-2025 Lukas Renggli (transitive, via flutter_svg)
+- http — BSD-3-Clause, Copyright 2014 the Dart project authors (transitive, via flutter_svg; OpenCanvasX never loads SVGs from the network)
 - Rust crates: see rust/Cargo.lock and https://crates.io per crate
+
+Bundled asset packs (packages/asset_packs/assets/packs/<id>/, each with its
+LICENSE file and per-item metadata in pack.json; built by
+scripts/asset_packs/build_packs.py):
+
+- Lucide icons 1.55.0 — ISC, Copyright (c) Lucide Contributors 2022; portions MIT, Copyright (c) 2013-2022 Cole Bemis (Feather) (https://lucide.dev)
+- Tabler Icons 3.49.0 — MIT, Copyright (c) 2020-2024 Paweł Kuna (https://tabler.io/icons)
+- Phosphor Icons core 2.1.1 (regular, fill, duotone) — MIT, Copyright (c) 2023 Phosphor Icons (https://phosphoricons.com)
+- Twemoji 15.0.0 graphics — CC-BY 4.0, Copyright 2019 Twitter, Inc and other contributors (https://github.com/jdecked/twemoji). Attribution: "Twemoji by Twitter, Inc and other contributors, licensed under CC-BY 4.0" — shown in the Stickers panel and About.
 
 Update this file and DEPENDENCIES when adding bundled assets, fonts, or libraries.

@@ -17,8 +17,10 @@ final class Change {
     Map<ObjectId, DesignObject?> objects = const {},
     List<DesignPage>? pages,
     this.metadata,
+    Map<String, AssetInfo?> assets = const {},
   }) : objects = Map.unmodifiable(objects),
-       pages = pages == null ? null : List.unmodifiable(pages);
+       pages = pages == null ? null : List.unmodifiable(pages),
+       assets = Map.unmodifiable(assets);
 
   /// User-facing name, e.g. "Move" — shown as "Undo Move".
   final String label;
@@ -31,7 +33,12 @@ final class Change {
 
   final DocumentMetadata? metadata;
 
-  bool get isEmpty => objects.isEmpty && pages == null && metadata == null;
+  /// Asset index entries to add (non-null) or remove (`null`), by hash.
+  /// The bytes themselves live outside the document (file-format.md).
+  final Map<String, AssetInfo?> assets;
+
+  bool get isEmpty =>
+      objects.isEmpty && pages == null && metadata == null && assets.isEmpty;
 
   /// Applies this change to [document].
   ///
@@ -47,19 +54,30 @@ final class Change {
         nextObjects[id] = object;
       }
     }
+    final nextAssets = Map<String, AssetInfo>.of(document.assets);
+    final undoAssets = <String, AssetInfo?>{};
+    for (final MapEntry(key: hash, value: info) in assets.entries) {
+      undoAssets[hash] = document.assets[hash];
+      if (info == null) {
+        nextAssets.remove(hash);
+      } else {
+        nextAssets[hash] = info;
+      }
+    }
     final next = DesignDocument(
       id: document.id,
       metadata: metadata ?? document.metadata,
       pages: pages ?? document.pages,
       objects: nextObjects,
       styles: document.styles,
-      assets: document.assets,
+      assets: nextAssets,
     );
     final undo = Change(
       label: label,
       objects: undoObjects,
       pages: pages == null ? null : document.pages,
       metadata: metadata == null ? null : document.metadata,
+      assets: undoAssets,
     );
     return (next, undo);
   }
@@ -68,5 +86,6 @@ final class Change {
   String toString() =>
       'Change($label: ${objects.length} objects'
       '${pages == null ? '' : ', pages'}'
-      '${metadata == null ? '' : ', metadata'})';
+      '${metadata == null ? '' : ', metadata'}'
+      '${assets.isEmpty ? '' : ', ${assets.length} assets'})';
 }

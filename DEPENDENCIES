@@ -15,3 +15,12 @@ riverpod | via flutter_riverpod | MIT | https://pub.dev/packages/riverpod | UI s
 file_selector | ^1.1.0 | BSD-3-Clause | https://pub.dev/packages/file_selector | native folder picker (Flutter team)
 path_provider | ^2.1.6 | BSD-3-Clause | https://pub.dev/packages/path_provider | per-user data and documents folders (Flutter team)
 jni, jni_flutter | via path_provider_android | BSD-3-Clause | https://pub.dev/packages/jni | transitive; Flutter registers jni as an FFI plugin in desktop builds
+flutter_svg | ^2.3.0 (2.3.0) | MIT | https://pub.dev/packages/flutter_svg | SVG parsing/drawing in renderer (P1.6.2)
+vector_graphics, vector_graphics_codec, vector_graphics_compiler | 1.2.3 / 1.1.13 / 1.3.0 | BSD-3-Clause | https://pub.dev/packages/vector_graphics | transitive via flutter_svg
+path_parsing | 1.1.0 | BSD-3-Clause | https://pub.dev/packages/path_parsing | transitive via flutter_svg
+xml, petitparser | 7.0.1 / 7.1.0 | MIT | https://pub.dev/packages/xml | transitive via flutter_svg
+http | 1.6.0 | BSD-3-Clause | https://pub.dev/packages/http | transitive via flutter_svg (network loader unused; offline policy)
+Lucide icons | 1.55.0 | ISC (+MIT Feather portions) | https://github.com/lucide-icons/lucide | bundled asset pack
+Tabler Icons | 3.49.0 | MIT | https://www.npmjs.com/package/@tabler/icons | bundled asset pack
+Phosphor Icons core | 2.1.1 | MIT | https://www.npmjs.com/package/@phosphor-icons/core | bundled asset pack
+Twemoji graphics | 15.0.0 | CC-BY-4.0 | https://www.npmjs.com/package/@twemoji/svg | bundled sticker pack; attribution shown in app

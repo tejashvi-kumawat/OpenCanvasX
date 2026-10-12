@@ -2,6 +2,7 @@ import 'package:document_model/document_model.dart';
 import 'package:flutter/rendering.dart';
 
 import 'document_painter.dart';
+import 'media_cache.dart';
 
 /// Paints one page scaled to fill the painter's size — for page strips,
 /// home-screen cards and other previews. Content is clipped to the page.
@@ -9,10 +10,14 @@ import 'document_painter.dart';
 /// Give it a box with the page's aspect ratio (see [DesignPage.width] /
 /// [DesignPage.height]); otherwise the page is centred and letterboxed.
 class PageThumbnailPainter extends CustomPainter {
-  PageThumbnailPainter({required this.document, required this.page});
+  PageThumbnailPainter({required this.document, required this.page, this.media})
+    : super(repaint: media);
 
   final DesignDocument document;
   final DesignPage page;
+
+  /// Decoded images; thumbnails repaint as they finish decoding.
+  final MediaCache? media;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -29,7 +34,7 @@ class PageThumbnailPainter extends CustomPainter {
       ..scale(scale)
       ..clipRect(Rect.fromLTWH(0, 0, page.width, page.height));
     paintPageBackground(canvas, page);
-    paintPageContent(canvas, document, page);
+    paintPageContent(canvas, document, page, media: media);
     canvas.restore();
   }
 

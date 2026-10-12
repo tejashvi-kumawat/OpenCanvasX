@@ -1,0 +1,32 @@
+name: asset_packs
+description: OpenCanvasX — bundled, openly licensed asset packs (icons, stickers) and their loader.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.7.0
+  flutter: ">=3.29.0"
+
+dependencies:
+  asset_engine:
+    path: ../asset_engine
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  crypto: ^3.0.6
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^7.0.0
+
+flutter:
+  assets:
+    - assets/packs/
+    - assets/packs/lucide/
+    - assets/packs/lucide/svg/
+    - assets/packs/tabler/
+    - assets/packs/tabler/svg/
+    - assets/packs/phosphor/
+    - assets/packs/phosphor/svg/
+    - assets/packs/twemoji/
+    - assets/packs/twemoji/svg/

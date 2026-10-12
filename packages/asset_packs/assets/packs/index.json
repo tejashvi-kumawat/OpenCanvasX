@@ -1,0 +1,48 @@
+{
+ "packs": [
+  {
+   "id": "lucide",
+   "name": "Lucide",
+   "kind": "icon",
+   "version": "1.55.0",
+   "license": "ISC",
+   "attribution_required": false,
+   "attribution": null,
+   "recolorable": true,
+   "count": 1877
+  },
+  {
+   "id": "phosphor",
+   "name": "Phosphor Icons",
+   "kind": "icon",
+   "version": "2.1.1",
+   "license": "MIT",
+   "attribution_required": false,
+   "attribution": null,
+   "recolorable": true,
+   "count": 4536
+  },
+  {
+   "id": "tabler",
+   "name": "Tabler Icons",
+   "kind": "icon",
+   "version": "3.49.0",
+   "license": "MIT",
+   "attribution_required": false,
+   "attribution": null,
+   "recolorable": true,
+   "count": 6238
+  },
+  {
+   "id": "twemoji",
+   "name": "Twemoji",
+   "kind": "sticker",
+   "version": "15.0.0",
+   "license": "CC-BY-4.0",
+   "attribution_required": true,
+   "attribution": "Twemoji by Twitter, Inc and other contributors, licensed under CC-BY 4.0",
+   "recolorable": false,
+   "count": 3720
+  }
+ ]
+}

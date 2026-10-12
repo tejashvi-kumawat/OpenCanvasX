@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:document_model/document_model.dart';
@@ -87,8 +88,16 @@ class InMemoryDesignLibrary implements DesignLibrary {
     );
   }
 
+  /// Asset bytes from the last save of each path.
+  final Map<String, Map<String, Uint8List>> savedAssets = {};
+
   @override
-  Future<void> save(String path, DesignDocument document) async {
+  Future<void> save(
+    String path,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  }) async {
+    savedAssets[path] = assets;
     files[path] = document;
     modified[path] = _tick();
     saves++;

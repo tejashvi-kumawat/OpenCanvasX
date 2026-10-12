@@ -20,6 +20,9 @@ rust/ocx_native/target/
 # Generated FRB
 packages/ocx_native_bridge/lib/src/frb_generated.*
 
+# Downloaded upstream archives (scripts/asset_packs)
+.cache/
+
 # OS
 .DS_Store
 Thumbs.db

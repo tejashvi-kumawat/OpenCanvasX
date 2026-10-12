@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:asset_engine/asset_engine.dart';
 import 'package:design_engine/design_engine.dart'
     hide
         addPage,
@@ -27,6 +28,14 @@ import 'package:renderer/renderer.dart' as renderer;
 
 import '../providers.dart';
 import 'viewport.dart';
+
+/// Decoded images and SVGs of the open design (and bundled assets shown in
+/// panels), keyed by content hash.
+final mediaCacheProvider = Provider<renderer.MediaCache>((ref) {
+  final cache = renderer.MediaCache();
+  ref.onDispose(cache.dispose);
+  return cache;
+});
 
 /// Where the open design stands relative to its file.
 enum SaveStatus {
@@ -155,7 +164,7 @@ class EditorController extends Notifier<EditorSession?> {
   /// Opens the design at [path].
   Future<OpenNotice> open(String path) async {
     final opened = await ref.read(designLibraryProvider).open(path);
-    _start(path, opened.contents.document);
+    _start(path, opened.contents.document, assets: opened.contents.assets);
     if (opened.source == ProjectSource.autosave) {
       return OpenNotice.recoveredFromAutosave;
     }
@@ -166,15 +175,30 @@ class EditorController extends Notifier<EditorSession?> {
 
   /// Starts editing an already loaded [document] saved at [path]. With
   /// [unsaved] (e.g. a restored backup) it is written back promptly.
-  void start(String path, DesignDocument document, {bool unsaved = false}) {
-    _start(path, document);
+  void start(
+    String path,
+    DesignDocument document, {
+    bool unsaved = false,
+    Map<String, Uint8List> assets = const {},
+  }) {
+    _start(path, document, assets: assets);
     if (unsaved) {
       _setStatus(SaveStatus.pending);
       _autosaver?.markDirty();
     }
   }
 
-  void _start(String path, DesignDocument document) {
+  void _start(
+    String path,
+    DesignDocument document, {
+    Map<String, Uint8List> assets = const {},
+  }) {
+    final media = ref.read(mediaCacheProvider)..clear();
+    for (final MapEntry(key: hash, value: info) in document.assets.entries) {
+      if (assets[hash] case final bytes?) {
+        media.register(hash, bytes, info.mime);
+      }
+    }
     _autosaver?.dispose();
     _history.clear();
     _gestureBase = null;
@@ -225,7 +249,17 @@ class EditorController extends Notifier<EditorSession?> {
       styles: document.styles,
       assets: document.assets,
     );
-    await ref.read(designLibraryProvider).save(session.path, stamped);
+    final media = ref.read(mediaCacheProvider);
+    await ref
+        .read(designLibraryProvider)
+        .save(
+          session.path,
+          stamped,
+          assets: {
+            for (final hash in stamped.assets.keys)
+              if (media.bytesOf(hash) case final bytes?) hash: bytes,
+          },
+        );
     _setStatus(
       (_autosaver?.isDirty ?? false) ? SaveStatus.pending : SaveStatus.saved,
     );
@@ -342,6 +376,84 @@ class EditorController extends Notifier<EditorSession?> {
     );
   }
 
+  /// Places an image or SVG (P1.6.1, P1.6.2): validates [bytes], stores
+  /// them by content hash and adds an image object sized to fit, centred
+  /// on [at] (the view or page centre by default). Returns the new id, or
+  /// throws [FormatException] with a user-facing message.
+  ///
+  /// [tint] recolours monochrome SVG icons; [licenseRef] records where a
+  /// bundled asset came from; [size] is the longer side in page units
+  /// (default: up to half the page).
+  ObjectId insertImage(
+    Uint8List bytes, {
+    String? name,
+    String? licenseRef,
+    ArgbColor? tint,
+    Point2D? at,
+    double? size,
+    PageId? pageId,
+  }) {
+    final check = checkMedia(bytes);
+    if (!check.isOk) throw FormatException(check.error!);
+    final document = _editor.document;
+    final page =
+        pageId == null
+            ? _editor.activePage
+            : document.pages.firstWhere((p) => p.id == pageId);
+    final hash = sha256Hex(bytes);
+    ref.read(mediaCacheProvider).register(hash, bytes, check.mime!);
+
+    final w = check.width!.toDouble();
+    final h = check.height!.toDouble();
+    final pxToUnit = convertLength(
+      1,
+      from: LengthUnit.px,
+      to: page.unit,
+      dpi: page.dpi,
+    );
+    final longest =
+        size ??
+        math.min(
+          math.max(w, h) * pxToUnit,
+          page.isBoard ? 800 * pxToUnit : math.min(page.width, page.height) / 2,
+        );
+    final scale = longest / math.max(w, h);
+    final center =
+        at ?? _boardCenter(page) ?? Point2D(page.width / 2, page.height / 2);
+    final image = newImage(
+      id: ObjectId.generate(),
+      pageId: page.id,
+      assetHash: hash,
+      width: w * scale,
+      height: h * scale,
+      center: center,
+      name: name,
+      tint: tint,
+    );
+    final insert = insertObjects(document, page.id, [
+      image,
+    ], label: 'Add image');
+    final withAsset = Change(
+      label: insert.label,
+      objects: insert.objects,
+      pages: insert.pages,
+      assets: {
+        if (!document.assets.containsKey(hash))
+          hash: AssetInfo(
+            mime: check.mime!,
+            byteLength: bytes.length,
+            licenseRef: licenseRef,
+          ),
+      },
+    );
+    _commit(
+      _intoFrame(withAsset, [image.id], page.id, center),
+      activePage: page.id,
+      select: {image.id},
+    );
+    return image.id;
+  }
+
   /// Adds a frame (artboard). Without [topLeft] it is centred in the view
   /// on boards, or on the page. Frames inside frames nest.
   ObjectId insertFrame({
@@ -433,6 +545,7 @@ class EditorController extends Notifier<EditorSession?> {
     objects: {...first.objects, ...second.objects},
     pages: second.pages ?? first.pages,
     metadata: second.metadata ?? first.metadata,
+    assets: {...first.assets, ...second.assets},
   );
 
   /// Adds a [type] shape with an explicit [transform] (drawn with a tool).

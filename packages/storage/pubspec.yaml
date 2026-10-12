@@ -1,10 +1,17 @@
 name: storage
-description: OpenCanvasX — storage (skeleton).
+description: OpenCanvasX — project files, assets and local indexes.
 version: 0.0.1
 publish_to: none
 
 environment:
   sdk: ^3.7.0
+
+dependencies:
+  archive: ^4.5.1
+  crypto: ^3.0.6
+  document_model:
+    path: ../document_model
+  meta: ^1.11.0
 
 dev_dependencies:
   test: ^1.25.0

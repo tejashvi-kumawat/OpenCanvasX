@@ -5,7 +5,10 @@ library;
 
 export 'src/color.dart';
 export 'src/design_object.dart';
+export 'src/document.dart';
+export 'src/document_json.dart';
 export 'src/ids.dart';
+export 'src/migration.dart';
 export 'src/model_issue.dart';
 export 'src/object_graph.dart';
 export 'src/object_type.dart';

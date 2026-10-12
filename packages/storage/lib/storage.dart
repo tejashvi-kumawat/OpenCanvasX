@@ -1,5 +1,9 @@
-/// OpenCanvasX — `storage` package (Phase 0 skeleton).
+/// OpenCanvasX — `storage` package: project files, assets and indexes.
+///
+/// See docs/architecture/storage-architecture.md and file-format.md.
 library;
 
-/// Package marker for Phase 0; replaced with real APIs in later phases.
+export 'src/project_archive.dart';
+
+/// Package version.
 String packageVersion() => '0.0.1';

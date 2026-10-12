@@ -26,6 +26,7 @@ Do **not** store API keys, passwords, private keys, or raw BYOK tokens in any me
 | `format_version` | string | yes | Semver of container spec (start `1.0.0`) |
 | `document_id` | string | yes | UUID |
 | `title` | string | yes | Display name |
+| `author` | string | no | Display name only (`DocumentMetadata.author`) |
 | `app_version_saved` | string | no | App build that last saved |
 | `created_at` | string | no | ISO 8601 |
 | `modified_at` | string | no | ISO 8601 |
@@ -48,17 +49,36 @@ Same logical model as [document-model.md](document-model.md). JSON keys are **sn
 
 Binary-heavy fields (compressed path data, large text) may move to sidecar files referenced by id in a future schema version.
 
+Encoding rules (schema version 1, implemented in `document_model/lib/src/document_json.dart`):
+
+| Value | Encoding | Example |
+|-------|----------|---------|
+| Enum values | snake_case names | `"type": "rounded_rect"`, `"blend_mode": "color_dodge"` |
+| Units | `LengthUnit.symbol` | `"unit": "in"` |
+| Colours | CSS hex `#rrggbbaa` (writer); `#rrggbb` also accepted as opaque | `"#11223380"` |
+| Page `background` | `{ "type": "solid", "color" }`, `{ "type": "transparent" }`, `{ "type": "image", "asset" }` | |
+| Insets | `{ "top", "right", "bottom", "left" }` | |
+| Object `transform` | `{ x, y, width, height, rotation, scale_x, scale_y, anchor_x, anchor_y }` | |
+| Object `payload` | text `{ "text" }`, image `{ "asset" }`, path `{ "segments": [["M",x,y], ["L",x,y], ["Q",cx,cy,x,y], ["C",c1x,c1y,c2x,c2y,x,y], ["Z"]] }`; omitted for shapes and groups | |
+| Object id | key in `objects`; not repeated inside the object | |
+
+Optional fields fall back to the model defaults (opacity `1`, anchor `0.5`, dpi `96`, white background, …). Unknown keys are ignored so minor additions stay readable by older builds; anything that changes meaning bumps `schema_version`.
+
 ## Assets
 
 - Referenced by **SHA-256** of raw bytes.
 - Deduplicated: one file per hash under `assets/sha256/`.
 - Missing asset on open: block export of that object and show repair UI (relink or placeholder).
+- On open, every present asset is re-hashed and its length checked against `asset_index`; a mismatch rejects the file as corrupt or modified.
+- On save, only assets listed in `asset_index` are written, and bytes must hash to their key.
 
 ## Fonts
 
-`fonts.json` lists families used in the document and whether they were embedded (only when license permits). Binaries, if embedded, live under `assets/` like any other blob.
+`fonts.json` lists families used in the document (written as `{ "families": [] }` until fonts land in P1.5) and whether they were embedded (only when license permits). Binaries, if embedded, live under `assets/` like any other blob.
 
 ## Migration
+
+Implemented by `SchemaMigrator` (`document_model/lib/src/migration.dart`); `documentMigrator` holds the registered steps.
 
 1. On open: if `schema_version` < current, run sequential migrators `v → v+1`.
 2. If `schema_version` > supported: fail with clear message (forward incompatibility).
@@ -72,7 +92,22 @@ Binary-heavy fields (compressed path data, large text) may move to sidecar files
 
 ## Security
 
-Treat files from others as untrusted: size limits, schema validation, no code execution from JSON. Templates use the same container format with stricter schema (declarative only).
+Treat files from others as untrusted: size limits, schema validation, no code execution from JSON.
+
+Opening (`storage/lib/src/project_archive.dart`, `decodeProject`) enforces, with defaults in `ArchiveLimits`:
+
+| Check | Default |
+|-------|---------|
+| File size | 1 GiB |
+| Number of ZIP entries | 20,000 |
+| Declared uncompressed size per entry | 512 MiB (actual size must match) |
+| Total declared uncompressed size | 2 GiB |
+| `manifest.json` / `document.json` size | 64 MiB each |
+| Entry name | relative, `/`-separated, no `..`, `.`, `\`, `:`, at most 8 segments |
+| Symbolic links | rejected |
+| Duplicate entry names | rejected |
+
+Malformed content raises `FormatException` naming the JSON path (e.g. `document.objects.<id>.transform`); a newer `format_version` major or `schema_version` raises `UnsupportedVersionException` with a "needs a newer version of OpenCanvasX" message. Broken cross-references (missing parent, unknown style, missing asset bytes) are returned for repair UI instead of failing the open. Templates use the same container format with stricter schema (declarative only).
 
 ## Related
 

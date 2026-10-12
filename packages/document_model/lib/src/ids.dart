@@ -12,6 +12,12 @@ extension type const PageId(String value) {
   PageId.generate([Random? random]) : value = generateUuidV4(random);
 }
 
+/// Stable identifier of a whole document, independent of its file path.
+extension type const DocumentId(String value) {
+  /// Creates a new random id (UUID v4).
+  DocumentId.generate([Random? random]) : value = generateUuidV4(random);
+}
+
 /// Returns a random RFC 4122 version 4 UUID in lowercase canonical form.
 ///
 /// Uses [Random.secure] unless [random] is given (tests pass a seeded one).

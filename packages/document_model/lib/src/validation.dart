@@ -29,9 +29,11 @@ void checkUnitInterval(double value, String name) {
 
 final _sha256Hex = RegExp(r'^[0-9a-f]{64}$');
 
+bool isSha256Hex(String value) => _sha256Hex.hasMatch(value);
+
 /// Asset references are lowercase hex SHA-256 digests (see file-format.md).
 void checkSha256Hex(String value, String name) {
-  if (!_sha256Hex.hasMatch(value)) {
+  if (!isSha256Hex(value)) {
     throw ArgumentError.value(
       value,
       name,
@@ -45,6 +47,15 @@ bool listEquals<T>(List<T> a, List<T> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool mapEquals<K, V>(Map<K, V> a, Map<K, V> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (final MapEntry(:key, :value) in a.entries) {
+    if (!b.containsKey(key) || b[key] != value) return false;
   }
   return true;
 }

@@ -13,7 +13,7 @@ Engineering log for checklist section P1.1. Normative design: [document-model.md
 
 - `lib/src/page.dart` (`DesignPage`, `PageInsets`, `Guide`, `PageBackground`), `lib/src/units.dart` (`LengthUnit`), `lib/src/page_graph.dart` (`validatePages`).
 - Pages own the back-to-front order of their root objects (`objectIds`), per ADR-0003.
-- Not yet: gradient backgrounds (P1.7.3), size presets (P1.2.3), the top-level document container (with serialization, P1.1.4).
+- Not yet: gradient backgrounds (P1.7.3), size presets (P1.2.3).
 
 ## P1.1.3 Units and DPI
 
@@ -21,10 +21,18 @@ Engineering log for checklist section P1.1. Normative design: [document-model.md
 - `DesignPage.sizeIn(unit)` and `DesignPage.pixelSizeAt(exportDpi)` (whole pixels, minimum 1×1) for the inspector and raster export (P1.9.1).
 - Rule recorded in document-model.md: all lengths on a page use the page's unit.
 
+## P1.1.4 Serialization and migrations
+
+- `document_model`: `DesignDocument` (+ `DocumentMetadata`, `AssetInfo`, `DocumentId`) with `validate()`; `document_json.dart` (`encodeManifest`, `encodeDocumentBody`, `decodeDocument`, `currentFormatVersion` 1.0.0, `currentSchemaVersion` 1); `migration.dart` (`SchemaMigrator`, `UnsupportedVersionException`).
+- `storage`: `project_archive.dart` (`encodeProject`, `decodeProject`, `ArchiveLimits`, `ProjectContents`, `projectFileExtension`, `sha256Hex`).
+- Encoding rules and opening limits are recorded in [file-format.md](../architecture/file-format.md).
+- New dependencies: `archive` (MIT) for ZIP, `crypto` (BSD-3-Clause) for SHA-256.
+- Note: `package:archive` writes every entry as "made by MS-DOS" and normalises `\` to `/` on write only; tests patch raw bytes to simulate hostile ZIPs from other tools.
+
 ## Commands
 
 ```bash
-cd packages/document_model
+cd packages/document_model   # or packages/storage
 dart analyze
 dart test
 ```

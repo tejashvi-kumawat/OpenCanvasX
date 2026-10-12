@@ -98,7 +98,7 @@ Named styles enable brand kits and templates. Objects may reference `style_id` a
 
 ## Undo / redo
 
-Command stack holds inverse operations. Checkpoints (named snapshots) are full document clones or serialized snapshots in `storage` — not the same as undo stack.
+Command stack holds inverse operations — implemented as data-level `Change`s whose application yields their own inverse ([ADR-0006](../adr/0006-invertible-changes-for-undo.md), `design_engine`). Checkpoints (named snapshots) are full document clones or serialized snapshots in `storage` — not the same as undo stack.
 
 ## Collaboration mapping
 

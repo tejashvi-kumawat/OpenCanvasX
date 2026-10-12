@@ -224,6 +224,61 @@ void main() {
       expect(container.read(toolProvider).active, EditorTool.move);
     });
 
+    testWidgets('a group can be dragged, entered and ungrouped', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier);
+      final page = session().activePage;
+      editor
+        ..insertShape(
+          ObjectType.rect,
+          at: Point2D(page.width / 2 - 100, page.height / 2),
+        )
+        ..insertShape(
+          ObjectType.rect,
+          at: Point2D(page.width / 2 + 100, page.height / 2),
+        );
+      await tester.pumpAndSettle();
+      await chord(tester, LogicalKeyboardKey.keyA);
+      await chord(tester, LogicalKeyboardKey.keyG);
+      final group = roots().single;
+      expect(session().document.objects[group]!.type, ObjectType.group);
+      final before = worldBounds(session().document, group)!;
+
+      // Drag from the centre of the left rectangle.
+      final canvas = tester.getRect(find.byType(DesignCanvas));
+      final viewport = container.read(viewportProvider);
+      final frame = layoutPages(session().document.pages).first;
+      final child = session().document.objects[group]!.childIds.first;
+      final centre = worldBounds(session().document, child)!;
+      final screen =
+          canvas.topLeft +
+          viewport.toScreen(
+            frame.toWorkspace(
+              Point2D(
+                centre.left + centre.width / 2,
+                centre.top + centre.height / 2,
+              ),
+            ),
+          );
+      final gesture = await tester.startGesture(
+        screen,
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(30, 0));
+      await gesture.moveBy(const Offset(30, 0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(session().selection, {group});
+      final after = worldBounds(session().document, group)!;
+      expect(after.left, greaterThan(before.left));
+      expect(after.width, closeTo(before.width, 1e-6));
+
+      await chord(tester, LogicalKeyboardKey.keyG, shift: true);
+      expect(roots(), hasLength(2));
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);

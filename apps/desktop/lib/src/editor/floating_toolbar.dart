@@ -74,6 +74,12 @@ class _ToolButtons extends ConsumerWidget {
           active: tools.active,
           onSelect: select,
         ),
+        _ToolGroup(
+          tools: vectorTools,
+          current: tools.lastVector,
+          active: tools.active,
+          onSelect: select,
+        ),
         _ToolButton(
           tool: EditorTool.text,
           selected: tools.active == EditorTool.text,
@@ -266,7 +272,11 @@ class _ToolGroup extends StatelessWidget {
                     ),
                   ),
                   Tooltip(
-                    message: 'More ${tools == shapeTools ? 'shapes' : 'lines'}',
+                    message: switch (tools) {
+                      shapeTools => 'More shapes',
+                      lineTools => 'More lines',
+                      _ => 'Pen and pencil',
+                    },
                     child: InkWell(
                       onTap:
                           () =>

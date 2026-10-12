@@ -216,9 +216,9 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P2.5.5 Local backup + retention settings + restore
 
 ## P2.6 Basic Vector Editing (MVP-required)
-- [ ] P2.6.1 Pen tool + Bézier paths
-- [ ] P2.6.2 Node editing
-- [ ] P2.6.3 Freehand drawing
+- [x] P2.6.1 Pen tool + Bézier paths
+- [x] P2.6.2 Node editing
+- [x] P2.6.3 Freehand drawing
 
 ### Exit Gate P2 (MVP Design Complete)
 - [ ] Every item in spec §102 "MVP must contain" is working

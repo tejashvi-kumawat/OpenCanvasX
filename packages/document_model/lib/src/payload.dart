@@ -275,17 +275,33 @@ final class ImagePayload extends ObjectPayload {
 
 /// Vector path as SVG-compatible segments in the object's local space.
 final class PathPayload extends ObjectPayload {
-  PathPayload(Iterable<PathSegment> segments)
-    : segments = List.unmodifiable(segments);
+  /// [viewWidth] × [viewHeight] is the box the segments were drawn in
+  /// (like an SVG viewBox): the path is scaled from it to the object's
+  /// box, so resizing scales the curves. Without it the segments are drawn
+  /// as they are.
+  PathPayload(Iterable<PathSegment> segments, {this.viewWidth, this.viewHeight})
+    : segments = List.unmodifiable(segments) {
+    for (final v in [viewWidth, viewHeight]) {
+      if (v != null && !(v > 0 && v.isFinite)) {
+        throw ArgumentError.value(v, 'view size', 'must be positive');
+      }
+    }
+  }
 
   final List<PathSegment> segments;
+  final double? viewWidth;
+  final double? viewHeight;
 
   @override
   bool operator ==(Object other) =>
-      other is PathPayload && listEquals(other.segments, segments);
+      other is PathPayload &&
+      other.viewWidth == viewWidth &&
+      other.viewHeight == viewHeight &&
+      listEquals(other.segments, segments);
 
   @override
-  int get hashCode => Object.hashAll(segments);
+  int get hashCode =>
+      Object.hash(viewWidth, viewHeight, Object.hashAll(segments));
 
   @override
   String toString() => 'PathPayload(${segments.length} segments)';

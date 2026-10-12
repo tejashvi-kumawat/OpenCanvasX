@@ -133,6 +133,11 @@ void main() {
       expect(TextPayload('hi').fits(ObjectType.rect), isFalse);
       expect(ImagePayload(hash).fits(ObjectType.image), isTrue);
       expect(PathPayload(const []).fits(ObjectType.path), isTrue);
+      expect(() => PathPayload(const [], viewWidth: 0), throwsArgumentError);
+      expect(
+        PathPayload(const [], viewWidth: 2, viewHeight: 3),
+        isNot(PathPayload(const [])),
+      );
       for (final type in [
         ObjectType.rect,
         ObjectType.roundedRect,

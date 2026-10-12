@@ -54,13 +54,17 @@ DesignDocument sampleDocument() {
       type: ObjectType.path,
       transform: box,
       pageId: p2,
-      payload: PathPayload([
-        MoveTo(0, 0),
-        LineTo(10, 0),
-        QuadTo(15, 5, 10, 10),
-        CubicTo(5, 15, 0, 15, 0, 10),
-        const ClosePath(),
-      ]),
+      payload: PathPayload(
+        [
+          MoveTo(0, 0),
+          LineTo(10, 0),
+          QuadTo(15, 5, 10, 10),
+          CubicTo(5, 15, 0, 15, 0, 10),
+          const ClosePath(),
+        ],
+        viewWidth: 15,
+        viewHeight: 15,
+      ),
     ),
   ];
   return DesignDocument(

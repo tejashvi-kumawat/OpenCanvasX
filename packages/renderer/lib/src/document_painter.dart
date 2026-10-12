@@ -275,7 +275,7 @@ ui.Path? shapePath(DesignObject object, ObjectStyle style) {
     case ObjectType.ellipse:
       return ui.Path()..addOval(box);
     case ObjectType.path:
-      return _pathOf(object.payload);
+      return _pathOf(object.payload, t);
     case ObjectType.polygon:
       final sides = switch (object.payload) {
         PolygonPayload(:final sides) => sides,
@@ -385,7 +385,8 @@ void _paintArrow(
   );
 }
 
-ui.Path? _pathOf(ObjectPayload payload) {
+/// The path of [payload], scaled from its view box to [t]'s box.
+ui.Path? _pathOf(ObjectPayload payload, ObjectTransform t) {
   if (payload is! PathPayload) return null;
   final path = ui.Path();
   for (final segment in payload.segments) {
@@ -409,7 +410,17 @@ ui.Path? _pathOf(ObjectPayload payload) {
         path.close();
     }
   }
-  return path;
+  final vw = payload.viewWidth;
+  final vh = payload.viewHeight;
+  if (vw == null || vh == null) return path;
+  return path.transform(
+    Float64List.fromList([
+      t.width / vw, 0, 0, 0, //
+      0, t.height / vh, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+    ]),
+  );
 }
 
 /// Font used when a text has no family or the family is not installed.

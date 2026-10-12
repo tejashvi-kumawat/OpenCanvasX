@@ -161,8 +161,16 @@ class _SvgWriter {
             if (i.isEven) 1.0 else inner])}"${_fill(style)}${_strokeOf(style)}/>',
         );
       case ObjectType.path:
+        final scale = switch (o.payload) {
+          PathPayload(:final viewWidth?, :final viewHeight?) =>
+            ' transform="scale(${_n(t.width / viewWidth)} '
+                '${_n(t.height / viewHeight)})" '
+                'vector-effect="non-scaling-stroke"',
+          _ => '',
+        };
         out.writeln(
-          '<path d="${_pathData(o.payload)}"${_fill(style)}${_strokeOf(style)}/>',
+          '<path d="${_pathData(o.payload)}"$scale'
+          '${_fill(style)}${_strokeOf(style)}/>',
         );
       case ObjectType.line:
         if (style.stroke case final stroke? when stroke.width > 0) {

@@ -224,8 +224,10 @@ Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
     'inner_ratio': innerRatio,
   },
   ImagePayload(:final assetHash) => {'asset': assetHash},
-  PathPayload(:final segments) => {
+  PathPayload(:final segments, :final viewWidth, :final viewHeight) => {
     'segments': [for (final s in segments) _encodeSegment(s)],
+    if (viewWidth != null) 'view_width': viewWidth,
+    if (viewHeight != null) 'view_height': viewHeight,
   },
 };
 
@@ -414,10 +416,16 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
       return p.guard(() => ImagePayload(p.string('asset')));
     case ObjectType.path:
       final p = object.object('payload');
-      return PathPayload([
-        for (final (i, s) in p.list('segments').indexed)
-          _decodeSegment(s, '${p.path}.segments[$i]'),
-      ]);
+      return p.guard(
+        () => PathPayload(
+          [
+            for (final (i, s) in p.list('segments').indexed)
+              _decodeSegment(s, '${p.path}.segments[$i]'),
+          ],
+          viewWidth: p.optNumber('view_width'),
+          viewHeight: p.optNumber('view_height'),
+        ),
+      );
     case ObjectType.rect ||
         ObjectType.roundedRect ||
         ObjectType.ellipse ||

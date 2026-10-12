@@ -427,6 +427,124 @@ void main() {
       expect(session().document.objects[id]!.transform.x, greaterThan(before));
     });
 
+    testWidgets('pen: clicks place points; clicking the first closes', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+      await tester.pumpAndSettle();
+      expect(container.read(toolProvider).active, EditorTool.pen);
+      final c = tester.getCenter(find.byType(DesignCanvas));
+      Future<void> click(Offset at) async {
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+
+      await click(c + const Offset(-60, -40));
+      await click(c + const Offset(60, -40));
+      // A drag pulls handles out of the third point.
+      final g = await tester.startGesture(
+        c + const Offset(0, 60),
+        kind: PointerDeviceKind.mouse,
+      );
+      await g.moveBy(const Offset(30, 0));
+      await g.moveBy(const Offset(30, 0));
+      await g.up();
+      await tester.pump(const Duration(milliseconds: 500));
+      await click(c + const Offset(-60, -40));
+      await tester.pumpAndSettle();
+      final path = session().document.objects[roots().single]!;
+      expect(path.type, ObjectType.path);
+      final (:anchors, :closed) = localAnchors(path);
+      expect(anchors, hasLength(3));
+      expect(closed, isTrue);
+      expect(anchors[2].handleOut, isNotNull);
+      expect(container.read(toolProvider).active, EditorTool.move);
+      expect(session().undoLabel, 'Add path');
+    });
+
+    testWidgets('pen: Escape finishes an open path', (tester) async {
+      await openFirstDesign(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+      await tester.pumpAndSettle();
+      final c = tester.getCenter(find.byType(DesignCanvas));
+      await tester.tapAt(c, kind: PointerDeviceKind.mouse);
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tapAt(
+        c + const Offset(80, 30),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      final path = session().document.objects[roots().single]!;
+      expect(localAnchors(path).closed, isFalse);
+    });
+
+    testWidgets('pencil draws a smoothed freehand path', (tester) async {
+      await openFirstDesign(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP, platform: 'windows');
+      await tester.pumpAndSettle();
+      container.read(toolProvider.notifier).select(EditorTool.pencil);
+      await tester.pumpAndSettle();
+      final c = tester.getCenter(find.byType(DesignCanvas));
+      final g = await tester.startGesture(c, kind: PointerDeviceKind.mouse);
+      for (var i = 0; i < 20; i++) {
+        await g.moveBy(Offset(6, i.isEven ? 8 : -8));
+      }
+      await g.up();
+      await tester.pumpAndSettle();
+      final path = session().document.objects[roots().single]!;
+      expect(path.name, 'Drawing');
+      expect(localAnchors(path).anchors.length, greaterThan(3));
+      expect(session().undoLabel, 'Draw');
+    });
+
+    testWidgets('double-click a path to edit nodes; Delete removes one', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final page = session().activePage;
+      final editor = container.read(editorProvider.notifier);
+      final id = editor.insertPath(
+        [
+          PenAnchor(Point2D(page.width / 2 - 200, page.height / 2)),
+          PenAnchor(Point2D(page.width / 2, page.height / 2 - 150)),
+          PenAnchor(Point2D(page.width / 2 + 200, page.height / 2)),
+        ],
+        closed: true,
+        pageId: page.id,
+      );
+      container.read(nodeEditProvider.notifier).value = NodeEdit(id);
+      await tester.pumpAndSettle();
+      final canvas = tester.getRect(find.byType(DesignCanvas));
+      final viewport = container.read(viewportProvider);
+      final frame = layoutPages(session().document.pages).first;
+      Offset screenOf(Point2D p) =>
+          canvas.topLeft + viewport.toScreen(frame.toWorkspace(p));
+      // Drag the top point up.
+      final top = screenOf(Point2D(page.width / 2, page.height / 2 - 150));
+      final g = await tester.startGesture(top, kind: PointerDeviceKind.mouse);
+      await g.moveBy(const Offset(0, -20));
+      await g.moveBy(const Offset(0, -20));
+      await g.up();
+      await tester.pumpAndSettle();
+      final moved = worldBounds(session().document, id)!;
+      expect(moved.top, lessThan(page.height / 2 - 150));
+      expect(session().undoLabel, 'Edit path');
+      expect(container.read(nodeEditProvider)!.anchor, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+      await tester.pumpAndSettle();
+      final path = session().document.objects[id]!;
+      expect(localAnchors(path).anchors, hasLength(2));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(container.read(nodeEditProvider), isNull);
+      expect(session().selection, {id});
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);

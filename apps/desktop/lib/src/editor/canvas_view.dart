@@ -25,7 +25,7 @@ const double _rotateOffset = 20;
 /// Pointer travel (screen pixels) below which a press counts as a click.
 const double _clickSlop = 3;
 
-enum _Drag { none, move, resize, rotate, marquee, pan, draw }
+enum _Drag { none, move, resize, rotate, marquee, pan, draw, pen, pencil, node }
 
 /// Payload of drags from the Elements panel.
 sealed class ElementDrag {
@@ -78,6 +78,23 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
   SnapTargets? _snapTargets;
   Rect2D? _dragStartBounds;
   List<SnapGuide> _guides = const [];
+
+  // Pen (P2.6.1): anchors placed so far, in page units of [_penPage].
+  final List<PenAnchor> _pen = [];
+  PageId? _penPage;
+  Offset? _penHover;
+  DateTime _lastPenClick = DateTime(0);
+
+  // Pencil (P2.6.3): raw points of the stroke being drawn.
+  final List<Point2D> _pencil = [];
+
+  // Node editing (P2.6.2): the dragged anchor (part −1 in-handle, 0 point,
+  // 1 out-handle) and the path as it was when the drag began.
+  int _nodePart = 0;
+  int? _nodeIndex;
+  DesignObject? _nodeObject;
+  List<PenAnchor> _nodeStart = const [];
+  bool _nodeClosed = false;
   bool _dragMoved = false;
   Rect? _marquee;
   ObjectId? _hovered;
@@ -98,6 +115,12 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     final viewport = ref.watch(viewportProvider);
     final tool = ref.watch(toolProvider).active;
     final editingText = ref.watch(textEditingProvider);
+    ref.listen(toolProvider, (previous, next) {
+      if (previous?.active == EditorTool.pen && next.active != EditorTool.pen) {
+        _finishPen(closed: false);
+      }
+    });
+    final nodeEdit = ref.watch(nodeEditProvider);
     final frames = layoutPages(
       session.document.pages,
       active: session.state.activePageId,
@@ -145,7 +168,14 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                             drawPreview: _drawPreview(),
                             drawIsLine: tool.isLine,
                             dragLabel: _dragLabel(session),
-                            showHandles: editingText == null,
+                            showHandles:
+                                editingText == null && nodeEdit == null,
+                            vector: _vectorOverlay(
+                              session,
+                              frames,
+                              viewport,
+                              nodeEdit,
+                            ),
                             colors: colors,
                             titles: _frameTitles(session, frames, viewport),
                             guides: _drag == _Drag.none ? const [] : _guides,
@@ -418,6 +448,10 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
   // --------------------------------------------------------------- input
 
   void _hover(Offset screen, List<PageFrame> frames) {
+    if (_tool == EditorTool.pen && _pen.isNotEmpty && _drag == _Drag.none) {
+      setState(() => _penHover = screen);
+      return;
+    }
     if (_drag != _Drag.none || _tool != EditorTool.move) return;
     final session = ref.read(editorProvider);
     if (session == null) return;
@@ -499,6 +533,52 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     _dragFrame = frame;
     _downPage = _pagePoint(event.localPosition, frame);
 
+    // Vector tools.
+    if (_tool == EditorTool.pen) {
+      if (frame.pageId != session.state.activePageId) {
+        _editor.setActivePage(frame.pageId);
+      }
+      _penDown(event.localPosition, frame);
+      return;
+    }
+    if (_tool == EditorTool.pencil) {
+      if (frame.pageId != session.state.activePageId) {
+        _editor.setActivePage(frame.pageId);
+      }
+      _pencil
+        ..clear()
+        ..add(_downPage);
+      _drag = _Drag.pencil;
+      setState(() {});
+      return;
+    }
+
+    // Node editing: grab an anchor or handle, or leave node editing.
+    if (ref.read(nodeEditProvider) case final nodes?) {
+      if (_nodeAt(event.localPosition, nodes.id, frame) case (
+        final index,
+        final part,
+      )) {
+        final document = ref.read(editorProvider)!.document;
+        final object = document.objects[nodes.id]!;
+        final local = localAnchors(object);
+        _nodeObject = object;
+        _nodeStart = local.anchors;
+        _nodeClosed = local.closed;
+        _nodeIndex = index;
+        _nodePart = part;
+        _dragDocument = document;
+        ref.read(nodeEditProvider.notifier).value = NodeEdit(
+          nodes.id,
+          anchor: index,
+        );
+        _editor.beginGesture();
+        _drag = _Drag.node;
+        return;
+      }
+      ref.read(nodeEditProvider.notifier).value = null;
+    }
+
     // Drawing tools.
     if (_tool != EditorTool.move) {
       if (frame.pageId != session.state.activePageId) {
@@ -546,6 +626,13 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       final entered = _objectAt(event.localPosition, frame, enter: true);
       if (entered != null && entered != hit) {
         _editor.select({entered});
+        _drag = _Drag.none;
+        return;
+      }
+      if (document.objects[hit] case final o?
+          when o.type == ObjectType.path && !o.locked) {
+        _editor.select({hit});
+        ref.read(nodeEditProvider.notifier).value = NodeEdit(hit);
         _drag = _Drag.none;
         return;
       }
@@ -611,7 +698,30 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       case _Drag.draw:
         setState(() {});
         return;
-      case _Drag.none || _Drag.move || _Drag.resize || _Drag.rotate:
+      case _Drag.pen:
+        final frame = _dragFrame;
+        if (_dragMoved && _pen.isNotEmpty && frame != null) {
+          // Dragging after placing a point pulls out smooth handles.
+          final p = _pagePoint(event.localPosition, frame);
+          _pen[_pen.length - 1] = PenAnchor.smooth(_pen.last.point, p);
+          setState(() {});
+        }
+        return;
+      case _Drag.pencil:
+        final frame = _dragFrame;
+        if (frame != null) {
+          final p = _pagePoint(event.localPosition, frame);
+          if ((p - _pencil.last).length > _unitsPerPixel(frame)) {
+            _pencil.add(p);
+            setState(() {});
+          }
+        }
+        return;
+      case _Drag.none ||
+          _Drag.move ||
+          _Drag.resize ||
+          _Drag.rotate ||
+          _Drag.node:
         break;
     }
     final frame = _dragFrame;
@@ -711,7 +821,14 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
             ),
           ),
         ]);
-      case _Drag.none || _Drag.marquee || _Drag.pan || _Drag.draw:
+      case _Drag.node:
+        _nodeMove(p);
+      case _Drag.none ||
+          _Drag.marquee ||
+          _Drag.pan ||
+          _Drag.draw ||
+          _Drag.pen ||
+          _Drag.pencil:
         break;
     }
     setState(() {});
@@ -734,7 +851,13 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
         _finishMarquee(frames);
       case _Drag.draw:
         _finishDraw();
-      case _Drag.pan || _Drag.none:
+      case _Drag.pencil:
+        _finishPencil();
+      case _Drag.node:
+        _editor.endGesture('Edit path');
+        _nodeObject = null;
+        _nodeIndex = null;
+      case _Drag.pan || _Drag.none || _Drag.pen:
         break;
     }
     _resetDrag();
@@ -868,6 +991,204 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     } else {
       _editor.select(ids);
     }
+  }
+
+  // ------------------------------------------------------------ vector
+
+  void _penDown(Offset screen, PageFrame frame) {
+    if (_pen.isNotEmpty && _penPage != frame.pageId) _finishPen(closed: false);
+    _penPage = frame.pageId;
+    final session = ref.read(editorProvider)!;
+    var p = _pagePoint(screen, frame);
+    if (_snapping) {
+      p =
+          SnapTargets.collect(
+            session.document,
+            session.document.pages[frame.index],
+          ).snapPoint(p, threshold: _snapDistance(frame)).point;
+    }
+    final now = DateTime.now();
+    final isDouble =
+        now.difference(_lastPenClick) < const Duration(milliseconds: 400) &&
+        (screen - _lastClickPosition).distance < 6;
+    _lastPenClick = now;
+    _lastClickPosition = screen;
+    if (_pen.length >= 2) {
+      final first = ref
+          .read(viewportProvider)
+          .toScreen(frame.toWorkspace(_pen.first.point));
+      if ((first - screen).distance <= 8) {
+        _finishPen(closed: true);
+        return;
+      }
+    }
+    if (isDouble && _pen.length >= 2) {
+      _finishPen(closed: false);
+      return;
+    }
+    _pen.add(PenAnchor(p));
+    _dragFrame = frame;
+    _drag = _Drag.pen;
+    setState(() {});
+  }
+
+  /// Commits the pen path (two or more points) and returns to Move.
+  void _finishPen({required bool closed}) {
+    final page = _penPage;
+    if (_pen.length >= 2 && page != null) {
+      _editor.insertPath(List.of(_pen), closed: closed, pageId: page);
+    }
+    _pen.clear();
+    _penHover = null;
+    _penPage = null;
+    if (ref.read(toolProvider).active == EditorTool.pen) {
+      ref.read(toolProvider.notifier).reset();
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _finishPencil() {
+    final frame = _dragFrame;
+    if (_pencil.length >= 2 && frame != null) {
+      _editor.insertPath(
+        smoothStroke(_pencil, tolerance: 1.5 * _unitsPerPixel(frame)),
+        closed: false,
+        pageId: frame.pageId,
+        freehand: true,
+      );
+    }
+    _pencil.clear();
+  }
+
+  /// Screen positions of path [id]'s anchors and handles.
+  List<({Offset point, Offset? handleIn, Offset? handleOut})> _nodeScreen(
+    DesignDocument document,
+    ObjectId id,
+    PageFrame frame,
+  ) {
+    final object = document.objects[id];
+    if (object == null) return const [];
+    final world = worldMatrix(document, id);
+    final viewport = ref.read(viewportProvider);
+    Offset screen(Point2D p) =>
+        viewport.toScreen(frame.toWorkspace(world.apply(p)));
+    return [
+      for (final a in localAnchors(object).anchors)
+        (
+          point: screen(a.point),
+          handleIn: a.handleIn == null ? null : screen(a.handleIn!),
+          handleOut: a.handleOut == null ? null : screen(a.handleOut!),
+        ),
+    ];
+  }
+
+  /// The anchor (part 0) or handle (−1 in, 1 out) under [screen].
+  (int, int)? _nodeAt(Offset screen, ObjectId id, PageFrame frame) {
+    final nodes = _nodeScreen(ref.read(editorProvider)!.document, id, frame);
+    for (final (i, n) in nodes.indexed) {
+      if ((n.point - screen).distance <= 7) return (i, 0);
+    }
+    for (final (i, n) in nodes.indexed) {
+      if (n.handleOut case final h? when (h - screen).distance <= 6) {
+        return (i, 1);
+      }
+      if (n.handleIn case final h? when (h - screen).distance <= 6) {
+        return (i, -1);
+      }
+    }
+    return null;
+  }
+
+  void _nodeMove(Point2D page) {
+    final object = _nodeObject;
+    final index = _nodeIndex;
+    if (object == null || index == null) return;
+    final inverse = worldMatrix(_dragDocument, object.id).inverse();
+    if (inverse == null) return;
+    final local = inverse.apply(page);
+    final anchors = [..._nodeStart];
+    final a = anchors[index];
+    final alt = HardwareKeyboard.instance.isAltPressed;
+    switch (_nodePart) {
+      case 0:
+        anchors[index] = a.translated(local.x - a.point.x, local.y - a.point.y);
+      case 1:
+        anchors[index] = a.copyWith(
+          handleOut: local,
+          handleIn:
+              alt || a.handleIn == null
+                  ? a.handleIn
+                  : _mirror(a.point, local, a.handleIn!),
+        );
+      default:
+        anchors[index] = a.copyWith(
+          handleIn: local,
+          handleOut:
+              alt || a.handleOut == null
+                  ? a.handleOut
+                  : _mirror(a.point, local, a.handleOut!),
+        );
+    }
+    _editor.previewObjects([withAnchors(object, anchors, closed: _nodeClosed)]);
+  }
+
+  /// The opposite handle of [anchor], pointing away from [moved] and
+  /// keeping [other]'s length (smooth node).
+  static Point2D _mirror(Point2D anchor, Point2D moved, Point2D other) {
+    final dx = anchor.x - moved.x;
+    final dy = anchor.y - moved.y;
+    final length = math.sqrt(dx * dx + dy * dy);
+    if (length == 0) return other;
+    final keep = (other - anchor).length;
+    return Point2D(
+      anchor.x + dx / length * keep,
+      anchor.y + dy / length * keep,
+    );
+  }
+
+  /// What the painter draws for the pen, pencil and node editing.
+  _VectorOverlay? _vectorOverlay(
+    EditorSession session,
+    List<PageFrame> frames,
+    ViewportState viewport,
+    NodeEdit? nodeEdit,
+  ) {
+    PageFrame? frameOf(PageId? id) =>
+        frames.where((f) => f.pageId == id).firstOrNull;
+    if (_pen.isNotEmpty) {
+      final frame = frameOf(_penPage);
+      if (frame == null) return null;
+      Offset screen(Point2D p) => viewport.toScreen(frame.toWorkspace(p));
+      return _VectorOverlay(
+        path: [
+          for (final a in _pen)
+            (
+              point: screen(a.point),
+              handleIn: a.handleIn == null ? null : screen(a.handleIn!),
+              handleOut: a.handleOut == null ? null : screen(a.handleOut!),
+            ),
+        ],
+        hover: _drag == _Drag.none ? _penHover : null,
+      );
+    }
+    if (_pencil.length > 1) {
+      final frame = _dragFrame;
+      if (frame == null) return null;
+      return _VectorOverlay(
+        stroke: [
+          for (final p in _pencil) viewport.toScreen(frame.toWorkspace(p)),
+        ],
+      );
+    }
+    if (nodeEdit != null && session.selection.contains(nodeEdit.id)) {
+      final frame = frameOf(session.state.activePageId);
+      if (frame == null) return null;
+      return _VectorOverlay(
+        nodes: _nodeScreen(session.document, nodeEdit.id, frame),
+        selectedNode: nodeEdit.anchor,
+      );
+    }
+    return null;
   }
 
   /// Snapping is on unless Alt is held.
@@ -1081,10 +1402,12 @@ class _WorkspacePainter extends CustomPainter {
     required this.titles,
     required this.media,
     this.guides = const [],
+    this.vector,
   }) : super(repaint: media);
 
   final List<_FrameTitle> titles;
   final List<SnapGuide> guides;
+  final _VectorOverlay? vector;
   final MediaCache media;
   final DesignDocument document;
   final List<PageFrame> frames;
@@ -1210,6 +1533,8 @@ class _WorkspacePainter extends CustomPainter {
       }
     }
 
+    if (vector case final v?) _paintVector(canvas, v);
+
     // Smart guides (P1.4.4): 1 px accent lines with end ticks.
     if (guides.isNotEmpty) {
       final guide =
@@ -1299,6 +1624,61 @@ class _WorkspacePainter extends CustomPainter {
       ..scale(frame.unitScale);
     paintPageContent(canvas, document, page, media: media);
     canvas.restore();
+  }
+
+  /// Pen path in progress (with a rubber band to the pointer), pencil
+  /// stroke, or the anchors and handles of a path being edited.
+  void _paintVector(Canvas canvas, _VectorOverlay v) {
+    final accent =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = colors.accent;
+    final faint =
+        Paint()
+          ..strokeWidth = 1
+          ..color = colors.accent.withValues(alpha: 0.5);
+    final white = Paint()..color = Colors.white;
+    final filled = Paint()..color = colors.accent;
+
+    final stroke = v.stroke;
+    if (stroke != null && stroke.length > 1) {
+      final path = Path()..moveTo(stroke.first.dx, stroke.first.dy);
+      for (final p in stroke.skip(1)) {
+        path.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(path, accent..strokeCap = StrokeCap.round);
+    }
+
+    final nodes = v.path ?? v.nodes;
+    if (nodes == null || nodes.isEmpty) return;
+    if (v.path != null) {
+      final path = Path()..moveTo(nodes.first.point.dx, nodes.first.point.dy);
+      for (var i = 1; i < nodes.length; i++) {
+        final a = nodes[i - 1];
+        final b = nodes[i];
+        final c1 = a.handleOut ?? a.point;
+        final c2 = b.handleIn ?? b.point;
+        path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, b.point.dx, b.point.dy);
+      }
+      canvas.drawPath(path, accent);
+      if (v.hover case final hover?) {
+        canvas.drawLine(nodes.last.point, hover, faint);
+      }
+    }
+    for (final (i, n) in nodes.indexed) {
+      for (final h in [n.handleIn, n.handleOut]) {
+        if (h == null) continue;
+        canvas
+          ..drawLine(n.point, h, faint)
+          ..drawCircle(h, 3.5, white)
+          ..drawCircle(h, 3.5, accent..strokeWidth = 1);
+      }
+      final square = Rect.fromCenter(center: n.point, width: 7, height: 7);
+      canvas
+        ..drawRect(square, i == v.selectedNode ? filled : white)
+        ..drawRect(square, accent..strokeWidth = 1);
+    }
   }
 
   List<Offset> _corners(ObjectId id, PageFrame frame) => [
@@ -1423,4 +1803,28 @@ class _FrameTitle {
   final ObjectId id;
   final TextPainter painter;
   final Rect rect;
+}
+
+/// Screen-space vector editing state for the painter.
+class _VectorOverlay {
+  const _VectorOverlay({
+    this.path,
+    this.hover,
+    this.stroke,
+    this.nodes,
+    this.selectedNode,
+  });
+
+  /// Pen anchors placed so far.
+  final List<({Offset point, Offset? handleIn, Offset? handleOut})>? path;
+
+  /// Pointer position for the pen's rubber band.
+  final Offset? hover;
+
+  /// Pencil stroke points.
+  final List<Offset>? stroke;
+
+  /// Anchors of the path being node-edited.
+  final List<({Offset point, Offset? handleIn, Offset? handleOut})>? nodes;
+  final int? selectedNode;
 }

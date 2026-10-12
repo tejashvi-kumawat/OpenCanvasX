@@ -38,6 +38,27 @@ final mediaCacheProvider = Provider<renderer.MediaCache>((ref) {
   return cache;
 });
 
+/// The path whose nodes are being edited (P2.6.2) and its selected anchor.
+@immutable
+class NodeEdit {
+  const NodeEdit(this.id, {this.anchor});
+
+  final ObjectId id;
+  final int? anchor;
+}
+
+final nodeEditProvider = NotifierProvider<NodeEditController, NodeEdit?>(
+  NodeEditController.new,
+);
+
+class NodeEditController extends Notifier<NodeEdit?> {
+  @override
+  NodeEdit? build() => null;
+
+  NodeEdit? get value => state;
+  set value(NodeEdit? next) => state = next;
+}
+
 /// Where the open design stands relative to its file.
 enum SaveStatus {
   /// Everything is on disk.
@@ -484,6 +505,60 @@ class EditorController extends Notifier<EditorSession?> {
     } else {
       _commit(result.change, activePage: result.pages.first, select: const {});
     }
+  }
+
+  /// Adds a vector path through [anchors] (page coordinates of [pageId])
+  /// drawn with the pen or pencil (P2.6.1, P2.6.3): a dark stroke, no
+  /// fill; objects drawn over a frame go into it. Returns the new id.
+  ObjectId insertPath(
+    List<PenAnchor> anchors, {
+    required bool closed,
+    required PageId pageId,
+    bool freehand = false,
+  }) {
+    final document = _editor.document;
+    final page = document.pages.firstWhere((p) => p.id == pageId);
+    final width =
+        newShape(
+          ObjectType.line,
+          page,
+          id: const ObjectId('_'),
+        ).style!.stroke!.width;
+    final path = newPathObject(
+      id: ObjectId.generate(),
+      pageId: pageId,
+      anchors: anchors,
+      closed: closed,
+      name: freehand ? 'Drawing' : null,
+      style: ObjectStyle(stroke: Stroke(color: defaultTextColor, width: width)),
+    );
+    final b = path.transform;
+    _commit(
+      _intoFrame(
+        insertObjects(document, pageId, [
+          path,
+        ], label: freehand ? 'Draw' : 'Add path'),
+        [path.id],
+        pageId,
+        Point2D(b.x + b.width / 2, b.y + b.height / 2),
+      ),
+      activePage: pageId,
+      select: {path.id},
+    );
+    return path.id;
+  }
+
+  /// Removes anchor [index] of path [id] (at least two stay).
+  void deletePathAnchor(ObjectId id, int index) {
+    final object = _editor.document.objects[id];
+    if (object == null) return;
+    final (:anchors, :closed) = localAnchors(object);
+    if (anchors.length <= 2 || index < 0 || index >= anchors.length) return;
+    _commit(
+      updateObjects(_editor.document, [
+        withAnchors(object, [...anchors]..removeAt(index), closed: closed),
+      ], label: 'Delete point'),
+    );
   }
 
   /// Adds a frame (artboard). Without [topLeft] it is centred in the view

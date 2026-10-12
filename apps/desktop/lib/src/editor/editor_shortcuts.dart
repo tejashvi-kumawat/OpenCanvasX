@@ -100,6 +100,16 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     }
   }
 
+  void deleteSelectionOrPoint() {
+    final nodes = ref.read(nodeEditProvider);
+    if (nodes?.anchor case final anchor?) {
+      editor.deletePathAnchor(nodes!.id, anchor);
+      ref.read(nodeEditProvider.notifier).value = NodeEdit(nodes.id);
+      return;
+    }
+    editor.deleteSelection();
+  }
+
   return {
     EditorKeys.undo: editor.undo,
     EditorKeys.redo: editor.redo,
@@ -110,17 +120,32 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     EditorKeys.duplicate: editor.duplicateSelection,
     EditorKeys.selectAll: editor.selectAll,
     EditorKeys.save: () => unawaited(editor.saveNow()),
-    EditorKeys.delete: editor.deleteSelection,
-    EditorKeys.backspace: editor.deleteSelection,
+    EditorKeys.delete: deleteSelectionOrPoint,
+    EditorKeys.backspace: deleteSelectionOrPoint,
     EditorKeys.escape: () {
-      tools.reset();
+      final nodes = ref.read(nodeEditProvider.notifier);
+      if (nodes.value != null) {
+        nodes.value = null;
+        return;
+      }
+      if (ref.read(toolProvider).active != EditorTool.move) {
+        // Leaving the pen finishes the path being drawn.
+        tools.reset();
+        return;
+      }
       editor.selectParentOrClear();
     },
     EditorKeys.group: editor.groupSelection,
     if (onExport != null) EditorKeys.export: onExport,
     EditorKeys.frameSelection: editor.frameSelection,
     EditorKeys.ungroup: editor.ungroupSelection,
-    EditorKeys.editText: unlessTyping(editSelectedText),
+    EditorKeys.editText: unlessTyping(() {
+      if (ref.read(toolProvider).active == EditorTool.pen) {
+        tools.reset();
+      } else {
+        editSelectedText();
+      }
+    }),
     EditorKeys.zoomIn: view.zoomIn,
     EditorKeys.zoomInNumpad: view.zoomIn,
     EditorKeys.zoomOut: view.zoomOut,
@@ -156,6 +181,12 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     ),
     const SingleActivator(LogicalKeyboardKey.keyF): unlessTyping(
       () => tools.select(EditorTool.frame),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyP): unlessTyping(
+      () => tools.select(EditorTool.pen),
+    ),
+    const SingleActivator(LogicalKeyboardKey.keyP, shift: true): unlessTyping(
+      () => tools.select(EditorTool.pencil),
     ),
     const SingleActivator(LogicalKeyboardKey.arrowLeft): () => nudge(-1, 0),
     const SingleActivator(LogicalKeyboardKey.arrowRight): () => nudge(1, 0),

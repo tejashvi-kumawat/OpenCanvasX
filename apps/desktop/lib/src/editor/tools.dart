@@ -15,7 +15,9 @@ enum EditorTool {
   star('Star', Icons.star_outline, null, null),
   line('Line', Icons.horizontal_rule, LogicalKeyboardKey.keyL, 'L'),
   arrow('Arrow', Icons.north_east, LogicalKeyboardKey.keyL, 'Shift+L'),
-  text('Text', Icons.title, LogicalKeyboardKey.keyT, 'T');
+  text('Text', Icons.title, LogicalKeyboardKey.keyT, 'T'),
+  pen('Pen', Icons.edit_outlined, LogicalKeyboardKey.keyP, 'P'),
+  pencil('Pencil', Icons.draw_outlined, LogicalKeyboardKey.keyP, 'Shift+P');
 
   const EditorTool(this.label, this.icon, this.key, this.shortcutLabel);
 
@@ -38,6 +40,7 @@ enum EditorTool {
     EditorTool.arrow => ObjectType.arrow,
     EditorTool.text => ObjectType.text,
     EditorTool.frame => ObjectType.frame,
+    EditorTool.pen || EditorTool.pencil => ObjectType.path,
     EditorTool.move || EditorTool.hand => null,
   };
 
@@ -50,6 +53,8 @@ enum EditorTool {
   }.contains(this);
 
   bool get isLine => this == EditorTool.line || this == EditorTool.arrow;
+
+  bool get isVector => this == EditorTool.pen || this == EditorTool.pencil;
 }
 
 /// Shape tools grouped under one toolbar button.
@@ -64,6 +69,9 @@ const shapeTools = [
 /// Line tools grouped under one toolbar button.
 const lineTools = [EditorTool.line, EditorTool.arrow];
 
+/// Vector drawing tools grouped under one toolbar button (P2.6).
+const vectorTools = [EditorTool.pen, EditorTool.pencil];
+
 /// Active tool plus the last-used shape and line tools (shown on the
 /// grouped toolbar buttons).
 @immutable
@@ -72,11 +80,13 @@ class ToolState {
     this.active = EditorTool.move,
     this.lastShape = EditorTool.rect,
     this.lastLine = EditorTool.line,
+    this.lastVector = EditorTool.pen,
   });
 
   final EditorTool active;
   final EditorTool lastShape;
   final EditorTool lastLine;
+  final EditorTool lastVector;
 }
 
 final toolProvider = NotifierProvider<ToolController, ToolState>(
@@ -92,6 +102,7 @@ class ToolController extends Notifier<ToolState> {
         active: tool,
         lastShape: tool.isShape ? tool : state.lastShape,
         lastLine: tool.isLine ? tool : state.lastLine,
+        lastVector: tool.isVector ? tool : state.lastVector,
       );
 
   /// Back to Move, e.g. after drawing one shape.

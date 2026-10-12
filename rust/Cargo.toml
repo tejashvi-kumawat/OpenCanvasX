@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["ods_native"]
+members = ["ocx_native"]
 
 [workspace.package]
 version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/open-design-studio/open-design-studio"
+repository = "https://github.com/tejashvi-kumawat/OpenCanvasX"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

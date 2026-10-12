@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for contributing to Open Design Studio.
+Thank you for contributing to OpenCanvasX.
 
 1. Read [docs/agent-guide.md](docs/agent-guide.md) and [docs/checklist.md](docs/checklist.md).
 2. Follow [docs/contributing-conventions.md](docs/contributing-conventions.md) for branches and commits.

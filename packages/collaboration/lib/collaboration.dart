@@ -1,4 +1,4 @@
-/// Open Design Studio — `collaboration` package (Phase 0 skeleton).
+/// OpenCanvasX — `collaboration` package (Phase 0 skeleton).
 library;
 
 /// Package marker for Phase 0; replaced with real APIs in later phases.

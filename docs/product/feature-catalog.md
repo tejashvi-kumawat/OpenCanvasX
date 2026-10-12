@@ -1,7 +1,7 @@
 # Feature catalog
 
-> **Source:** Derived from [Open_Design_Studio_Complete_Specification.md](../Open_Design_Studio_Complete_Specification.md).
-> **Status:** Normative product/architecture documentation for Open Design Studio.
+> **Source:** Derived from [OpenCanvasX_Complete_Specification.md](../OpenCanvasX_Complete_Specification.md).
+> **Status:** Normative product/architecture documentation for OpenCanvasX.
 
 Tags used below: **MVP** · **Post-MVP** · **Later**
 

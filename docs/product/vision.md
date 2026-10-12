@@ -1,11 +1,11 @@
 # Product vision
 
-> **Source:** Derived from [Open_Design_Studio_Complete_Specification.md](../Open_Design_Studio_Complete_Specification.md).
-> **Status:** Normative product/architecture documentation for Open Design Studio.
+> **Source:** Derived from [OpenCanvasX_Complete_Specification.md](../OpenCanvasX_Complete_Specification.md).
+> **Status:** Normative product/architecture documentation for OpenCanvasX.
 
 ## 0. PRODUCT VISION
 
-Open Design Studio is a free, open-source, local-first, cross-platform visual creation suite inspired by the broad functionality people use in Canva, presentation tools, lightweight publishing tools, diagram tools, and creative editors.
+OpenCanvasX is a free, open-source, local-first, cross-platform visual creation suite inspired by the broad functionality people use in Canva, presentation tools, lightweight publishing tools, diagram tools, and creative editors.
 
 The objective is NOT to copy Canva's proprietary templates, assets, code, branding, or copyrighted content.
 

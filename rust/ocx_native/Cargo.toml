@@ -1,6 +1,6 @@
 [package]
-name = "ods_native"
-description = "Native Rust core for Open Design Studio (performance-critical paths)."
+name = "ocx_native"
+description = "Native Rust core for OpenCanvasX (performance-critical paths)."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

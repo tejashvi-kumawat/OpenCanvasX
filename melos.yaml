@@ -1,5 +1,5 @@
-name: open_design_studio
-repository: https://github.com/open-design-studio/open-design-studio
+name: opencanvasx
+repository: https://github.com/tejashvi-kumawat/OpenCanvasX
 
 packages:
   - apps/**
@@ -23,14 +23,14 @@ scripts:
     exec:
       concurrency: 1
     packageFilters:
-      scope: open_design_studio
+      scope: opencanvasx
   test:packages:
     run: dart test
     description: Run Dart VM tests in engine packages.
     exec:
       concurrency: 4
     packageFilters:
-      ignore: open_design_studio
+      ignore: opencanvasx
   format:
     run: dart format .
     description: Format all Dart code.

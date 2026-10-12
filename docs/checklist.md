@@ -1,4 +1,4 @@
-# Open Design Studio — Agent Checklist
+# OpenCanvasX — Agent Checklist
 
 ## Agent Rules
 - Work top to bottom. Never start a phase until the previous phase's **Exit Gate** is fully ticked.
@@ -17,7 +17,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 # PHASE 0 — Setup, Documentation, Decisions
 
 ## P0.1 Repository & Tooling
-- [x] P0.1.1 Create monorepo `open-design-studio/` with `apps/ packages/ templates/ assets/ plugins/ protocols/ docs/ scripts/ tests/ third_party/`
+- [x] P0.1.1 Create monorepo `OpenCanvasX/` with `apps/ packages/ templates/ assets/ plugins/ protocols/ docs/ scripts/ tests/ third_party/`
 - [x] P0.1.2 Add `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
 - [x] P0.1.3 Choose and record the project license (compatible with all planned dependencies)
 - [x] P0.1.4 Set up Flutter/Dart workspace (melos or equivalent)
@@ -44,7 +44,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P0.3.1 `overview.md` — engine map (UI, design, document, template, asset, typography, export, media, collaboration, security, AI, agent, plugin, storage, platform)
 - [x] P0.3.2 `tech-stack-decision.md` — ADRs for Flutter, Rust, Skia/Impeller, SQLite, FFmpeg, PDF libs, WebRTC, crypto libs
 - [x] P0.3.3 `document-model.md` — object types, transforms, pages, layers, styles, IDs, versioning
-- [x] P0.3.4 `file-format.md` — `.designstudio` spec: structure, versioning, migration, no secrets
+- [x] P0.3.4 `file-format.md` — `.opencanvasx` spec: structure, versioning, migration, no secrets
 - [x] P0.3.5 `rendering-architecture.md` — canvas, incremental/tiled rendering, virtualization, caching
 - [x] P0.3.6 `storage-architecture.md` — SQLite schema plan, content-addressed assets, snapshots, backups
 - [x] P0.3.7 `export-architecture.md` — SVG/PNG/PDF pipelines, vector-preservation rules
@@ -59,7 +59,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 
 ## P0.4 Collaboration & Security Docs (`docs/protocol/`, `docs/security/`)
 - [x] P0.4.1 `protocol-layers.md` — Layers 0–9 (discovery → versioning)
-- [x] P0.4.2 `invitation-spec.md` — fields, nonce, expiry, single-use, signature, `DS://join/...` scheme
+- [x] P0.4.2 `invitation-spec.md` — fields, nonce, expiry, single-use, signature, `ocx://join/...` scheme
 - [x] P0.4.3 `identity-and-auth.md` — device keys, fingerprints, OS secure storage, peer verification
 - [x] P0.4.4 `authorization-spec.md` — roles, permissions, capability model
 - [x] P0.4.5 `crypto-spec.md` — Ed25519, X25519, AEAD, HKDF; document keys; revocation + key rotation
@@ -97,7 +97,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.1.1 Implement object model (id, type, transform, style, children)
 - [x] P1.1.2 Page model (size, background, margins, bleed, guides)
 - [x] P1.1.3 Units & conversion (px, mm, cm, in, pt) + DPI
-- [ ] P1.1.4 Serialization to `.designstudio` + versioned migration framework
+- [ ] P1.1.4 Serialization to `.opencanvasx` + versioned migration framework
 - [ ] P1.1.5 Save / open / autosave
 - [ ] P1.1.6 Recent documents
 - [ ] P1.1.7 Local project directory selection
@@ -324,7 +324,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P4.4.1 Collaboration session creation
 - [ ] P4.4.2 Signed, single-use, short-lived invitation
 - [ ] P4.4.3 QR generation and scanning
-- [ ] P4.4.4 `DS://join/...` URI scheme registration on all OS
+- [ ] P4.4.4 `ocx://join/...` URI scheme registration on all OS
 - [ ] P4.4.5 Explicit accept/reject with host identity display
 - [ ] P4.4.6 Malformed/expired/replayed invitation tests
 

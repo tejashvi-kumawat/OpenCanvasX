@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generates Dart bindings from rust/ods_native (requires flutter_rust_bridge_codegen).
+# Generates Dart bindings from rust/ocx_native (requires flutter_rust_bridge_codegen).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$ROOT/.toolchain/flutter/bin:$PATH"

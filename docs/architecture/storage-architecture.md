@@ -8,14 +8,14 @@ User picks a **projects root** on first launch (see product onboarding). Each pr
 
 ```
 MyProject/
-  project.designstudio    # or unpacked folder layout
-  .ods/                   # app metadata (optional hidden dir)
+  project.opencanvasx    # or unpacked folder layout
+  .ocx/                   # app metadata (optional hidden dir)
     index.sqlite
     cache/
     snapshots/
 ```
 
-Single-file `.designstudio` ZIP is portable; directory layout suits Git and diff-friendly workflows.
+Single-file `.opencanvasx` ZIP is portable; directory layout suits Git and diff-friendly workflows.
 
 ## SQLite index
 
@@ -42,7 +42,7 @@ Rebuild FTS on save or background job after idle.
 ## Autosave
 
 - Debounced save after edits (configurable interval).
-- Atomic write: temp file + rename, or write new ZIP to `.designstudio.tmp` then replace.
+- Atomic write: temp file + rename, or write new ZIP to `.opencanvasx.tmp` then replace.
 - Crash recovery: open last good autosave if main file truncated.
 
 ## Snapshots and backup
@@ -61,7 +61,7 @@ While in a session, device holds:
 
 - Pending outbound ops queue
 - Last synced vector clock / op id watermark
-- Encrypted session state in secure storage, not in `.designstudio`
+- Encrypted session state in secure storage, not in `.opencanvasx`
 
 See [sync-spec.md](../protocol/sync-spec.md).
 

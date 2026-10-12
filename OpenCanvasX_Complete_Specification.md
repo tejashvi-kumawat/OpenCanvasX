@@ -1,4 +1,4 @@
-OPEN DESIGN STUDIO
+OPENCANVASX
 COMPLETE PRODUCT + ARCHITECTURE SPECIFICATION
 Version 1.0
 Status: Product and technical master specification
@@ -7,7 +7,7 @@ Status: Product and technical master specification
 0. PRODUCT VISION
 ============================================================
 
-Open Design Studio is a free, open-source, local-first, cross-platform visual creation suite inspired by the broad functionality people use in Canva, presentation tools, lightweight publishing tools, diagram tools, and creative editors.
+OpenCanvasX is a free, open-source, local-first, cross-platform visual creation suite inspired by the broad functionality people use in Canva, presentation tools, lightweight publishing tools, diagram tools, and creative editors.
 
 The objective is NOT to copy Canva's proprietary templates, assets, code, branding, or copyrighted content.
 
@@ -1481,7 +1481,7 @@ No mandatory cloud search.
 Native format should be open and documented.
 
 Suggested:
-.designstudio
+.opencanvasx
 
 Structure:
 - version
@@ -2165,7 +2165,7 @@ AI:
 87. REPOSITORY STRUCTURE
 ============================================================
 
-open-design-studio/
+OpenCanvasX/
 |
 +-- apps/
 |   +-- desktop/
@@ -2300,7 +2300,7 @@ It should be:
 - no document plaintext
 
 The application should recognize:
-DS://join/...
+ocx://join/...
 
 without requiring a public website.
 
@@ -2312,11 +2312,11 @@ The OS can register the custom URI scheme.
 
 Example:
 
-DS://join/<opaque-invitation>
+ocx://join/<opaque-invitation>
 
 User opens it.
 
-Operating system launches Design Studio.
+Operating system launches OpenCanvasX.
 
 The application handles the invitation locally.
 
@@ -2355,7 +2355,7 @@ On same network:
 - manual local IP
 
 Example:
-"Tejashvi's Design Studio is available nearby."
+"Tejashvi's OpenCanvasX is available nearby."
 
 Still require explicit approval.
 
@@ -2667,7 +2667,7 @@ Instead communicate technically verifiable properties:
 106. FINAL SYSTEM
 ============================================================
 
-                     OPEN DESIGN STUDIO
+                     OPENCANVASX
                              |
         +--------------------+--------------------+
         |                    |                    |

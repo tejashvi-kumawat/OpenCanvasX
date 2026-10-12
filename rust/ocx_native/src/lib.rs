@@ -3,7 +3,7 @@
 
 /// Returns the native core version string (Phase 0 smoke test).
 #[flutter_rust_bridge::frb(sync)]
-pub fn ods_native_version() -> String {
+pub fn ocx_native_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
@@ -13,6 +13,6 @@ mod tests {
 
     #[test]
     fn version_is_non_empty() {
-        assert!(!ods_native_version().is_empty());
+        assert!(!ocx_native_version().is_empty());
     }
 }

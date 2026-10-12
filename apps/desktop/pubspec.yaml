@@ -1,5 +1,5 @@
-name: open_design_studio
-description: Open Design Studio desktop application.
+name: opencanvasx
+description: OpenCanvasX desktop application.
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -32,10 +32,10 @@ dependencies:
     sdk: flutter
   design_engine:
     path: ../../packages/design_engine
-  ods_logging:
-    path: ../../packages/ods_logging
-  ods_native_bridge:
-    path: ../../packages/ods_native_bridge
+  ocx_logging:
+    path: ../../packages/ocx_logging
+  ocx_native_bridge:
+    path: ../../packages/ocx_native_bridge
 
 dev_dependencies:
   flutter_test:

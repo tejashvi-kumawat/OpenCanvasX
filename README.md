@@ -1,4 +1,4 @@
-# Open Design Studio
+# OpenCanvasX
 
 Free, open-source, **local-first** visual design application — comparable categories to mainstream design tools, without mandatory cloud, accounts, or subscriptions.
 
@@ -30,7 +30,7 @@ cargo test --workspace --manifest-path rust/Cargo.toml
 ```
 apps/desktop/          Flutter desktop application
 packages/              Dart engines and shared libraries
-rust/ods_native/       Rust native core (flutter_rust_bridge)
+rust/ocx_native/       Rust native core (flutter_rust_bridge)
 docs/                  Product, architecture, protocol, process docs
 protocols/             Collaboration protocol artifacts (Phase 4+)
 templates/ assets/ plugins/   Content and extensions (Phase 2+)

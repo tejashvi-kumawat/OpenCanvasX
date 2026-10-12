@@ -1,5 +1,5 @@
-name: open_design_studio_workspace
-description: Melos workspace root for Open Design Studio.
+name: opencanvasx_workspace
+description: Melos workspace root for OpenCanvasX.
 publish_to: none
 
 environment:

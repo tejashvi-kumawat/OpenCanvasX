@@ -21,7 +21,7 @@ All of `docs/` is **hand-maintained** Markdown in Git. No doc generator scripts.
 | ADRs | [adr/README.md](adr/README.md) |
 | Checklist / implementation | [checklist.md](checklist.md), [implementation/README.md](implementation/README.md) |
 
-Reference (not auto-synced): [Open_Design_Studio_Complete_Specification.md](../Open_Design_Studio_Complete_Specification.md).
+Reference (not auto-synced): [OpenCanvasX_Complete_Specification.md](../OpenCanvasX_Complete_Specification.md).
 
 ## Blocked items
 

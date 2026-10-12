@@ -25,7 +25,7 @@ Implementations: OpenAI-compatible HTTP, Anthropic adapter (if needed), local HT
 ## Secret handling
 
 - Keys in OS keychain/credential store.
-- Never in `.designstudio`, never in CRDT, never in logs ([ods_logging](../implementation/p0-foundation.md) redaction).
+- Never in `.opencanvasx`, never in CRDT, never in logs ([ocx_logging](../implementation/p0-foundation.md) redaction).
 
 ## Privacy UI
 

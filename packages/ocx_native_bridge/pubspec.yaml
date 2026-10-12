@@ -1,5 +1,5 @@
-name: ods_native_bridge
-description: Open Design Studio — ods_native_bridge (skeleton).
+name: ocx_native_bridge
+description: OpenCanvasX — ocx_native_bridge (skeleton).
 version: 0.0.1
 publish_to: none
 

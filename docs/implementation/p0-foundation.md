@@ -3,9 +3,9 @@
 ## Code
 
 - Melos workspace: `apps/desktop`, 21 `packages/*` skeletons with passing unit tests.
-- Rust workspace: `rust/ods_native` + `flutter_rust_bridge` entry (`ods_native_version`).
-- `packages/ods_logging`: structured logging + `SecretRedactor` (see tests in `packages/ods_logging/test/redaction_test.dart`).
-- `packages/ods_native_bridge`: Phase 0 Dart stub; FRB codegen via `scripts/codegen_rust_bridge.sh`.
+- Rust workspace: `rust/ocx_native` + `flutter_rust_bridge` entry (`ocx_native_version`).
+- `packages/ocx_logging`: structured logging + `SecretRedactor` (see tests in `packages/ocx_logging/test/redaction_test.dart`).
+- `packages/ocx_native_bridge`: Phase 0 Dart stub; FRB codegen via `scripts/codegen_rust_bridge.sh`.
 
 ## Commands
 

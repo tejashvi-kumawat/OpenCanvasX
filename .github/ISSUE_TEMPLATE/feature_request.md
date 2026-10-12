@@ -7,7 +7,7 @@ labels: enhancement
 
 **Spec / checklist reference**
 
-Link a section of [Open_Design_Studio_Complete_Specification.md](../../Open_Design_Studio_Complete_Specification.md) or [docs/checklist.md](../../docs/checklist.md).
+Link a section of [OpenCanvasX_Complete_Specification.md](../../OpenCanvasX_Complete_Specification.md) or [docs/checklist.md](../../docs/checklist.md).
 
 **Problem**
 

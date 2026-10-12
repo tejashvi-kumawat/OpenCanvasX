@@ -1,8 +1,8 @@
 # Architecture documentation
 
-Hand-maintained design docs for Open Design Studio. Edit in Git; do not autogenerate this folder.
+Hand-maintained design docs for OpenCanvasX. Edit in Git; do not autogenerate this folder.
 
-Master spec (reference only): [Open_Design_Studio_Complete_Specification.md](../../Open_Design_Studio_Complete_Specification.md).
+Master spec (reference only): [OpenCanvasX_Complete_Specification.md](../../OpenCanvasX_Complete_Specification.md).
 
 ## Read in this order (implementation order)
 
@@ -13,7 +13,7 @@ Follow this sequence when building or onboarding — each doc assumes the ones a
 | 1 | [overview.md](overview.md) | System map and package roles |
 | 2 | [tech-stack-decision.md](tech-stack-decision.md) | Flutter, Rust, storage, collab stack |
 | 3 | [document-model.md](document-model.md) | In-memory truth: pages, objects, layers |
-| 4 | [file-format.md](file-format.md) | `.designstudio` on-disk layout and migration |
+| 4 | [file-format.md](file-format.md) | `.opencanvasx` on-disk layout and migration |
 | 5 | [storage-architecture.md](storage-architecture.md) | Projects dir, SQLite index, autosave, snapshots |
 | 6 | [rendering-architecture.md](rendering-architecture.md) | Scene graph, tiles, GPU path |
 | 7 | [export-architecture.md](export-architecture.md) | Import/export pipelines |

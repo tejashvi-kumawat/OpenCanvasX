@@ -114,17 +114,17 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.16.0"
-  ods_logging:
+  ocx_logging:
     dependency: "direct main"
     description:
-      path: "../../packages/ods_logging"
+      path: "../../packages/ocx_logging"
       relative: true
     source: path
     version: "0.0.1"
-  ods_native_bridge:
+  ocx_native_bridge:
     dependency: "direct main"
     description:
-      path: "../../packages/ods_native_bridge"
+      path: "../../packages/ocx_native_bridge"
       relative: true
     source: path
     version: "0.0.1"

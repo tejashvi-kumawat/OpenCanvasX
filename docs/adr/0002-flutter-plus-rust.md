@@ -9,7 +9,7 @@ Cross-platform desktop primary; performance and crypto paths need a memory-safe 
 
 ## Decision
 
-Flutter/Dart for UI; Rust workspace `rust/ods_native` exposed via `flutter_rust_bridge`.
+Flutter/Dart for UI; Rust workspace `rust/ocx_native` exposed via `flutter_rust_bridge`.
 
 ## Consequences
 

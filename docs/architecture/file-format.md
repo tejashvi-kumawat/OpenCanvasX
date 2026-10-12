@@ -1,6 +1,6 @@
-# `.designstudio` file format
+# `.opencanvasx` file format
 
-The native project format is **open, documented, and versioned**. Files use extension `.designstudio`. Human editing is possible (unzip + JSON); the app is the primary editor.
+The native project format is **open, documented, and versioned**. Files use extension `.opencanvasx`. Human editing is possible (unzip + JSON); the app is the primary editor.
 
 ## Container
 
@@ -44,7 +44,7 @@ Collaboration state is **not** required in the file for single-user save. Option
 
 ## Object encoding
 
-Same logical model as [document-model.md](document-model.md). JSON uses camelCase or snake_case — **pick one in Phase 1.1.4 and never mix**.
+Same logical model as [document-model.md](document-model.md). JSON keys are **snake_case** everywhere ([ADR-0004](../adr/0004-rename-to-opencanvasx.md)); never mix styles.
 
 Binary-heavy fields (compressed path data, large text) may move to sidecar files referenced by id in a future schema version.
 

@@ -1,4 +1,4 @@
-# Open Design Studio documentation
+# OpenCanvasX documentation
 
 ## Start here (implementation order across folders)
 
@@ -36,7 +36,7 @@ Task tracking: [checklist.md](checklist.md) · Contributor workflow: [agent-guid
 
 ## Specification
 
-- [Complete specification](../Open_Design_Studio_Complete_Specification.md) — long-form reference
+- [Complete specification](../OpenCanvasX_Complete_Specification.md) — long-form reference
 
 ## Maintaining docs
 

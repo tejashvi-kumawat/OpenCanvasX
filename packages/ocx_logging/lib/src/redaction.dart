@@ -19,7 +19,7 @@ class SecretRedactor {
     ),
     RegExp('sk-[a-zA-Z0-9]{20,}'),
     RegExp(
-      'ds://join/[^\\s]+',
+      'ocx://join/[^\\s]+',
       caseSensitive: false,
     ),
   ];

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.opendesignstudio" "\0"
-            VALUE "FileDescription", "open_design_studio" "\0"
+            VALUE "CompanyName", "OpenCanvasX contributors" "\0"
+            VALUE "FileDescription", "OpenCanvasX" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "open_design_studio" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.opendesignstudio. All rights reserved." "\0"
-            VALUE "OriginalFilename", "open_design_studio.exe" "\0"
-            VALUE "ProductName", "open_design_studio" "\0"
+            VALUE "InternalName", "opencanvasx" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 OpenCanvasX contributors. Apache-2.0." "\0"
+            VALUE "OriginalFilename", "opencanvasx.exe" "\0"
+            VALUE "ProductName", "OpenCanvasX" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

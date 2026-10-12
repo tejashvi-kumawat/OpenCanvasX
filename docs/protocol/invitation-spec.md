@@ -1,7 +1,7 @@
 # Invitation specification
 
-> **Source:** Derived from [Open_Design_Studio_Complete_Specification.md](../Open_Design_Studio_Complete_Specification.md).
-> **Status:** Normative product/architecture documentation for Open Design Studio.
+> **Source:** Derived from [OpenCanvasX_Complete_Specification.md](../OpenCanvasX_Complete_Specification.md).
+> **Status:** Normative product/architecture documentation for OpenCanvasX.
 
 ## 29. COLLABORATION INVITATION
 
@@ -43,7 +43,7 @@ It should be:
 - no document plaintext
 
 The application should recognize:
-DS://join/...
+ocx://join/...
 
 without requiring a public website.
 
@@ -53,11 +53,11 @@ The OS can register the custom URI scheme.
 
 Example:
 
-DS://join/<opaque-invitation>
+ocx://join/<opaque-invitation>
 
 User opens it.
 
-Operating system launches Design Studio.
+Operating system launches OpenCanvasX.
 
 The application handles the invitation locally.
 

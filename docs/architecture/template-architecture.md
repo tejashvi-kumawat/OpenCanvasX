@@ -29,7 +29,7 @@ Repository layout (convention):
 
 ```
 index.json
-templates/*.designstudio
+templates/*.opencanvasx
 assets/sha256/*
 previews/*
 licenses/*

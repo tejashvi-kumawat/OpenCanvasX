@@ -1,6 +1,6 @@
 # Architecture overview
 
-Open Design Studio is a **local-first desktop application**: the canonical design lives in files on disk, edited through a Flutter UI, with optional P2P collaboration and optional BYOK AI. No vendor cloud is required for core editing.
+OpenCanvasX is a **local-first desktop application**: the canonical design lives in files on disk, edited through a Flutter UI, with optional P2P collaboration and optional BYOK AI. No vendor cloud is required for core editing.
 
 ## Layered structure
 
@@ -29,7 +29,7 @@ Open Design Studio is a **local-first desktop application**: the canonical desig
  networking
         │
         ▼
- rust/ods_native (hot paths, future: crypto, decode, CRDT helpers)
+ rust/ocx_native (hot paths, future: crypto, decode, CRDT helpers)
         │
         ▼
  OS: filesystem, SQLite, secure enclave, GPU
@@ -55,7 +55,7 @@ Open Design Studio is a **local-first desktop application**: the canonical desig
 1. UI dispatches a **command** (e.g. move selection).
 2. `design_engine` validates and applies it to the **in-memory document** (`document_model`).
 3. `renderer` marks dirty regions and repaints.
-4. **Autosave** serializes to `.designstudio` via `document_model` + `storage`.
+4. **Autosave** serializes to `.opencanvasx` via `document_model` + `storage`.
 5. **Export** walks the same document through `export_engine` without mutating source.
 
 Collaboration adds an **operation log** merged by `crdt` instead of replacing step 4 with a server sync. See [protocol docs](../protocol/protocol-layers.md).
@@ -66,7 +66,7 @@ Monorepo root (this project: `OpenCanvasX/`):
 
 - `apps/desktop` — Flutter shell
 - `packages/*` — Dart libraries above
-- `rust/ods_native` — Rust FFI surface
+- `rust/ocx_native` — Rust FFI surface
 - `protocols/` — machine-readable protocol artifacts (Phase 4+)
 - `docs/architecture/` — **this folder** (hand-maintained)
 

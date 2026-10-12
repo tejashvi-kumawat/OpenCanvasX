@@ -1,4 +1,4 @@
-/// Open Design Studio — `template_engine` package (Phase 0 skeleton).
+/// OpenCanvasX — `template_engine` package (Phase 0 skeleton).
 library;
 
 /// Package marker for Phase 0; replaced with real APIs in later phases.

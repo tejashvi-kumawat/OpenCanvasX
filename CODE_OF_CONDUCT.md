@@ -2,7 +2,7 @@
 
 ## Our pledge
 
-We pledge to make participation in Open Design Studio a harassment-free experience for everyone.
+We pledge to make participation in OpenCanvasX a harassment-free experience for everyone.
 
 ## Standards
 

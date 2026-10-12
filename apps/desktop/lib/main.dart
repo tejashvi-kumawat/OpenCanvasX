@@ -1,28 +1,28 @@
 import 'package:design_engine/design_engine.dart' as design_engine;
 import 'package:flutter/material.dart';
-import 'package:ods_logging/ods_logging.dart';
-import 'package:ods_native_bridge/ods_native_bridge.dart';
+import 'package:ocx_logging/ocx_logging.dart';
+import 'package:ocx_native_bridge/ocx_native_bridge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final log = OdsLogger(name: 'desktop', minLevel: LogLevel.debug);
-  await OdsNativeBridge.init();
+  final log = OcxLogger(name: 'desktop', minLevel: LogLevel.debug);
+  await OcxNativeBridge.init();
   log.info(
-    'Open Design Studio shell starting '
+    'OpenCanvasX shell starting '
     '(design_engine=${design_engine.packageVersion()}, '
-    'native=${OdsNativeBridge.nativeVersion()})',
+    'native=${OcxNativeBridge.nativeVersion()})',
   );
-  runApp(const OpenDesignStudioApp());
+  runApp(const OpenCanvasXApp());
 }
 
 /// Phase 0 empty desktop shell — canvas and panels arrive in Phase 1.
-class OpenDesignStudioApp extends StatelessWidget {
-  const OpenDesignStudioApp({super.key});
+class OpenCanvasXApp extends StatelessWidget {
+  const OpenCanvasXApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Open Design Studio',
+      title: 'OpenCanvasX',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1565C0)),
         useMaterial3: true,
@@ -39,7 +39,7 @@ class _ShellScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Open Design Studio'),
+        title: const Text('OpenCanvasX'),
       ),
       body: Center(
         child: Text(

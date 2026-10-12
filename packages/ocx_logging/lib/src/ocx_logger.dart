@@ -6,9 +6,9 @@ import 'redaction.dart';
 typedef LogSink = void Function(LogLevel level, String message, {Object? error, StackTrace? stackTrace});
 
 /// Application logger; always redacts secrets before emitting.
-class OdsLogger {
-  OdsLogger({
-    this.name = 'ods',
+class OcxLogger {
+  OcxLogger({
+    this.name = 'ocx',
     LogLevel minLevel = LogLevel.info,
     SecretRedactor? redactor,
     LogSink? sink,
@@ -48,7 +48,7 @@ class OdsLogger {
   }) {
     developer.log(
       message,
-      name: 'ods',
+      name: 'ocx',
       level: _toDeveloperLevel(level),
       error: error,
       stackTrace: stackTrace,

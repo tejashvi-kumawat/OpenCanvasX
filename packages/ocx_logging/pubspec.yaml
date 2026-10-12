@@ -1,5 +1,5 @@
-name: ods_logging
-description: Open Design Studio — ods_logging (skeleton).
+name: ocx_logging
+description: OpenCanvasX — ocx_logging (skeleton).
 version: 0.0.1
 publish_to: none
 

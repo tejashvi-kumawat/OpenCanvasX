@@ -22,8 +22,8 @@ PACKAGES=(
   plugins_sdk
   search
   storage
-  ods_logging
-  ods_native_bridge
+  ocx_logging
+  ocx_native_bridge
 )
 
 for pkg in "${PACKAGES[@]}"; do
@@ -32,7 +32,7 @@ for pkg in "${PACKAGES[@]}"; do
   if [[ ! -f "$dir/pubspec.yaml" ]]; then
     cat >"$dir/pubspec.yaml" <<EOF
 name: $pkg
-description: Open Design Studio — $pkg (skeleton).
+description: OpenCanvasX — $pkg (skeleton).
 version: 0.0.1
 publish_to: none
 
@@ -47,7 +47,7 @@ EOF
   lib_file="$dir/lib/${pkg}.dart"
   if [[ ! -f "$lib_file" ]]; then
     cat >"$lib_file" <<EOF
-/// Open Design Studio — \`$pkg\` package (Phase 0 skeleton).
+/// OpenCanvasX — \`$pkg\` package (Phase 0 skeleton).
 library;
 
 /// Package marker for Phase 0; replaced with real APIs in later phases.

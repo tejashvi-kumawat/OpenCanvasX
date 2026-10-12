@@ -1,4 +1,4 @@
-# open_design_studio
+# opencanvasx
 
 A new Flutter project.
 

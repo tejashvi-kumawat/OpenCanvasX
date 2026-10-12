@@ -15,10 +15,10 @@ build/
 # Rust
 target/
 **/target/
-rust/ods_native/target/
+rust/ocx_native/target/
 
 # Generated FRB
-packages/ods_native_bridge/lib/src/frb_generated.*
+packages/ocx_native_bridge/lib/src/frb_generated.*
 
 # OS
 .DS_Store

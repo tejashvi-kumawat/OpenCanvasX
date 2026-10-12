@@ -1,6 +1,6 @@
 # Technology stack
 
-Decisions here reflect the current plan for Open Design Studio. Locked choices have ADRs; tentative choices are marked **TBD** until dependency audit completes.
+Decisions here reflect the current plan for OpenCanvasX. Locked choices have ADRs; tentative choices are marked **TBD** until dependency audit completes.
 
 ## Client application
 
@@ -17,7 +17,7 @@ Decisions here reflect the current plan for Open Design Studio. Locked choices h
 |--------|--------|-------|
 | **SQLite** | Planned | Project index, search FTS, asset catalog metadata |
 | **Filesystem + content hashes** | Planned | Large binaries under `assets/sha256/<hash>` |
-| Native **`.designstudio`** archive | Planned | ZIP container; see [file-format.md](file-format.md) |
+| Native **`.opencanvasx`** archive | Planned | ZIP container; see [file-format.md](file-format.md) |
 
 ## Import / export
 

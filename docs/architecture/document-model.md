@@ -6,7 +6,7 @@ The document model is the **single in-memory source of truth** while the app is 
 
 - Stable **object ids** (UUIDs) for the lifetime of an object.
 - **Tree + order**: layer hierarchy and z-order are explicit.
-- **Serializable** to `.designstudio` with forward-compatible schema versions.
+- **Serializable** to `.opencanvasx` with forward-compatible schema versions.
 - **Command-friendly**: every user edit maps to reversible commands for undo.
 - **CRDT-ready**: geometric and structural edits decompose into operations (Phase 4).
 

@@ -226,7 +226,11 @@ Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
     'letter_spacing': t.letterSpacing,
     'sizing': _snake(t.sizing.name),
   },
-  FramePayload(:final clipContent) => {'clip_content': clipContent},
+  FramePayload(:final clipContent, :final component) => {
+    'clip_content': clipContent,
+    if (component) 'component': true,
+  },
+  InstancePayload(:final componentId) => {'component': componentId.value},
   PolygonPayload(:final sides) => {'sides': sides},
   StarPayload(:final points, :final innerRatio) => {
     'points': points,
@@ -472,7 +476,13 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
       );
     case ObjectType.frame:
       final p = object.child('payload');
-      return FramePayload(clipContent: p?.optBool('clip_content') ?? true);
+      return FramePayload(
+        clipContent: p?.optBool('clip_content') ?? true,
+        component: p?.optBool('component') ?? false,
+      );
+    case ObjectType.instance:
+      final p = object.object('payload');
+      return p.guard(() => InstancePayload(ObjectId(p.string('component'))));
     case ObjectType.polygon:
       final p = object.object('payload');
       return p.guard(() => PolygonPayload(sides: p.integer('sides')));

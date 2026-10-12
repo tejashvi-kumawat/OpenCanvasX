@@ -583,6 +583,101 @@ class EditorController extends Notifier<EditorSession?> {
     );
   }
 
+  /// Turns the selection into a main component (Ctrl+Alt+K).
+  void createComponent() {
+    final selected = _editor.selectedObjects;
+    if (selected.isEmpty ||
+        selected.any((o) => o.parentId != selected.first.parentId)) {
+      return;
+    }
+    final (change, id) = makeComponent(_editor.document, _editor.selection);
+    if (id != null) _commit(change, select: {id});
+  }
+
+  /// Adds an instance of [componentId] at [at] (the view or page centre
+  /// by default); dropped on a frame it goes inside.
+  ObjectId? insertInstance(
+    ObjectId componentId, {
+    Point2D? at,
+    PageId? pageId,
+  }) {
+    final component = _editor.document.objects[componentId];
+    if (!isComponent(component)) return null;
+    final page =
+        pageId == null
+            ? _editor.activePage
+            : _editor.document.pages.firstWhere((p) => p.id == pageId);
+    // Default: beside the component when it is on this page.
+    final bounds = worldBounds(_editor.document, componentId);
+    final besideComponent =
+        bounds != null &&
+                rootOf(_editor.document, componentId)?.pageId == page.id
+            ? Point2D(
+              bounds.right + bounds.width * 0.1 + bounds.width / 2,
+              bounds.top + bounds.height / 2,
+            )
+            : null;
+    final center =
+        at ??
+        besideComponent ??
+        _boardCenter(page) ??
+        Point2D(page.width / 2, page.height / 2);
+    final instance = newInstance(
+      id: ObjectId.generate(),
+      pageId: page.id,
+      component: component!,
+      center: center,
+    );
+    _commit(
+      _intoFrame(
+        insertObjects(_editor.document, page.id, [
+          instance,
+        ], label: 'Add instance'),
+        [instance.id],
+        page.id,
+        center,
+        // Never inside its own component.
+        exclude: {componentId},
+      ),
+      activePage: page.id,
+      select: {instance.id},
+    );
+    return instance.id;
+  }
+
+  /// Detaches selected instances into editable frames (Ctrl+Alt+B).
+  void detachSelection() {
+    var document = _editor.document;
+    final objects = <ObjectId, DesignObject?>{};
+    List<DesignPage>? pages;
+    final created = <ObjectId>{};
+    for (final o in _editor.selectedObjects) {
+      if (o.type != ObjectType.instance) continue;
+      final (change, id) = detachInstance(document, o.id);
+      if (id == null) continue;
+      document = change.applyTo(document).$1;
+      objects.addAll(change.objects);
+      if (change.pages != null) pages = change.pages;
+      created.add(id);
+    }
+    if (created.isEmpty) return;
+    _commit(
+      Change(label: 'Detach instance', objects: objects, pages: pages),
+      select: created,
+    );
+  }
+
+  /// Selects the main component of instance [id], switching page.
+  void goToMainComponent(ObjectId id) {
+    final payload = _editor.document.objects[id]?.payload;
+    if (payload is! InstancePayload) return;
+    final component = _editor.document.objects[payload.componentId];
+    if (component == null) return;
+    final root = rootOf(_editor.document, component.id);
+    if (root?.pageId case final page?) setActivePage(page);
+    select({component.id});
+  }
+
   /// Links [source] to frame [target] on the active page (prototyping);
   /// a `null` target removes the link.
   void setLink(
@@ -684,11 +779,12 @@ class EditorController extends Notifier<EditorSession?> {
     Change insert,
     List<ObjectId> ids,
     PageId pageId,
-    Point2D at,
-  ) {
+    Point2D at, {
+    Set<ObjectId> exclude = const {},
+  }) {
     final (inserted, _) = insert.applyTo(_editor.document);
     final page = inserted.pages.firstWhere((p) => p.id == pageId);
-    final target = frameAt(inserted, page, at, exclude: ids.toSet());
+    final target = frameAt(inserted, page, at, exclude: {...ids, ...exclude});
     if (target == null) return insert;
     return _chain(
       insert,
@@ -1212,6 +1308,7 @@ String typeLabel(ObjectType type) => switch (type) {
   ObjectType.image => 'Image',
   ObjectType.group => 'Group',
   ObjectType.frame => 'Frame',
+  ObjectType.instance => 'Instance',
   ObjectType.polygon => 'Polygon',
   ObjectType.star => 'Star',
 };

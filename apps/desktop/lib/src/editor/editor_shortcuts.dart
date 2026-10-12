@@ -46,6 +46,18 @@ abstract final class EditorKeys {
   static final sendToBack = cmd(LogicalKeyboardKey.bracketLeft, shift: true);
   static final group = cmd(LogicalKeyboardKey.keyG);
   static final export = cmd(LogicalKeyboardKey.keyE, shift: true);
+  static final createComponent = SingleActivator(
+    LogicalKeyboardKey.keyK,
+    control: !_isMac,
+    meta: _isMac,
+    alt: true,
+  );
+  static final detachInstance = SingleActivator(
+    LogicalKeyboardKey.keyB,
+    control: !_isMac,
+    meta: _isMac,
+    alt: true,
+  );
   static const present = SingleActivator(LogicalKeyboardKey.f5);
   static final frameSelection = SingleActivator(
     LogicalKeyboardKey.keyG,
@@ -138,6 +150,8 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
       editor.selectParentOrClear();
     },
     EditorKeys.group: editor.groupSelection,
+    EditorKeys.createComponent: editor.createComponent,
+    EditorKeys.detachInstance: editor.detachSelection,
     if (onExport != null) EditorKeys.export: onExport,
     if (onPresent != null) EditorKeys.present: onPresent,
     EditorKeys.frameSelection: editor.frameSelection,

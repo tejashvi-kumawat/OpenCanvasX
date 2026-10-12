@@ -481,6 +481,39 @@ void main() {
     });
   });
 
+  group('components', () {
+    test('create, instantiate, go to main and detach', () {
+      editor()
+        ..insertShape(ObjectType.rect, at: const Point2D(300, 300))
+        ..insertShape(ObjectType.ellipse, at: const Point2D(500, 300))
+        ..selectAll()
+        ..createComponent();
+      final component = session().selection.single;
+      expect(isComponent(doc().objects[component]), isTrue);
+      expect(session().undoLabel, 'Create component');
+
+      final instance = editor().insertInstance(component)!;
+      final i = doc().objects[instance]!;
+      expect(i.type, ObjectType.instance);
+      expect((i.payload as InstancePayload).componentId, component);
+      expect(i.transform.width, doc().objects[component]!.transform.width);
+
+      editor().goToMainComponent(instance);
+      expect(session().selection, {component});
+
+      editor()
+        ..select({instance})
+        ..detachSelection();
+      final detached = session().selection.single;
+      expect(doc().objects.containsKey(instance), isFalse);
+      expect(doc().objects[detached]!.type, ObjectType.frame);
+      expect(isComponent(doc().objects[detached]), isFalse);
+      expect(doc().objects[detached]!.childIds, hasLength(2));
+      editor().undo();
+      expect(doc().objects[instance]!.type, ObjectType.instance);
+    });
+  });
+
   test('distribute needs three or more', () {
     editor()
       ..insertShape(ObjectType.rect, at: const Point2D(100, 100))

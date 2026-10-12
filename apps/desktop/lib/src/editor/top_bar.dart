@@ -460,6 +460,16 @@ class _MainMenu extends ConsumerWidget {
               hasSelection ? editor.frameSelection : null,
               shortcut: EditorKeys.frameSelection,
             ),
+            item(
+              'Create component',
+              hasSelection ? editor.createComponent : null,
+              shortcut: EditorKeys.createComponent,
+            ),
+            item(
+              'Detach instance',
+              hasSelection ? editor.detachSelection : null,
+              shortcut: EditorKeys.detachInstance,
+            ),
             const Divider(),
             item(
               'Bring to front',

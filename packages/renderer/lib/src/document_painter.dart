@@ -133,6 +133,8 @@ void paintObject(
     _paintChildren(canvas, document, object, depth, media);
   } else if (object.type == ObjectType.frame) {
     _paintFrame(canvas, document, object, depth, media);
+  } else if (object.payload case InstancePayload(:final componentId)) {
+    _paintInstance(canvas, document, object, componentId, depth, media);
   } else if (object.payload case ImagePayload(:final assetHash)) {
     _paintImage(
       canvas,
@@ -164,6 +166,49 @@ void _paintChildren(
       paintObject(canvas, document, child, depth: depth + 1, media: media);
     }
   }
+}
+
+/// An instance draws its main component scaled to its own box; a missing
+/// component shows a dashed placeholder.
+void _paintInstance(
+  ui.Canvas canvas,
+  DesignDocument document,
+  DesignObject instance,
+  ObjectId componentId,
+  int depth,
+  MediaCache? media,
+) {
+  final t = instance.transform;
+  final component = document.objects[componentId];
+  final payload = component?.payload;
+  if (component == null ||
+      component.type != ObjectType.frame ||
+      payload is! FramePayload ||
+      !payload.component ||
+      depth > _maxDepth) {
+    final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
+    canvas.drawRect(box, ui.Paint()..color = const ui.Color(0x14E5484D));
+    canvas.drawPath(
+      _dashed(
+        ui.Path()..addRect(box),
+        Stroke(color: ArgbColor(0xFFE5484D), dash: StrokeDash.dashed),
+      ),
+      ui.Paint()
+        ..style = ui.PaintingStyle.stroke
+        ..strokeWidth = math.max(1, math.min(t.width, t.height) / 200)
+        ..color = const ui.Color(0xFFE5484D),
+    );
+    return;
+  }
+  final ct = component.transform;
+  canvas
+    ..save()
+    ..scale(
+      ct.width == 0 ? 1 : t.width / ct.width,
+      ct.height == 0 ? 1 : t.height / ct.height,
+    );
+  _paintFrame(canvas, document, component, depth + 1, media);
+  canvas.restore();
 }
 
 /// Frames draw their fill, their (optionally clipped) children, then their
@@ -228,7 +273,7 @@ void _paintShape(ui.Canvas canvas, DesignObject object, ObjectStyle style) {
       _paintImagePlaceholder(canvas, box);
     case ObjectType.arrow:
       if (strokePaint != null) _paintArrow(canvas, t, strokePaint, stroke!);
-    case ObjectType.group || ObjectType.frame:
+    case ObjectType.group || ObjectType.frame || ObjectType.instance:
       break;
     case ObjectType.line:
       if (strokePaint != null) {
@@ -289,7 +334,8 @@ ui.Path? shapePath(DesignObject object, ObjectStyle style) {
         ObjectType.image ||
         ObjectType.line ||
         ObjectType.arrow ||
-        ObjectType.group:
+        ObjectType.group ||
+        ObjectType.instance:
       return null;
   }
 }

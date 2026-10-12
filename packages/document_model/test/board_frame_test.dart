@@ -100,4 +100,37 @@ void main() {
       linked,
     );
   });
+
+  test('components and instances round-trip', () {
+    final component = frame.copyWith(
+      payload: const FramePayload(component: true),
+    );
+    final instance = DesignObject(
+      id: const ObjectId('i'),
+      type: ObjectType.instance,
+      pageId: page,
+      transform: ObjectTransform(x: 600, width: 195, height: 422),
+      payload: const InstancePayload(ObjectId('f')),
+    );
+    expect(
+      const InstancePayload(ObjectId('f')).fits(ObjectType.instance),
+      isTrue,
+    );
+    final withInstance = DesignDocument(
+      id: doc.id,
+      metadata: doc.metadata,
+      pages: [
+        doc.pages.single.copyWith(objectIds: [frame.id, instance.id]),
+      ],
+      objects: {...doc.objects, frame.id: component, instance.id: instance},
+    );
+    final body = encodeDocumentBody(withInstance);
+    final objects = body['objects']! as Map;
+    expect((objects['i'] as Map)['payload'], {'component': 'f'});
+    expect(((objects['f'] as Map)['payload'] as Map)['component'], true);
+    expect(
+      decodeDocument(manifest: encodeManifest(withInstance), body: body),
+      withInstance,
+    );
+  });
 }

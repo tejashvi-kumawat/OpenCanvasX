@@ -1354,6 +1354,11 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           'Ctrl+Shift+G',
           _editor.canUngroup ? _editor.ungroupSelection : null,
         ),
+        item(
+          'Create component',
+          'Ctrl+Alt+K',
+          hasSelection ? _editor.createComponent : null,
+        ),
         const PopupMenuDivider(height: 9),
         item(
           'Bring to front',

@@ -186,6 +186,9 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
           ),
         _AlignmentSection(count: objects.length),
         if (single != null) _layoutSection(single, unit, decimals, step),
+        if (single != null &&
+            (isComponent(single) || single.type == ObjectType.instance))
+          _ComponentSection(session: widget.session, object: single),
         if (single?.payload case final FramePayload frame)
           _frameSection(single!, frame),
         if (allText) _TextSection(texts: texts, unit: unit),
@@ -1304,6 +1307,88 @@ class _InteractionSection extends ConsumerWidget {
                   ),
                 ],
               ),
+    );
+  }
+}
+
+/// Main component or instance actions (Figma-style components).
+class _ComponentSection extends ConsumerWidget {
+  const _ComponentSection({required this.session, required this.object});
+
+  final EditorSession session;
+  final DesignObject object;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final editor = ref.read(editorProvider.notifier);
+    final c = context.ocx;
+    final document = session.document;
+    if (isComponent(object)) {
+      final count =
+          document.objects.values
+              .where(
+                (o) =>
+                    o.payload is InstancePayload &&
+                    (o.payload as InstancePayload).componentId == object.id,
+              )
+              .length;
+      return PanelSection(
+        title: 'Main component',
+        child: FieldColumn(
+          children: [
+            Text(
+              count == 0
+                  ? 'No instances yet. Changes here update every instance.'
+                  : '$count instance${count == 1 ? '' : 's'} follow this '
+                      'component.',
+              style: OcxText.caption(
+                context,
+              ).copyWith(color: c.textSecondary, fontWeight: FontWeight.w400),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => editor.insertInstance(object.id),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Create instance'),
+            ),
+          ],
+        ),
+      );
+    }
+    final payload = object.payload as InstancePayload;
+    final component = document.objects[payload.componentId];
+    return PanelSection(
+      title: 'Instance',
+      child: FieldColumn(
+        children: [
+          Text(
+            component == null
+                ? 'The main component was deleted.'
+                : 'Of ${component.name ?? 'Component'}',
+            style: OcxText.caption(context).copyWith(
+              color: component == null ? c.danger : c.textSecondary,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          Row(
+            children: [
+              if (component != null)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => editor.goToMainComponent(object.id),
+                    child: const Text('Go to main'),
+                  ),
+                ),
+              if (component != null) const SizedBox(width: Space.sm),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: component == null ? null : editor.detachSelection,
+                  child: const Text('Detach'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

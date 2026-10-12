@@ -5,6 +5,7 @@
 library;
 
 export 'src/change.dart';
+export 'src/components.dart';
 export 'src/editor_state.dart';
 export 'src/edits.dart';
 export 'src/groups.dart';

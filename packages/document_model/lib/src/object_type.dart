@@ -17,6 +17,10 @@ enum ObjectType {
   /// group it has its own box and style, and resizing it does not scale
   /// its contents.
   frame,
+
+  /// An instance of a component (a frame marked as component): drawn from
+  /// the component, scaled to this object's box.
+  instance,
 }
 
 /// Kinds that hold children.

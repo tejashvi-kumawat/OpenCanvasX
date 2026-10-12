@@ -801,6 +801,26 @@ void main() {
       expect(session().undoLabel, 'Placeholder text');
     });
 
+    testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier)
+        ..insertShape(ObjectType.rect)
+        ..selectAll();
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(isComponent(session().document.objects[roots().single]), isTrue);
+      expect(find.text('Main component'), findsOneWidget);
+      await tester.tap(find.text('Create instance'));
+      await tester.pumpAndSettle();
+      expect(find.text('Instance'), findsWidgets);
+      expect(roots(), hasLength(2));
+    });
+
     testWidgets('tool shortcuts switch tools', (tester) async {
       await openFirstDesign(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyT);

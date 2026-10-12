@@ -15,4 +15,5 @@ IconData objectIcon(ObjectType type) => switch (type) {
   ObjectType.path => Icons.gesture,
   ObjectType.group => Icons.folder_copy_outlined,
   ObjectType.frame => Icons.tag,
+  ObjectType.instance => Icons.widgets_outlined,
 };

@@ -1,4 +1,5 @@
 import 'package:asset_engine/asset_engine.dart';
+import 'package:design_engine/design_engine.dart';
 import 'package:document_model/document_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -164,6 +165,12 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
     final lines = _lines.where((t) => _matches(typeLabel(t))).toList();
     final frames =
         framePresets.where((p) => _matches('frame ${p.name}')).toList();
+    final session = ref.watch(editorProvider);
+    final components = [
+      if (session != null)
+        for (final c in componentsIn(session.document))
+          if (_matches('component ${c.name ?? ''}')) c,
+    ];
     final icons =
         catalog == null
             ? const <AssetItem>[]
@@ -195,6 +202,27 @@ class _ElementsPanelState extends ConsumerState<ElementsPanel> {
               children: [
                 for (final type in [...shapes, ...lines])
                   _ShapeTile(type: type, onTap: () => editor.insertShape(type)),
+              ],
+            ),
+          ),
+        ],
+        if (components.isNotEmpty) ...[
+          const SectionHeader(title: 'Components in this design'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.md),
+            child: Wrap(
+              spacing: Space.xs,
+              runSpacing: Space.xs,
+              children: [
+                for (final component in components)
+                  ActionChip(
+                    avatar: const Icon(Icons.widgets, size: 14),
+                    label: Text(component.name ?? 'Component'),
+                    tooltip: 'Add an instance',
+                    labelStyle: OcxText.caption(context),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => editor.insertInstance(component.id),
+                  ),
               ],
             ),
           ),

@@ -315,7 +315,7 @@ class _LayerRowState extends ConsumerState<_LayerRow> {
               ),
               const SizedBox(width: Space.xs),
               Icon(
-                objectIcon(o.type),
+                isComponent(o) ? Icons.widgets : objectIcon(o.type),
                 size: 14,
                 color: dimmed ? c.textTertiary : c.textSecondary,
               ),

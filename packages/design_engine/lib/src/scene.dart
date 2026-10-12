@@ -135,7 +135,8 @@ bool _hits(
         ObjectType.polygon ||
         ObjectType.star ||
         ObjectType.group ||
-        ObjectType.frame:
+        ObjectType.frame ||
+        ObjectType.instance:
       return local.x >= -slack &&
           local.x <= w + slack &&
           local.y >= -slack &&

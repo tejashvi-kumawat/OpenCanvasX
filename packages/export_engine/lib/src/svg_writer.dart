@@ -185,6 +185,27 @@ class _SvgWriter {
         _text(out, o, style);
       case ObjectType.image:
         _image(out, o, style);
+      case ObjectType.instance:
+        // Instances inline their main component, scaled to their box.
+        final component = switch (o.payload) {
+          InstancePayload(:final componentId) => document.objects[componentId],
+          _ => null,
+        };
+        if (component != null && component.type == ObjectType.frame) {
+          final ct = component.transform;
+          out.writeln(
+            '<g transform="scale(${_n(ct.width == 0 ? 1 : t.width / ct.width)} '
+            '${_n(ct.height == 0 ? 1 : t.height / ct.height)})">',
+          );
+          object(
+            out,
+            component.copyWith(
+              transform: ObjectTransform(width: ct.width, height: ct.height),
+            ),
+            depth + 1,
+          );
+          out.writeln('</g>');
+        }
     }
     out.writeln('</g>');
   }

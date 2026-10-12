@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import 'ids.dart';
 import 'object_type.dart';
 import 'validation.dart';
 
@@ -16,6 +17,7 @@ sealed class ObjectPayload {
     ObjectType.polygon => this is PolygonPayload,
     ObjectType.star => this is StarPayload,
     ObjectType.frame => this is FramePayload,
+    ObjectType.instance => this is InstancePayload,
     ObjectType.rect ||
     ObjectType.roundedRect ||
     ObjectType.ellipse ||
@@ -179,23 +181,48 @@ const Object _keep = Object();
 
 /// Frame options (ADR-0007).
 final class FramePayload extends ObjectPayload {
-  const FramePayload({this.clipContent = true});
+  const FramePayload({this.clipContent = true, this.component = false});
 
   /// Whether children outside the frame's box are hidden.
   final bool clipContent;
 
-  FramePayload copyWith({bool? clipContent}) =>
-      FramePayload(clipContent: clipContent ?? this.clipContent);
+  /// Whether this frame is a main component that instances draw from.
+  final bool component;
+
+  FramePayload copyWith({bool? clipContent, bool? component}) => FramePayload(
+    clipContent: clipContent ?? this.clipContent,
+    component: component ?? this.component,
+  );
 
   @override
   bool operator ==(Object other) =>
-      other is FramePayload && other.clipContent == clipContent;
+      other is FramePayload &&
+      other.clipContent == clipContent &&
+      other.component == component;
 
   @override
-  int get hashCode => Object.hash(FramePayload, clipContent);
+  int get hashCode => Object.hash(FramePayload, clipContent, component);
 
   @override
-  String toString() => 'FramePayload(clip: $clipContent)';
+  String toString() =>
+      'FramePayload(clip: $clipContent${component ? ', component' : ''})';
+}
+
+/// An instance of the component frame [componentId].
+final class InstancePayload extends ObjectPayload {
+  const InstancePayload(this.componentId);
+
+  final ObjectId componentId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is InstancePayload && other.componentId == componentId;
+
+  @override
+  int get hashCode => Object.hash(InstancePayload, componentId);
+
+  @override
+  String toString() => 'InstancePayload(${componentId.value})';
 }
 
 /// Regular polygon inscribed in the object's box (P1.3.2).

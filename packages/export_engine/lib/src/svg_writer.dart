@@ -349,8 +349,11 @@ class _SvgWriter {
       attrs.write(' letter-spacing="${_n(payload.letterSpacing)}"');
     }
     if (style.fill != null) attrs.write(_fill(style));
-    // Mixed styles: every piece at its laid-out position (P1.5.4).
-    if (payload.runs.isNotEmpty && segments != null) {
+    // Mixed styles or letter spacing: every piece at its laid-out
+    // position (P1.5.4), so viewers without letter-spacing support (PDF)
+    // still match the canvas.
+    if ((payload.runs.isNotEmpty || payload.letterSpacing != 0) &&
+        segments != null) {
       final base = attrs.toString().replaceFirst(
         RegExp(' text-anchor="[a-z]+"'),
         ' text-anchor="start"',

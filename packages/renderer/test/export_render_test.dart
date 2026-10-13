@@ -199,4 +199,17 @@ void main() {
     expect(segs[2].baseline, greaterThan(segs[0].baseline));
     expect(segs[2].x, 0);
   });
+
+  test('letter-spaced text is placed per character', () {
+    final text = DesignObject(
+      id: const ObjectId('s'),
+      type: ObjectType.text,
+      pageId: pageId,
+      transform: ObjectTransform(width: 300, height: 30),
+      payload: TextPayload('AB\u{1F600}', fontSize: 20, letterSpacing: 10),
+    );
+    final segs = textSegments(text);
+    expect(segs.map((s) => s.text), ['A', 'B', '\u{1F600}']);
+    expect(segs[1].x - segs[0].x, greaterThan(20));
+  });
 }

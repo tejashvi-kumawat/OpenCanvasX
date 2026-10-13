@@ -120,8 +120,9 @@ Affine2D _parentMatrix(DesignDocument document, DesignObject object) {
 }
 
 /// The styled pieces of [object]'s text as laid out on the canvas: one
-/// per line and character run, with its x and baseline (P1.5.4). Used by
-/// the SVG writer for text with mixed styles.
+/// per line and character run (one per character when letter spacing is
+/// set), with its x and baseline (P1.5.4). Used by the SVG writer for
+/// text with mixed styles or letter spacing.
 List<({String text, double x, double baseline, TextRunStyle style})>
 textSegments(DesignObject object) {
   final payload = object.payload;
@@ -143,6 +144,10 @@ textSegments(DesignObject object) {
   final metrics = paragraph.computeLineMetrics();
   final cuts = <int>{
     for (final r in payload.runs) ...[r.start, r.end],
+    if (payload.letterSpacing != 0)
+      for (var i = 1; i < text.length; i++)
+        // Never between the halves of a surrogate pair (emoji).
+        if (text.codeUnitAt(i) & 0xFC00 != 0xDC00) i,
   };
   final out =
       <({String text, double x, double baseline, TextRunStyle style})>[];

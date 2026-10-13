@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:io';
 
+import 'package:opencanvasx/src/ai/ai.dart';
 import 'package:document_model/document_model.dart';
 import 'package:opencanvasx/src/library/design_library.dart';
 import 'package:storage/storage.dart';
@@ -181,4 +182,18 @@ class InMemoryDesignLibrary implements DesignLibrary {
     modified[path] = _tick();
     saves++;
   }
+}
+
+/// In-memory stand-in for the OS credential store.
+class FakeSecretStore implements SecretStore {
+  final Map<String, String> values = {};
+
+  @override
+  Future<String?> read(String name) async => values[name];
+
+  @override
+  Future<void> write(String name, String value) async => values[name] = value;
+
+  @override
+  Future<void> delete(String name) async => values.remove(name);
 }

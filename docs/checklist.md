@@ -367,27 +367,27 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 # PHASE 5 — AI (Optional Layer)
 
 ## P5.1 Provider Layer
-- [ ] P5.1.1 Abstract provider interface
-- [ ] P5.1.2 OpenAI-compatible endpoint adapter
+- [x] P5.1.1 Abstract provider interface
+- [x] P5.1.2 OpenAI-compatible endpoint adapter
 - [ ] P5.1.3 Anthropic-compatible and Google-compatible adapters
-- [ ] P5.1.4 Local adapters (Ollama, llama.cpp, local OpenAI-compatible)
+- [x] P5.1.4 Local adapters (Ollama, llama.cpp, local OpenAI-compatible)
 - [ ] P5.1.5 Config: provider, endpoint, model, key, temperature, max tokens, context, timeout, retry
-- [ ] P5.1.6 API keys in OS secure storage only; never in docs, CRDT, logs, or sent to collaborators
-- [ ] P5.1.7 "No AI" mode fully functional
+- [x] P5.1.6 API keys in OS secure storage only; never in docs, CRDT, logs, or sent to collaborators
+- [x] P5.1.7 "No AI" mode fully functional
 
 ## P5.2 Privacy & Cost
 - [ ] P5.2.1 Context selector (page, selection, document, text, assets, folder)
-- [ ] P5.2.2 Pre-send disclosure: "These items will be sent to provider X"
-- [ ] P5.2.3 Local vs BYOK vs remote indicator
+- [x] P5.2.2 Pre-send disclosure: "These items will be sent to provider X"
+- [x] P5.2.3 Local vs BYOK vs remote indicator
 - [ ] P5.2.4 Usage/cost display, model selection, limits, local-only mode
 - [ ] P5.2.5 Hardware requirement display for local AI
 
 ## P5.3 AI Panel & Text/Design Features
-- [ ] P5.3.1 AI panel UI
-- [ ] P5.3.2 Rewrite, shorten, expand, tone, translate
+- [x] P5.3.1 AI panel UI
+- [x] P5.3.2 Rewrite, shorten, expand, tone, translate
 - [ ] P5.3.3 Copy and caption generation, design briefs
 - [ ] P5.3.4 Palette, typography, spacing, hierarchy suggestions
-- [ ] P5.3.5 Layout generation from text/structure
+- [x] P5.3.5 Layout generation from text/structure
 - [ ] P5.3.6 Presentation outline generation
 - [ ] P5.3.7 Accessibility + consistency + alignment analysis
 - [ ] P5.3.8 Layer renaming/organizing, template metadata generation

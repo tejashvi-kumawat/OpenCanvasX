@@ -46,6 +46,31 @@ Modes labeled **Local** vs **Cloud** in panel chrome.
 
 When provider returns usage metadata, show approximate tokens/requests; user caps in settings ([product telemetry doc](../product/telemetry-and-privacy-policy.md)).
 
+## Implementation (P5)
+
+- `packages/ai_engine`: `AiConfig` (kind, endpoint, model, temperature,
+  max tokens, timeout; serialised **without** the key), `complete()` for
+  OpenAI-compatible (`/chat/completions`), Anthropic (`/v1/messages`) and
+  Ollama (`/api/chat`). Cloud endpoints must use https; `isLocal` treats
+  localhost, private IPv4 ranges and `.local` hosts as local. Replies are
+  capped at 8 MB and time out. Errors are `AiException` with a user
+  message and never include the key.
+- Prompts (`tasks.dart`): text tasks (rewrite, shorten, expand, formal,
+  friendly, fix grammar, translate) wrap the text in `<text>` tags and ask
+  for the new text only; design-from-prompt asks for the plugin operations
+  protocol. The reply is parsed with `extractJsonObject` and applied
+  through `applyPluginResponse` with **write permission only**, so AI
+  output is validated exactly like an untrusted plugin and is one undo
+  step ("AI design").
+- App (`apps/desktop/lib/src/ai`): AI is **off** until set up (setting
+  `ai.config`). Keys are stored with `flutter_secure_storage` (Windows
+  Credential Manager / DPAPI, Keychain, libsecret) under
+  `opencanvasx.ai.<kind>`. Before a cloud call a dialog names the provider
+  and host and summarises what is sent (only the selected text, or the
+  prompt and page size); local providers do not ask. "Don't ask again"
+  lasts until the app closes. The AI rail tab shows Off / Local / Cloud,
+  and a request log with characters sent and token usage (no content).
+
 ## Related
 
 - [agent-architecture.md](agent-architecture.md)

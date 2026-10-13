@@ -55,7 +55,10 @@ dependencies:
     path: ../../packages/template_engine
   plugins_sdk:
     path: ../../packages/plugins_sdk
+  ai_engine:
+    path: ../../packages/ai_engine
   flutter_svg: 2.3.0
+  flutter_secure_storage: ^11.2.0
 
 dev_dependencies:
   flutter_test:

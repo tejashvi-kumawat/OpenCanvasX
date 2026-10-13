@@ -27,3 +27,5 @@ Lucide icons | 1.55.0 | ISC (+MIT Feather portions) | https://github.com/lucide-
 Tabler Icons | 3.49.0 | MIT | https://www.npmjs.com/package/@tabler/icons | bundled asset pack
 Phosphor Icons core | 2.1.1 | MIT | https://www.npmjs.com/package/@phosphor-icons/core | bundled asset pack
 Twemoji graphics | 15.0.0 | CC-BY-4.0 | https://www.npmjs.com/package/@twemoji/svg | bundled sticker pack; attribution shown in app
+flutter_secure_storage (+ _windows, _linux, _darwin, _web, _platform_interface) | ^11.2.0 (11.2.0; windows 4.2.2) | BSD-3-Clause | https://pub.dev/packages/flutter_secure_storage | AI API keys in the OS credential store (P5.1.6)
+win32, ffi_leak_tracker | 6.4.0 / 0.1.2 | BSD-3-Clause | https://pub.dev/packages/win32 | transitive via flutter_secure_storage_windows

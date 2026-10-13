@@ -9,7 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ai_engine/ai_engine.dart';
 import 'package:opencanvasx/main.dart';
+import 'package:opencanvasx/src/ai/ai.dart';
+import 'package:opencanvasx/src/ai/ai_panel.dart';
 import 'package:opencanvasx/src/editor/canvas_view.dart';
 import 'package:opencanvasx/src/export/exporter.dart';
 import 'package:opencanvasx/src/plugins/plugins.dart';
@@ -32,6 +35,9 @@ void main() {
   late InMemoryDesignLibrary library;
   late ProviderContainer container;
   final exported = <(List<ExportedFile>, ExportFormat)>[];
+  final secrets = FakeSecretStore();
+  final aiRequests = <({AiConfig config, String prompt, String? key})>[];
+  var aiReply = '';
 
   setUp(() {
     index = AppIndex.inMemory();
@@ -76,6 +82,16 @@ void main() {
         templateCacheDirProvider.overrideWith(
           (ref) async => Directory.systemTemp.path,
         ),
+        secretStoreProvider.overrideWithValue(secrets),
+        aiCompleteProvider.overrideWithValue((
+          config, {
+          required system,
+          required prompt,
+          apiKey,
+        }) async {
+          aiRequests.add((config: config, prompt: prompt, key: apiKey));
+          return (text: aiReply, inputTokens: 12, outputTokens: 34);
+        }),
         exportSaverProvider.overrideWithValue((files, format) async {
           exported.add((files, format));
           return '/exports';
@@ -83,6 +99,8 @@ void main() {
       ],
     );
     exported.clear();
+    aiRequests.clear();
+    secrets.values.clear();
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -834,6 +852,77 @@ void main() {
       final text = session().document.objects[roots().single]!;
       expect((text.payload as TextPayload).text, startsWith('Lorem ipsum'));
       expect(session().undoLabel, 'Placeholder text');
+    });
+
+    testWidgets('ai: off by default, nothing is sent', (tester) async {
+      await openFirstDesign(tester);
+      await showTab(tester, RailTab.ai);
+      expect(container.read(aiConfigProvider), isNull);
+      expect(find.text('Set up AI'), findsOneWidget);
+      expect(find.text('Design with AI'), findsNothing);
+      expect(aiRequests, isEmpty);
+    });
+
+    testWidgets('ai: rewrite selected text after the cloud disclosure', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      container.read(aiConfigProvider.notifier).config = const AiConfig(
+        kind: AiProviderKind.anthropic,
+        endpoint: 'https://api.anthropic.com',
+        model: 'test-model',
+      );
+      secrets.values[aiKeyName(AiProviderKind.anthropic)] = 'sk-test';
+      final id = container
+          .read(editorProvider.notifier)
+          .insertText(TextRole.heading, text: 'hello wrld');
+      await showTab(tester, RailTab.ai);
+      aiReply = '"Hello world"';
+      await tester.tap(find.text('Fix spelling & grammar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Send to an AI provider?'), findsOneWidget);
+      expect(aiRequests, isEmpty);
+      await tester.tap(find.widgetWithText(FilledButton, 'Send'));
+      await tester.pumpAndSettle();
+      expect(aiRequests.single.key, 'sk-test');
+      expect(aiRequests.single.prompt, contains('hello wrld'));
+      // The key is never stored in settings.
+      expect(index.settings.get('ai.config'), isNot(contains('sk-test')));
+      expect(find.text('Hello world'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Replace'));
+      await tester.pumpAndSettle();
+      final text = session().document.objects[id]!.payload as TextPayload;
+      expect(text.text, 'Hello world');
+      expect(container.read(aiLogProvider).single.tokensOut, 34);
+    });
+
+    testWidgets('ai: design from a prompt with a local model', (tester) async {
+      await openFirstDesign(tester);
+      container.read(aiConfigProvider.notifier).config = const AiConfig(
+        kind: AiProviderKind.ollama,
+        endpoint: 'http://localhost:11434',
+        model: 'llama',
+      );
+      await showTab(tester, RailTab.ai);
+      aiReply =
+          'Here you go:\n```json\n{"operations": [ '
+          '{"op":"create_shape","shape":"rect","x":10,"y":10,"width":100,'
+          '"height":50,"fill":"#2E5BFF"},'
+          '{"op":"create_text","text":"Jazz Night","x":20, "y":80, '
+          '"width":300,"size":40}]}\n```';
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AiPanel),
+          matching: find.byType(TextField),
+        ),
+        'a jazz poster',
+      );
+      await tester.tap(find.text('Generate on this page'));
+      await tester.pumpAndSettle();
+      // Local providers do not ask first.
+      expect(find.text('Send to an AI provider?'), findsNothing);
+      expect(roots(), hasLength(2));
+      expect(session().undoLabel, 'AI design');
     });
 
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {

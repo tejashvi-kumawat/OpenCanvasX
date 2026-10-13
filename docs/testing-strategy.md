@@ -55,3 +55,7 @@ Performance:
 
 - `packages/design_engine/test/performance_test.dart` (tag `performance`) builds a 1,000-object page and measures the per-frame operations (median of 15 runs, JIT): snap-target collection ~1.7 ms (< 50), snapping one move ~1 ms (< 8), click hit test < 1 ms (< 8), moving and undoing one object < 0.5 ms (< 8), moving 100 objects < 0.5 ms (< 16), encoding/decoding the document ~3/7 ms (< 200/300).
 - The app widget test "performance: dragging on a 1,000-object page" previews 20 drag steps with the inspector open and guards against accidental O(n²) per-frame work (median frame < 400 ms in debug mode; release is several times faster). Painting 1,000 shapes in the renderer takes ~8 ms in debug.
+
+## Exit-gate integration test
+
+`apps/desktop/integration_test/exit_gate_test.dart` runs inside the real app (`flutter test integration_test -d windows|linux|macos`; on headless Linux wrap it in `xvfb-run -a`). It creates a design with the real file library, edits two pages, saves, closes, reopens from disk and compares, exports every format and checks the files, and asserts no HTTP client was created. A repository test (`test/repo_hygiene_test.dart`) rejects Windows-only dependency paths, found when the suites were first run on Linux.

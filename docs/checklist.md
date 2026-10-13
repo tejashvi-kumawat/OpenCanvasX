@@ -170,8 +170,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.11.2 Telemetry absent/OFF; local crash logs only
 
 ### Exit Gate P1
-- [ ] User can create, edit, save, reopen, and export a multi-page design offline on all 3 OS
-- [ ] Core test suite passes; 1k-object document stays responsive
+- [ ] User can create, edit, save, reopen, and export a multi-page design offline on all 3 OS — Windows ✓ and Linux ✓ (`apps/desktop/integration_test/exit_gate_test.dart`); macOS needs a Mac
+- [x] Core test suite passes; 1k-object document stays responsive
 
 ---
 

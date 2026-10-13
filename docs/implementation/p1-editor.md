@@ -63,7 +63,7 @@ Engineering log for the first usable editor. Normative design: [ux-spec.md](../p
 
 ## Not done yet (still open in the checklist)
 
-Every P1 item is implemented. The Phase 1 exit gate still needs the multi-page create/edit/save/reopen/export flow verified on macOS and Linux builds (only Windows has been built and checked so far); the 1,000-object performance check is covered by `docs/testing-strategy.md`.
+Every P1 item is implemented. The exit-gate flow (create, edit two pages, save, reopen from disk, export every format, no network) runs inside the real app as `integration_test/exit_gate_test.dart` and passes on Windows and on Linux (Ubuntu 26.04 under WSL2, Flutter 3.47.6, `xvfb-run flutter test integration_test -d linux`); all package and app test suites also pass on Linux. macOS still needs a Mac to run the same test. The 1,000-object performance check is covered by `docs/testing-strategy.md`.
 
 ## Testing
 

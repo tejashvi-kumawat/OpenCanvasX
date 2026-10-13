@@ -27,13 +27,16 @@ final class DocumentMetadata {
   final DateTime? createdAt;
   final DateTime? modifiedAt;
 
-  DocumentMetadata copyWith({String? title, DateTime? modifiedAt}) =>
-      DocumentMetadata(
-        title: title ?? this.title,
-        author: author,
-        createdAt: createdAt,
-        modifiedAt: modifiedAt ?? this.modifiedAt,
-      );
+  DocumentMetadata copyWith({
+    String? title,
+    String? author,
+    DateTime? modifiedAt,
+  }) => DocumentMetadata(
+    title: title ?? this.title,
+    author: author ?? this.author,
+    createdAt: createdAt,
+    modifiedAt: modifiedAt ?? this.modifiedAt,
+  );
 
   @override
   bool operator ==(Object other) =>

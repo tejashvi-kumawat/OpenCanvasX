@@ -59,7 +59,12 @@ Future<void> createDesign(
   try {
     final path = await ref
         .read(designLibraryProvider)
-        .create(folder, title: title, page: page);
+        .create(
+          folder,
+          title: title,
+          page: page,
+          author: ref.read(profileNameProvider),
+        );
     ref.invalidate(designsProvider);
     if (context.mounted) await openDesign(context, ref, path);
   } on Object catch (error) {
@@ -82,7 +87,17 @@ Future<void> createFromTemplate(
   if (folder == null) return;
   final messenger = ScaffoldMessenger.of(context);
   try {
-    final document = instantiateTemplate(contents.document, title: name);
+    var document = instantiateTemplate(contents.document, title: name);
+    if (ref.read(profileNameProvider) case final author?) {
+      document = DesignDocument(
+        id: document.id,
+        metadata: document.metadata.copyWith(author: author),
+        pages: document.pages,
+        objects: document.objects,
+        styles: document.styles,
+        assets: document.assets,
+      );
+    }
     final path = await ref
         .read(designLibraryProvider)
         .createFrom(folder, document, assets: contents.assets);

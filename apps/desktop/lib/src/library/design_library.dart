@@ -44,6 +44,7 @@ abstract interface class DesignLibrary {
     String folder, {
     required String title,
     required DesignPage page,
+    String? author,
   });
 
   /// Saves [document] (e.g. made from a template) as a new design in
@@ -139,6 +140,7 @@ class FileDesignLibrary implements DesignLibrary {
     String folder, {
     required String title,
     required DesignPage page,
+    String? author,
   }) async {
     final path = newProjectPath(folder, title);
     final now = DateTime.now();
@@ -148,6 +150,7 @@ class FileDesignLibrary implements DesignLibrary {
         id: DocumentId.generate(),
         metadata: DocumentMetadata(
           title: title.trim().isEmpty ? 'Untitled design' : title.trim(),
+          author: author,
           createdAt: now,
           modifiedAt: now,
         ),

@@ -172,6 +172,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('What will you design today?'), findsOneWidget);
       expect(index.settings.get(AppSettings.projectsRootKey), _folder);
+      expect(container.read(profileNameProvider), isNull);
+    });
+
+    testWidgets('a name given at first run authors new designs', (
+      tester,
+    ) async {
+      await pumpApp(tester, withFolder: false);
+      await tester.enterText(find.byType(TextField).first, '  Asha  ');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(container.read(profileNameProvider), 'Asha');
+      expect(find.text('Asha'), findsOneWidget);
+      await tester.tap(find.text('Create design'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Create design').last);
+      await tester.pumpAndSettle();
+      expect(session().document.metadata.author, 'Asha');
     });
   });
 

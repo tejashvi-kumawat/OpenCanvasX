@@ -60,6 +60,7 @@ class InMemoryDesignLibrary implements DesignLibrary {
     String folder, {
     required String title,
     required DesignPage page,
+    String? author,
   }) async {
     var path = '$folder/$title$projectFileExtension';
     for (var n = 2; files.containsKey(path); n++) {
@@ -67,7 +68,7 @@ class InMemoryDesignLibrary implements DesignLibrary {
     }
     files[path] = DesignDocument(
       id: DocumentId.generate(),
-      metadata: DocumentMetadata(title: title),
+      metadata: DocumentMetadata(title: title, author: author),
       pages: [page],
     );
     modified[path] = _tick();

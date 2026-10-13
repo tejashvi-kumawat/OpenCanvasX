@@ -676,6 +676,8 @@ class _Sidebar extends StatelessWidget {
           const Spacer(),
           const _StorageStatus(),
           const SizedBox(height: Space.sm),
+          const _ProfileName(),
+          const SizedBox(height: Space.xs),
           const _ThemeSwitch(),
         ],
       ),
@@ -796,6 +798,59 @@ class _StorageStatus extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The user's name for new designs (P1.10.6), editable in place.
+class _ProfileName extends ConsumerWidget {
+  const _ProfileName();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ocx;
+    final name = ref.watch(profileNameProvider);
+    return InkWell(
+      borderRadius: BorderRadius.circular(Radii.sm),
+      onTap: () async {
+        final next = await showDialog<String>(
+          context: context,
+          builder:
+              (_) => _TextPrompt(
+                title: 'Your name',
+                label: 'Shown as the author of new designs',
+                initial: name ?? '',
+              ),
+        );
+        if (next != null) ref.read(profileNameProvider.notifier).name = next;
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Space.sm,
+          vertical: Space.xs,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.person_outline,
+              size: Chrome.icon,
+              color: c.textSecondary,
+            ),
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Text(
+                name ?? 'Add your name',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: OcxText.body(
+                  context,
+                ).copyWith(color: name == null ? c.textTertiary : null),
+              ),
+            ),
+            Icon(Icons.edit_outlined, size: 14, color: c.textTertiary),
+          ],
+        ),
       ),
     );
   }

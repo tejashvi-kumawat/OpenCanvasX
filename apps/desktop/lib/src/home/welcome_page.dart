@@ -21,8 +21,16 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   _Choice _choice = _Choice.suggested;
   String? _error;
   bool _busy = false;
+  final TextEditingController _name = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
 
   Future<void> _continue() async {
+    ref.read(profileNameProvider.notifier).name = _name.text;
     final controller = ref.read(projectsFolderProvider.notifier);
     setState(() {
       _busy = true;
@@ -80,6 +88,27 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Text(
+                        'What should we call you?',
+                        style: OcxText.title(context),
+                      ),
+                      const SizedBox(height: Space.xs),
+                      Text(
+                        'Optional. Saved as the author of your designs; it '
+                        'stays on this computer.',
+                        style: OcxText.body(
+                          context,
+                        ).copyWith(color: c.textSecondary),
+                      ),
+                      const SizedBox(height: Space.sm),
+                      TextField(
+                        controller: _name,
+                        decoration: const InputDecoration(
+                          hintText: 'Your name',
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: Space.lg),
                       Text(
                         'Where should your designs be saved?',
                         style: OcxText.title(context),
@@ -146,6 +175,11 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                     'No account, no uploads, no tracking',
                   ),
                   (Icons.description_outlined, 'Open file format that you own'),
+                  (
+                    Icons.cloud_outlined,
+                    'Only what you turn on goes online: template sources you '
+                        'add and an AI provider you set up, always asked first',
+                  ),
                 ])
                   Padding(
                     padding: const EdgeInsets.only(bottom: Space.sm),

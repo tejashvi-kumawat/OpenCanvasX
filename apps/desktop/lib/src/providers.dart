@@ -227,3 +227,33 @@ class ThemeModeController extends Notifier<ThemeMode> {
 final bundledFontsProvider = FutureProvider<List<BundledFont>>(
   (ref) => loadBundledFonts(rootBundle),
 );
+
+/// The user's display name (P1.10.6): recorded as the author of new
+/// designs. Stays on this computer; `null` when not given.
+final profileNameProvider = NotifierProvider<ProfileNameController, String?>(
+  ProfileNameController.new,
+);
+
+class ProfileNameController extends Notifier<String?> {
+  static const _key = 'profile.name';
+
+  @override
+  String? build() {
+    final name = ref.watch(appIndexProvider).settings.get(_key)?.trim();
+    return name == null || name.isEmpty ? null : name;
+  }
+
+  String? get name => state;
+
+  set name(String? value) {
+    final clean = value?.trim();
+    final settings = ref.read(appIndexProvider).settings;
+    if (clean == null || clean.isEmpty) {
+      settings.remove(_key);
+      state = null;
+    } else {
+      settings.set(_key, clean);
+      state = clean;
+    }
+  }
+}

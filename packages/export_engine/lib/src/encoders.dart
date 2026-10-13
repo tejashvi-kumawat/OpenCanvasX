@@ -18,7 +18,23 @@ Uint8List encodeJpeg(
   return img.encodeJpg(image, quality: quality.clamp(1, 100));
 }
 
-/// WebP is not encodable in pure Dart; PNG is used for lossless export.
+/// WebP (P1.9.2) with transparency. [quality] 100 is lossless; lower
+/// values use lossy compression with full-quality alpha.
+Uint8List encodeWebp(RgbaPixels pixels, {int quality = 90}) {
+  final image = img.Image.fromBytes(
+    width: pixels.width,
+    height: pixels.height,
+    bytes: pixels.rgba.buffer,
+    bytesOffset: pixels.rgba.offsetInBytes,
+    numChannels: 4,
+  );
+  final q = quality.clamp(1, 100);
+  return q >= 100
+      ? img.encodeWebP(image)
+      : img.encodeWebP(image, lossless: false, quality: q);
+}
+
+/// PNG in pure Dart (the app uses the engine's encoder instead).
 Uint8List encodePng(RgbaPixels pixels) {
   final image = img.Image.fromBytes(
     width: pixels.width,

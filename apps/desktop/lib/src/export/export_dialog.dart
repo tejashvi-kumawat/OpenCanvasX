@@ -218,9 +218,13 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
                   ),
                 ],
               ],
-              if (format == ExportFormat.jpg) ...[
+              if (format.hasQuality) ...[
                 const SizedBox(height: Space.md),
-                _Label('Quality ${_options.jpegQuality}'),
+                _Label(
+                  format == ExportFormat.webp && _options.jpegQuality >= 100
+                      ? 'Quality 100 (lossless)'
+                      : 'Quality ${_options.jpegQuality}',
+                ),
                 Slider(
                   value: _options.jpegQuality.toDouble(),
                   min: 40,

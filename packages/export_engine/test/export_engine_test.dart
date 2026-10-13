@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:document_model/document_model.dart';
 import 'package:export_engine/export_engine.dart';
+import 'package:image/image.dart' as img;
 import 'package:test/test.dart';
 
 const pageId = PageId('p');
@@ -259,6 +260,20 @@ void main() {
       expect(jpeg.sublist(0, 2), [0xFF, 0xD8]);
       final png = encodePng(pixels());
       expect(png.sublist(1, 4), utf8.encode('PNG'));
+    });
+
+    test('WebP keeps transparency; 100 is lossless', () {
+      final lossless = encodeWebp(pixels(), quality: 100);
+      expect(utf8.decode(lossless.sublist(0, 4)), 'RIFF');
+      expect(utf8.decode(lossless.sublist(8, 12)), 'WEBP');
+      final decoded = img.decodeWebP(lossless)!;
+      expect((decoded.width, decoded.height), (4, 4));
+      expect(decoded.getPixel(0, 0).a, 255);
+      expect(decoded.getPixel(0, 3).a, 0);
+      expect(decoded.getPixel(0, 0).r, 255);
+      final lossy = img.decodeWebP(encodeWebp(pixels(), quality: 70))!;
+      expect(lossy.getPixel(0, 0).a, greaterThan(200));
+      expect(lossy.getPixel(0, 3).a, lessThan(55));
     });
 
     test('PDF pages have the physical size and metadata', () async {

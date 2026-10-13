@@ -64,3 +64,7 @@ Office formats and HTML may lose layout nuance. Each importer documents a **know
 ## Background export (P1.9.5)
 
 Pages are rendered one at a time on the UI isolate (Flutter's canvas requires it), yielding a frame between pages so the editor stays responsive; the export dialog shows "Rendering page n of m…". JPEG and PDF encoding run on a background isolate (`Isolate.run`), PNG encoding runs in the engine off the UI thread, and SVG/HTML are string building that needs the UI isolate's text layout.
+
+## WebP (P1.9.2)
+
+WebP export uses the pure-Dart encoder in `image` 4.12 (VP8L lossless / VP8 lossy in a RIFF container) on a background isolate. It keeps transparency; quality 100 is lossless, lower values are lossy with full-quality alpha. The quality slider is shared with JPEG.

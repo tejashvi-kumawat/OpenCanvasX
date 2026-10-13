@@ -14,6 +14,7 @@ import 'package:renderer/renderer.dart';
 enum ExportFormat {
   png('PNG', 'png', 'Best for web and social; supports transparency'),
   jpg('JPG', 'jpg', 'Smallest files for photos; no transparency'),
+  webp('WebP', 'webp', 'Small files for the web, with transparency'),
   svg('SVG', 'svg', 'Scalable vectors for the web and other design tools'),
   pdf('PDF', 'pdf', 'One document with every page, at print size'),
   html(
@@ -28,9 +29,13 @@ enum ExportFormat {
   final String extension;
   final String hint;
 
-  bool get isRaster => this == png || this == jpg || this == pdf;
+  bool get isRaster =>
+      this == png || this == jpg || this == webp || this == pdf;
   bool get isVector => this == svg || this == html;
-  bool get supportsTransparency => this == png || this == svg;
+  bool get supportsTransparency => this == png || this == webp || this == svg;
+
+  /// Whether the quality slider applies.
+  bool get hasQuality => this == jpg || this == webp;
 }
 
 /// Everything the user chose in the export dialog.
@@ -230,6 +235,19 @@ Future<List<ExportedFile>> buildExport(
             name: exportFileName(target.name, 'jpg'),
             bytes: await Isolate.run(
               () => encodeJpeg(pixels, quality: quality),
+            ),
+          ));
+        case ExportFormat.webp:
+          final pixels = (
+            rgba: await imageRgba(image),
+            width: size.width,
+            height: size.height,
+          );
+          final quality = options.jpegQuality;
+          files.add((
+            name: exportFileName(target.name, 'webp'),
+            bytes: await Isolate.run(
+              () => encodeWebp(pixels, quality: quality),
             ),
           ));
         case ExportFormat.pdf:

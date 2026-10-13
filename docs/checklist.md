@@ -152,7 +152,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 
 ## P1.9 Export (Basic)
 - [x] P1.9.1 PNG export (scale, DPI, transparency)
-- [ ] P1.9.2 JPEG / WebP export
+- [x] P1.9.2 JPEG / WebP export
 - [x] P1.9.3 SVG export (native vector preserved)
 - [ ] P1.9.4 PDF export (vector, page size, metadata)
 - [x] P1.9.5 Background export on worker thread

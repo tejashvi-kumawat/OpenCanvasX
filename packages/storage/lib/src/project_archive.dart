@@ -103,11 +103,17 @@ Uint8List encodeProject(
             json.convert(encodeDocumentBody(document)),
           ),
         )
-        // Font usage is recorded from P1.5; the member exists from the start.
+        // Families the text uses (P1.5.5), so another computer can tell
+        // which fonts the design needs.
         ..add(
           ArchiveFile.string(
             _fontsName,
-            json.convert({'families': <Object>[]}),
+            json.convert({
+              'families': [
+                for (final family in usedFontFamilies(document))
+                  {'family': family},
+              ],
+            }),
           ),
         );
   for (final hash in document.assets.keys) {
@@ -235,4 +241,13 @@ Object? _readJson(
   } on FormatException catch (e) {
     throw FormatException('$name is not valid JSON: ${e.message}');
   }
+}
+
+/// Font families used by text in [document], sorted.
+List<String> usedFontFamilies(DesignDocument document) {
+  final families = <String>{
+    for (final o in document.objects.values)
+      if (o.payload case TextPayload(:final fontFamily?)) fontFamily,
+  };
+  return families.toList()..sort();
 }

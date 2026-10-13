@@ -20,6 +20,7 @@ import 'package:opencanvasx/src/present/present_page.dart';
 import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
 import 'package:opencanvasx/src/editor/editor_shortcuts.dart';
+import 'package:opencanvasx/src/editor/font_picker.dart';
 import 'package:opencanvasx/src/editor/rulers.dart';
 import 'package:opencanvasx/src/editor/side_rail.dart';
 import 'package:opencanvasx/src/editor/tools.dart';
@@ -85,6 +86,9 @@ void main() {
           (ref) async => Directory.systemTemp.path,
         ),
         secretStoreProvider.overrideWithValue(secrets),
+        fontDiscoveryProvider.overrideWithValue(
+          () async => const ['Arial', 'Georgia', 'Segoe UI'],
+        ),
         aiCompleteProvider.overrideWithValue((
           config, {
           required system,
@@ -1199,6 +1203,38 @@ void main() {
         throwsA(isA<SocketException>()),
       );
       expect(attempts, hasLength(1));
+    });
+
+    testWidgets('fonts: search installed fonts; warn when one is missing', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier);
+      final id = editor.insertText(TextRole.heading, text: 'Hello');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FontPickerField));
+      await tester.pumpAndSettle();
+      expect(find.text('Search fonts'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, 'geor');
+      await tester.pumpAndSettle();
+      expect(find.text('On this computer (1)'), findsOneWidget);
+      await tester.tap(find.text('Georgia').last);
+      await tester.pumpAndSettle();
+      TextPayload text() =>
+          session().document.objects[id]!.payload as TextPayload;
+      expect(text().fontFamily, 'Georgia');
+      expect(find.textContaining('is not installed'), findsNothing);
+      expect(index.settings.get('fonts.system'), contains('Georgia'));
+
+      editor.updateSelectedText(
+        (t) => t.copyWith(fontFamily: 'Imaginary Sans'),
+        label: 'Font',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Imaginary Sans is not installed'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {

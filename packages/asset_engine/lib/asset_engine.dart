@@ -4,4 +4,5 @@ library;
 
 export 'src/asset_catalog.dart';
 export 'src/asset_pack.dart';
+export 'src/font_names.dart';
 export 'src/media_check.dart';

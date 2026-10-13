@@ -289,4 +289,30 @@ void main() {
       expect(decodeProject(_zip(members)).document.pages, hasLength(1));
     });
   });
+
+  test('fonts.json lists the families the text uses', () {
+    final page = DesignPage(id: const PageId('p'), width: 10, height: 10);
+    DesignObject text(String id, String? family) => DesignObject(
+      id: ObjectId(id),
+      type: ObjectType.text,
+      pageId: page.id,
+      transform: ObjectTransform(width: 10, height: 10),
+      payload: TextPayload('Hi', fontFamily: family),
+    );
+    final doc = DesignDocument(
+      id: const DocumentId('d'),
+      metadata: const DocumentMetadata(title: 'f'),
+      pages: [
+        page.copyWith(
+          objectIds: const [ObjectId('a'), ObjectId('b'), ObjectId('c')],
+        ),
+      ],
+      objects: {
+        const ObjectId('a'): text('a', 'Lora'),
+        const ObjectId('b'): text('b', null),
+        const ObjectId('c'): text('c', 'Inter'),
+      },
+    );
+    expect(usedFontFamilies(doc), ['Inter', 'Lora']);
+  });
 }

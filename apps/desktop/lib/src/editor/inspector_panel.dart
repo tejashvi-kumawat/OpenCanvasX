@@ -10,25 +10,8 @@ import '../widgets/object_icons.dart';
 import '../providers.dart';
 import '../widgets/color_picker.dart';
 import 'fill_editor.dart';
+import 'font_picker.dart';
 import 'editor_controller.dart';
-
-/// System fonts offered after the bundled ones until local font discovery
-/// lands (P1.5.5). Families that are not installed fall back to the
-/// default UI font.
-const fontFamilies = [
-  'Segoe UI',
-  'Arial',
-  'Calibri',
-  'Cambria',
-  'Georgia',
-  'Times New Roman',
-  'Verdana',
-  'Tahoma',
-  'Trebuchet MS',
-  'Courier New',
-  'Consolas',
-  'Impact',
-];
 
 const _weights = [
   (100, 'Thin'),
@@ -723,7 +706,7 @@ class _TextSection extends ConsumerWidget {
     final editor = ref.read(editorProvider.notifier);
     void update(TextPayload Function(TextPayload t) f, String label) =>
         editor.updateSelectedText(f, label: label);
-    final family = _common((t) => t.fontFamily ?? fontFamilies.first);
+    final family = _common((t) => t.fontFamily ?? fallbackFontFamilies.first);
     final weight = _common((t) => t.fontWeight);
     final size = _common((t) => t.fontSize);
     final align = _common((t) => t.align);
@@ -744,19 +727,32 @@ class _TextSection extends ConsumerWidget {
       ],
       child: FieldColumn(
         children: [
-          OcxSelect<String>(
+          FontPickerField(
             value: family,
-            label: 'Mixed',
-            tooltip: 'Font',
-            options: [
-              for (final f in [
-                ...?ref.watch(bundledFontsProvider).value?.map((f) => f.family),
-                ...fontFamilies,
-              ])
-                SelectOption(f, f),
-            ],
             onChanged: (f) => update((t) => t.copyWith(fontFamily: f), 'Font'),
           ),
+          if (family != null &&
+              !isFontAvailable(availableFontFamilies(ref), family))
+            Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 14,
+                  color: context.ocx.textSecondary,
+                ),
+                const SizedBox(width: Space.xs),
+                Expanded(
+                  child: Text(
+                    '$family is not installed; a similar font is shown. '
+                    'Pick another font or install it.',
+                    style: OcxText.caption(context).copyWith(
+                      color: context.ocx.textSecondary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           FieldRow(
             flex: const [3, 2],
             children: [

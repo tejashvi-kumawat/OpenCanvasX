@@ -24,7 +24,7 @@ void main() {
       path,
       doc('First'),
       label: 'Before colours',
-      now: DateTime(2026, 10, 1),
+      now: DateTime(2026, 10, 1, 9),
     );
     final second = await saveDesignVersion(
       path,

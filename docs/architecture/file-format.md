@@ -11,7 +11,7 @@ Optional developer mode: loose folder with same layout (for git-friendly workflo
 ```
 manifest.json
 document.json
-fonts.json
+fonts.json             # {"families": [{"family": "Inter"}, …]} used by text
 assets/sha256/<hex>    # raw bytes, immutable
 meta/thumbnails/       # optional cache
 snapshots/             # optional named checkpoints

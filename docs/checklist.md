@@ -129,8 +129,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.5.2 Font family/weight/style/size, color
 - [x] P1.5.3 Letter spacing, line height, alignment
 - [ ] P1.5.4 Character-level formatting
-- [ ] P1.5.5 Local font discovery + fallback/substitution
-- [ ] P1.5.6 Font license metadata check (no unlicensed bundling)
+- [x] P1.5.5 Local font discovery + fallback/substitution
+- [x] P1.5.6 Font license metadata check (no unlicensed bundling)
 
 ## P1.6 Images & SVG (Basic)
 - [x] P1.6.1 Import PNG, JPEG, WebP, GIF, BMP

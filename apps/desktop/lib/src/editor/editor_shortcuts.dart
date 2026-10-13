@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'editor_controller.dart';
+import 'rulers.dart';
 import 'tools.dart';
 import 'viewport.dart';
 
@@ -72,6 +73,9 @@ abstract final class EditorKeys {
     alt: true,
   );
   static final ungroup = cmd(LogicalKeyboardKey.keyG, shift: true);
+  static const rulers = SingleActivator(LogicalKeyboardKey.keyR, shift: true);
+  static final grid = cmd(LogicalKeyboardKey.quote);
+  static final guides = cmd(LogicalKeyboardKey.semicolon);
 }
 
 /// Fits the active page in the view.
@@ -162,6 +166,11 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     if (onExport != null) EditorKeys.export: onExport,
     if (onPresent != null) EditorKeys.present: onPresent,
     EditorKeys.frameSelection: editor.frameSelection,
+    EditorKeys.rulers: unlessTyping(
+      ref.read(canvasAidsProvider.notifier).toggleRulers,
+    ),
+    EditorKeys.grid: ref.read(canvasAidsProvider.notifier).toggleGrid,
+    EditorKeys.guides: ref.read(canvasAidsProvider.notifier).toggleGuides,
     EditorKeys.ungroup: editor.ungroupSelection,
     EditorKeys.editText: unlessTyping(() {
       if (ref.read(toolProvider).active == EditorTool.pen) {

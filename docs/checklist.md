@@ -106,7 +106,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.2.1 Fixed page canvas with pan/zoom
 - [x] P1.2.2 Multiple pages + page navigation
 - [x] P1.2.3 Custom dimensions and size presets
-- [ ] P1.2.4 Rulers, grid, guides
+- [x] P1.2.4 Rulers, grid, guides
 - [x] P1.2.5 Zoom shortcuts and fit-to-page
 
 ## P1.3 Objects & Transforms

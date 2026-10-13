@@ -11,6 +11,7 @@ import '../present/present_page.dart';
 import '../widgets/controls.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
+import 'rulers.dart';
 import 'viewport.dart';
 
 /// Editor toolbar (design-system.md §5): menu and tools on the left, title
@@ -317,6 +318,8 @@ class _MainMenu extends ConsumerWidget {
     final sel = session.selection;
     final hasSelection = sel.isNotEmpty;
     final themeMode = ref.watch(themeModeProvider);
+    final aids = ref.watch(canvasAidsProvider);
+    final aidsCtl = ref.read(canvasAidsProvider.notifier);
 
     MenuItemButton item(
       String label,
@@ -407,6 +410,35 @@ class _MainMenu extends ConsumerWidget {
               'Actual size',
               () => view.setZoom(1),
               shortcut: EditorKeys.actualSize,
+            ),
+            const Divider(),
+            CheckboxMenuButton(
+              value: aids.rulers,
+              onChanged: (_) => aidsCtl.toggleRulers(),
+              shortcut: EditorKeys.rulers,
+              child: const Text('Rulers'),
+            ),
+            CheckboxMenuButton(
+              value: aids.guides,
+              onChanged: (_) => aidsCtl.toggleGuides(),
+              shortcut: EditorKeys.guides,
+              child: const Text('Guides'),
+            ),
+            CheckboxMenuButton(
+              value: aids.grid,
+              onChanged: (_) => aidsCtl.toggleGrid(),
+              shortcut: EditorKeys.grid,
+              child: const Text('Grid'),
+            ),
+            item(
+              'Clear guides',
+              session.activePage.guides.isEmpty
+                  ? null
+                  : () => editor.setGuides(
+                    session.state.activePageId,
+                    const [],
+                    label: 'Clear guides',
+                  ),
             ),
             const Divider(),
             SubmenuButton(

@@ -83,4 +83,30 @@ void main() {
     final targets = SnapTargets.collect(board, board.pages.single);
     expect(targets.xs, isEmpty);
   });
+
+  test('ruler guides and the grid are targets when asked for', () {
+    final guided = page.copyWith(
+      guides: [Guide(GuideAxis.vertical, 333), Guide(GuideAxis.horizontal, 77)],
+    );
+    final withGuides = SnapTargets.collect(doc, guided);
+    final snapped = withGuides.snapRect(
+      Rect2D.fromLTWH(335, 600, 10, 10),
+      threshold: 3,
+    );
+    expect(snapped.dx, -2);
+    expect(
+      withGuides.snapPoint(const Point2D(50, 79), threshold: 3).point,
+      const Point2D(50, 77),
+    );
+    final noGuides = SnapTargets.collect(doc, guided, guides: false);
+    expect(
+      noGuides.snapRect(Rect2D.fromLTWH(335, 600, 10, 10), threshold: 3).dx,
+      0,
+    );
+    final grid = SnapTargets.collect(doc, page, guides: false, grid: 8);
+    expect(
+      grid.snapPoint(const Point2D(613, 619), threshold: 3).point,
+      const Point2D(616, 616),
+    );
+  });
 }

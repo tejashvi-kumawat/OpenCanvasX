@@ -43,11 +43,15 @@ final class SnapTargets {
 
   /// Edges and centres of [page] (fixed pages), of every visible object
   /// not in [exclude] (nor inside it), and of the frames containing the
-  /// excluded objects.
+  /// excluded objects. With [guides], the page's ruler guides (P1.2.4)
+  /// are targets too; with [grid], lines every [grid] page units across a
+  /// fixed page.
   factory SnapTargets.collect(
     DesignDocument document,
     DesignPage page, {
     Set<ObjectId> exclude = const {},
+    bool guides = true,
+    double? grid,
   }) {
     final xs = <(double, double, double)>[];
     final ys = <(double, double, double)>[];
@@ -61,6 +65,28 @@ final class SnapTargets {
     }
 
     if (!page.isBoard) addRect(Rect2D.fromLTWH(0, 0, page.width, page.height));
+    if (guides) {
+      for (final g in page.guides) {
+        if (g.axis == GuideAxis.vertical) {
+          xs.add((g.position, 0, page.height));
+        } else {
+          ys.add((g.position, 0, page.width));
+        }
+      }
+    }
+    if (grid != null && grid > 0 && !page.isBoard) {
+      // Bounded so a tiny grid on a huge page stays cheap.
+      if (page.width / grid <= 2000) {
+        for (var x = grid; x < page.width; x += grid) {
+          xs.add((x, 0, 0));
+        }
+      }
+      if (page.height / grid <= 2000) {
+        for (var y = grid; y < page.height; y += grid) {
+          ys.add((y, 0, 0));
+        }
+      }
+    }
     final excludedTrees = <ObjectId>{};
     for (final id in exclude) {
       excludedTrees.add(id);

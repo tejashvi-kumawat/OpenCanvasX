@@ -13,6 +13,7 @@ import '../theme/ocx_theme.dart';
 import 'editor_controller.dart';
 import 'panels/asset_tiles.dart';
 import 'text_overlay.dart';
+import 'rulers.dart';
 import 'tools.dart';
 import 'viewport.dart';
 
@@ -25,7 +26,19 @@ const double _rotateOffset = 20;
 /// Pointer travel (screen pixels) below which a press counts as a click.
 const double _clickSlop = 3;
 
-enum _Drag { none, move, resize, rotate, marquee, pan, draw, pen, pencil, node }
+enum _Drag {
+  none,
+  move,
+  resize,
+  rotate,
+  marquee,
+  pan,
+  draw,
+  pen,
+  pencil,
+  node,
+  guide,
+}
 
 /// Payload of drags from the Elements panel.
 sealed class ElementDrag {
@@ -133,6 +146,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       active: session.state.activePageId,
     );
     final colors = context.ocx;
+    final aids = ref.watch(canvasAidsProvider);
     final cursor =
         ref.watch(eyedropperProvider) != null
             ? SystemMouseCursors.precise
@@ -196,6 +210,23 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                       ),
                     ),
                   ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: CanvasAidsPainter(
+                          document: session.document,
+                          frames: frames,
+                          viewport: viewport,
+                          activePageId: session.state.activePageId,
+                          aids: aids,
+                          drag: ref.watch(guideDragProvider),
+                          colors: colors,
+                          labelStyle: OcxText.caption(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (aids.rulers) const Positioned.fill(child: CanvasRulers()),
                   for (final frame in frames)
                     if (!frame.unbounded)
                       _PageTitle(
@@ -403,6 +434,66 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
   double _unitsPerPixel(PageFrame frame) =>
       1 / (ref.read(viewportProvider).zoom * frame.unitScale);
 
+  /// Snap targets on [page], with ruler guides and the grid when shown.
+  SnapTargets _collectTargets(
+    DesignDocument document,
+    DesignPage page, {
+    Set<ObjectId> exclude = const {},
+  }) {
+    final aids = ref.read(canvasAidsProvider);
+    return SnapTargets.collect(
+      document,
+      page,
+      exclude: exclude,
+      guides: aids.guides,
+      grid: aids.grid ? gridStep(page) : null,
+    );
+  }
+
+  /// The ruler guide of the active page within a few pixels of [screen].
+  (int, Guide)? _guideAt(Offset screen, List<PageFrame> frames) {
+    if (!ref.read(canvasAidsProvider).guides) return null;
+    final session = ref.read(editorProvider)!;
+    final frame = _activeFrame(frames);
+    final page = session.document.pages[frame.index];
+    final viewport = ref.read(viewportProvider);
+    for (final (i, g) in page.guides.indexed.toList().reversed) {
+      final p = viewport.toScreen(
+        frame.toWorkspace(
+          g.axis == GuideAxis.vertical
+              ? Point2D(g.position, 0)
+              : Point2D(0, g.position),
+        ),
+      );
+      final d =
+          g.axis == GuideAxis.vertical
+              ? (p.dx - screen.dx).abs()
+              : (p.dy - screen.dy).abs();
+      if (d <= 3) return (i, g);
+    }
+    return null;
+  }
+
+  void _moveGuide(Offset screen, List<PageFrame> frames) {
+    final drag = ref.read(guideDragProvider);
+    if (drag == null) return;
+    final frame = _activeFrame(frames);
+    final p = _pagePoint(screen, frame);
+    final rulers = ref.read(canvasAidsProvider).rulers;
+    final size = ref.read(viewportProvider).size;
+    final vertical = drag.axis == GuideAxis.vertical;
+    final along = vertical ? screen.dx : screen.dy;
+    final extent = vertical ? size.width : size.height;
+    final remove = along < (rulers ? rulerSize : 0) || along > extent;
+    ref.read(guideDragProvider.notifier).value = (
+      pageId: drag.pageId,
+      axis: drag.axis,
+      position: ((vertical ? p.x : p.y) * 100).round() / 100,
+      index: drag.index,
+      remove: remove,
+    );
+  }
+
   PageFrame _activeFrame(List<PageFrame> frames) {
     final active = ref.read(editorProvider)!.state.activePageId;
     return frames.firstWhere(
@@ -474,6 +565,16 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
             handle.rotate
                 ? SystemMouseCursors.grab
                 : _resizeCursor(handle.resize!, session);
+      });
+      return;
+    }
+    if (_guideAt(screen, frames) case (_, final g)) {
+      setState(() {
+        _hovered = null;
+        _cursor =
+            g.axis == GuideAxis.vertical
+                ? SystemMouseCursors.resizeColumn
+                : SystemMouseCursors.resizeRow;
       });
       return;
     }
@@ -617,6 +718,18 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       return;
     }
 
+    if (_guideAt(event.localPosition, frames) case (final i, final g)) {
+      ref.read(guideDragProvider.notifier).value = (
+        pageId: session.state.activePageId,
+        axis: g.axis,
+        position: g.position,
+        index: i,
+        remove: false,
+      );
+      _drag = _Drag.guide;
+      return;
+    }
+
     if (frame.pageId != session.state.activePageId) {
       _editor.setActivePage(frame.pageId);
     }
@@ -690,7 +803,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       return;
     }
     _dragDocument = session.document;
-    _snapTargets = SnapTargets.collect(
+    _snapTargets = _collectTargets(
       session.document,
       session.activePage,
       exclude: _dragStart.keys.toSet(),
@@ -708,6 +821,9 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     switch (_drag) {
       case _Drag.pan:
         _view.panBy(event.delta);
+        return;
+      case _Drag.guide:
+        _moveGuide(event.localPosition, frames);
         return;
       case _Drag.marquee:
         setState(
@@ -843,6 +959,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       case _Drag.node:
         _nodeMove(p);
       case _Drag.none ||
+          _Drag.guide ||
           _Drag.marquee ||
           _Drag.pan ||
           _Drag.draw ||
@@ -876,6 +993,12 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
         _editor.endGesture('Edit path');
         _nodeObject = null;
         _nodeIndex = null;
+      case _Drag.guide:
+        if (_dragMoved) {
+          ref.read(guideDragProvider.notifier).finish();
+        } else {
+          ref.read(guideDragProvider.notifier).value = null;
+        }
       case _Drag.pan || _Drag.none || _Drag.pen:
         break;
     }
@@ -956,7 +1079,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       var b = _pagePoint(preview.$2, frame);
       if (_snapping) {
         final page = ref.read(editorProvider)!.document.pages[frame.index];
-        final targets = SnapTargets.collect(
+        final targets = _collectTargets(
           ref.read(editorProvider)!.document,
           page,
         );
@@ -1021,7 +1144,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     var p = _pagePoint(screen, frame);
     if (_snapping) {
       p =
-          SnapTargets.collect(
+          _collectTargets(
             session.document,
             session.document.pages[frame.index],
           ).snapPoint(p, threshold: _snapDistance(frame)).point;

@@ -19,6 +19,7 @@ import 'package:opencanvasx/src/plugins/plugins.dart';
 import 'package:opencanvasx/src/present/present_page.dart';
 import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
+import 'package:opencanvasx/src/editor/rulers.dart';
 import 'package:opencanvasx/src/editor/side_rail.dart';
 import 'package:opencanvasx/src/editor/tools.dart';
 import 'package:opencanvasx/src/editor/viewport.dart';
@@ -923,6 +924,47 @@ void main() {
       expect(find.text('Send to an AI provider?'), findsNothing);
       expect(roots(), hasLength(2));
       expect(session().undoLabel, 'AI design');
+    });
+
+    testWidgets('rulers: drag out a guide, move it, drop it back', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      expect(find.byType(CanvasRulers), findsNothing);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+      expect(find.byType(CanvasRulers), findsOneWidget);
+      expect(container.read(canvasAidsProvider).rulers, isTrue);
+
+      final origin = tester.getTopLeft(find.byType(CanvasRulers));
+      final start = origin + const Offset(300, 10);
+      await tester.dragFrom(start, const Offset(0, 220));
+      await tester.pumpAndSettle();
+      final guides = session().activePage.guides;
+      expect(guides.single.axis, GuideAxis.horizontal);
+      expect(session().undoLabel, 'Add guide');
+
+      // Move it along the canvas, then drop it back on the ruler.
+      final onGuide = start + const Offset(40, 220);
+      await tester.dragFrom(onGuide, const Offset(0, 60));
+      await tester.pumpAndSettle();
+      expect(session().undoLabel, 'Move guide');
+      final moved = session().activePage.guides.single.position;
+      expect(moved, greaterThan(guides.single.position));
+      await tester.dragFrom(
+        onGuide + const Offset(0, 60),
+        const Offset(0, -275),
+      );
+      await tester.pumpAndSettle();
+      expect(session().activePage.guides, isEmpty);
+      expect(session().undoLabel, 'Remove guide');
+
+      // Grid toggles from the keyboard and is remembered.
+      await chord(tester, LogicalKeyboardKey.quote);
+      expect(container.read(canvasAidsProvider).grid, isTrue);
+      expect(index.settings.get('canvas.aids'), contains('grid'));
     });
 
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {

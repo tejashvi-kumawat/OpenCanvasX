@@ -1391,6 +1391,18 @@ class EditorController extends Notifier<EditorSession?> {
     ref.read(viewportProvider.notifier).reset();
   }
 
+  /// Replaces the ruler guides of page [pageId] (P1.2.4).
+  void setGuides(PageId pageId, List<Guide> guides, {required String label}) {
+    final page = _editor.document.pages.firstWhere((p) => p.id == pageId);
+    _commit(
+      engine.updatePage(
+        _editor.document,
+        page.copyWith(guides: guides),
+        label: label,
+      ),
+    );
+  }
+
   /// Adds an unbounded board (free canvas) after the active page.
   void addBoard() {
     final page = pagePresets

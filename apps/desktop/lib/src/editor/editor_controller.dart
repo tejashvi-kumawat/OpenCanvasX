@@ -75,6 +75,13 @@ class NodeEditController extends Notifier<NodeEdit?> {
   set value(NodeEdit? next) => state = next;
 }
 
+/// Named versions of the open design, newest first (P1.8.3).
+final designVersionsProvider = FutureProvider<List<DesignVersion>>((ref) {
+  final path = ref.watch(editorProvider.select((s) => s?.path));
+  if (path == null) return const [];
+  return ref.read(designLibraryProvider).versions(path);
+});
+
 /// The image being cropped (P1.6.3): its handles crop instead of resize
 /// and dragging moves the image inside the crop.
 final cropModeProvider = NotifierProvider<CropModeController, ObjectId?>(
@@ -317,6 +324,61 @@ class EditorController extends Notifier<EditorSession?> {
     );
   }
 
+  // ------------------------------------------------------------ versions
+
+  /// Saves the design as it is now as a named version (P1.8.3).
+  Future<DesignVersion?> saveVersion(String label) async {
+    final session = state;
+    if (session == null) return null;
+    final media = ref.read(mediaCacheProvider);
+    final document = session.document;
+    final version = await ref
+        .read(designLibraryProvider)
+        .saveVersion(
+          session.path,
+          document,
+          label: label,
+          assets: {
+            for (final hash in document.assets.keys)
+              if (media.bytesOf(hash) case final bytes?) hash: bytes,
+          },
+        );
+    return version;
+  }
+
+  /// Replaces the design with [version] as one undoable step.
+  Future<void> restoreVersion(DesignVersion version) async {
+    final contents = await ref.read(designLibraryProvider).openVersion(version);
+    final session = state;
+    if (session == null) return;
+    final media = ref.read(mediaCacheProvider);
+    final target = contents.document;
+    for (final MapEntry(key: hash, value: info) in target.assets.entries) {
+      if (contents.assets[hash] case final bytes?) {
+        media.register(hash, bytes, info.mime);
+      }
+    }
+    final current = session.document;
+    _cancelGesture();
+    _commit(
+      Change(
+        label: 'Restore "${version.label}"',
+        objects: {
+          for (final id in current.objects.keys)
+            if (!target.objects.containsKey(id)) id: null,
+          ...target.objects,
+        },
+        pages: target.pages,
+        assets: {
+          for (final MapEntry(:key, :value) in target.assets.entries)
+            if (!current.assets.containsKey(key)) key: value,
+        },
+      ),
+      select: const {},
+      activePage: target.pages.first.id,
+    );
+  }
+
   void _setStatus(SaveStatus status) {
     final session = state;
     if (session != null) state = session.copyWith(saveStatus: status);
@@ -357,6 +419,22 @@ class EditorController extends Notifier<EditorSession?> {
       _editor.copyWith(document: _history.undo(_editor.document)),
       edited: true,
     );
+  }
+
+  /// Undone actions' labels, oldest first, and redoable ones, next first
+  /// (history panel, P1.8.2).
+  List<String> get undoLabels => _history.undoLabels;
+  List<String> get redoLabels => _history.redoLabels;
+
+  /// Undoes ([steps] < 0) or redoes ([steps] > 0) several actions at once.
+  void stepHistory(int steps) {
+    if (steps == 0) return;
+    _cancelGesture();
+    var document = _editor.document;
+    for (var i = 0; i < steps.abs(); i++) {
+      document = steps < 0 ? _history.undo(document) : _history.redo(document);
+    }
+    _publish(_editor.copyWith(document: document), edited: true);
   }
 
   void redo() {

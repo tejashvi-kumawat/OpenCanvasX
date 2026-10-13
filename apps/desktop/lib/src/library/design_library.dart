@@ -77,6 +77,22 @@ abstract interface class DesignLibrary {
     DesignDocument document, {
     Map<String, Uint8List> assets = const {},
   });
+
+  /// Named versions of the design at [path] (P1.8.3), newest first.
+  Future<List<DesignVersion>> versions(String path);
+
+  /// Saves [document] as a version of [path] called [label].
+  Future<DesignVersion> saveVersion(
+    String path,
+    DesignDocument document, {
+    required String label,
+    Map<String, Uint8List> assets = const {},
+  });
+
+  /// The contents of [version].
+  Future<ProjectContents> openVersion(DesignVersion version);
+
+  Future<void> deleteVersion(DesignVersion version);
 }
 
 /// [DesignLibrary] backed by `.opencanvasx` files.
@@ -175,4 +191,23 @@ class FileDesignLibrary implements DesignLibrary {
     DesignDocument document, {
     Map<String, Uint8List> assets = const {},
   }) => saveProject(path, document, assets: assets);
+
+  @override
+  Future<List<DesignVersion>> versions(String path) => listDesignVersions(path);
+
+  @override
+  Future<DesignVersion> saveVersion(
+    String path,
+    DesignDocument document, {
+    required String label,
+    Map<String, Uint8List> assets = const {},
+  }) => saveDesignVersion(path, document, label: label, assets: assets);
+
+  @override
+  Future<ProjectContents> openVersion(DesignVersion version) async =>
+      (await openProject(version.path)).contents;
+
+  @override
+  Future<void> deleteVersion(DesignVersion version) =>
+      deleteDesignVersion(version);
 }

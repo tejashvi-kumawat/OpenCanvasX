@@ -94,7 +94,7 @@ Implementation (`storage/lib/src/project_file.dart`, P1.1.5):
 
 | Mechanism | Description |
 |-----------|-------------|
-| Named checkpoint | User-triggered; stored under `snapshots/` with label |
+| Named checkpoint | User-triggered (History → Save version); a full copy in `<design folder>/.ocx/snapshots/<design name>/<time>.opencanvasx` with `<time>.json` holding `label` and `created_at` (`storage/snapshots.dart`) |
 | Automatic rolling | Keep last N autosnapshots (settings) |
 | External backup | User points to copy target (drive, NAS, Syncthing) |
 

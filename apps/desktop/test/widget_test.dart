@@ -1027,6 +1027,49 @@ void main() {
       );
     });
 
+    testWidgets('history: jump between steps; save and restore a version', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor =
+          container.read(editorProvider.notifier)
+            ..insertShape(ObjectType.rect)
+            ..insertShape(ObjectType.ellipse)
+            ..insertShape(ObjectType.star);
+      await showTab(tester, RailTab.history);
+      expect(find.text('Opened'), findsOneWidget);
+      expect(roots(), hasLength(3));
+
+      // Jump back to before the ellipse, then forward again.
+      await tester.tap(find.text('Opened'));
+      await tester.pumpAndSettle();
+      expect(roots(), isEmpty);
+      expect(editor.redoLabels, hasLength(3));
+      await tester.tap(find.text(editor.redoLabels.last));
+      await tester.pumpAndSettle();
+      expect(roots(), hasLength(3));
+
+      // Save a version, change the design, restore it.
+      await tester.tap(find.text('Save version'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'Three shapes');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Three shapes'), findsOneWidget);
+      editor
+        ..selectAll()
+        ..deleteSelection();
+      await tester.pumpAndSettle();
+      expect(roots(), isEmpty);
+      await tester.tap(find.widgetWithText(TextButton, 'Restore'));
+      await tester.pumpAndSettle();
+      expect(roots(), hasLength(3));
+      expect(session().undoLabel, 'Restore "Three shapes"');
+      editor.undo();
+      await tester.pumpAndSettle();
+      expect(roots(), isEmpty);
+    });
+
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {
       await openFirstDesign(tester);
       container.read(editorProvider.notifier)

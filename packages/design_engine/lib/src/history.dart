@@ -24,6 +24,12 @@ final class History {
   String? get undoLabel => canUndo ? _undo.last.label : null;
   String? get redoLabel => canRedo ? _redo.last.label : null;
 
+  /// Labels of the actions that can be undone, oldest first (P1.8.2).
+  List<String> get undoLabels => [for (final c in _undo) c.label];
+
+  /// Labels of the actions that can be redone, next first.
+  List<String> get redoLabels => [for (final c in _redo.reversed) c.label];
+
   /// Applies [change] to [document], records it and clears redo.
   DesignDocument apply(DesignDocument document, Change change) {
     if (change.isEmpty) return document;

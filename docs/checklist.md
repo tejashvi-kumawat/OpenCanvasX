@@ -147,8 +147,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 
 ## P1.8 History
 - [x] P1.8.1 Undo / redo
-- [ ] P1.8.2 History panel
-- [ ] P1.8.3 Named checkpoints + snapshots + restore
+- [x] P1.8.2 History panel
+- [x] P1.8.3 Named checkpoints + snapshots + restore
 
 ## P1.9 Export (Basic)
 - [x] P1.9.1 PNG export (scale, DPI, transparency)

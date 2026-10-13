@@ -168,6 +168,57 @@ class InMemoryDesignLibrary implements DesignLibrary {
     );
   }
 
+  /// Saved versions by design path, newest first.
+  final Map<String, List<(DesignVersion, DesignDocument)>> savedVersions = {};
+
+  @override
+  Future<List<DesignVersion>> versions(String path) async => [
+    for (final (v, _)
+        in savedVersions[path] ?? const <(DesignVersion, DesignDocument)>[])
+      v,
+  ];
+
+  @override
+  Future<DesignVersion> saveVersion(
+    String path,
+    DesignDocument document, {
+    required String label,
+    Map<String, Uint8List> assets = const {},
+  }) async {
+    final list = savedVersions.putIfAbsent(path, () => []);
+    final version = (
+      path: '$path#v${list.length}',
+      label: label.trim().isEmpty ? 'Version' : label.trim(),
+      createdAt: _tick(),
+    );
+    list.insert(0, (version, document));
+    return version;
+  }
+
+  @override
+  Future<ProjectContents> openVersion(DesignVersion version) async {
+    for (final list in savedVersions.values) {
+      for (final (v, doc) in list) {
+        if (v.path == version.path) {
+          return ProjectContents(
+            document: doc,
+            assets: const {},
+            missingAssets: const [],
+            issues: const [],
+          );
+        }
+      }
+    }
+    throw StateError('no version ${version.path}');
+  }
+
+  @override
+  Future<void> deleteVersion(DesignVersion version) async {
+    for (final list in savedVersions.values) {
+      list.removeWhere((e) => e.$1.path == version.path);
+    }
+  }
+
   /// Asset bytes from the last save of each path.
   final Map<String, Map<String, Uint8List>> savedAssets = {};
 

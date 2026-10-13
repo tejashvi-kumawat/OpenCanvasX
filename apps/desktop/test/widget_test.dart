@@ -93,7 +93,16 @@ void main() {
         secretStoreProvider.overrideWithValue(secrets),
         coverRendererProvider.overrideWithValue((_, _) async => _coverPng),
         fontDiscoveryProvider.overrideWithValue(
-          () async => const ['Arial', 'Georgia', 'Segoe UI'],
+          () async => [
+            for (final family in const ['Arial', 'Georgia', 'Segoe UI'])
+              (
+                family: family,
+                weight: 400,
+                italic: false,
+                path: '/fonts/$family.ttf',
+                index: 0,
+              ),
+          ],
         ),
         aiCompleteProvider.overrideWithValue((
           config, {
@@ -486,6 +495,20 @@ void main() {
         expect(progress.first, (0, pages));
         expect(progress.last, (pages, pages));
         expect(latin1.decode(pdf.single.bytes.sublist(0, 5)), '%PDF-');
+        // Vector by default: no page images; the image mode embeds them.
+        expect(_pdfContent(pdf.single.bytes), isNot(contains(' Do')));
+        final imagePdf = await buildExport(
+          s.document,
+          options: const ExportOptions(
+            format: ExportFormat.pdf,
+            vectorPdf: false,
+            scale: 0.25,
+          ),
+          activePage: s.state.activePageId,
+          selection: const {},
+          media: container.read(mediaCacheProvider),
+        );
+        expect(_pdfContent(imagePdf.single.bytes), contains(' Do'));
         final jpg = await buildExport(
           s.document,
           options: const ExportOptions(format: ExportFormat.jpg, scale: 0.25),
@@ -1493,4 +1516,22 @@ class _RefusingClient implements HttpClient {
     attempts.add(Uri(path: invocation.memberName.toString()));
     return null;
   }
+}
+
+/// Every content stream of [pdf], inflated (operators like `Do` draw
+/// images).
+String _pdfContent(Uint8List pdf) {
+  final text = latin1.decode(pdf);
+  final out = StringBuffer();
+  for (final m in RegExp(r'stream\r?\n').allMatches(text)) {
+    final end = text.indexOf('endstream', m.end);
+    if (end < 0) continue;
+    final raw = pdf.sublist(m.end, end);
+    try {
+      out.write(latin1.decode(zlib.decode(raw)));
+    } on Object {
+      out.write(latin1.decode(raw));
+    }
+  }
+  return out.toString();
 }

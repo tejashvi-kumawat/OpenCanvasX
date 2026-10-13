@@ -1,8 +1,14 @@
+import 'dart:io';
+
+import 'package:asset_engine/asset_engine.dart';
+import 'package:asset_packs/asset_packs.dart';
 import 'package:export_engine/export_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../editor/editor_controller.dart';
+import '../editor/font_picker.dart';
 import '../theme/ocx_theme.dart';
 import 'exporter.dart';
 
@@ -48,6 +54,9 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
         activePage: session.state.activePageId,
         selection: session.selection,
         media: ref.read(mediaCacheProvider),
+        pdfFonts:
+            (family, {required weight, required italic}) =>
+                resolvePdfFont(ref, family, weight: weight, italic: italic),
         onProgress: (done, total) {
           if (mounted) setState(() => _progress = (done, total));
         },
@@ -173,6 +182,43 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
                     (v) =>
                         setState(() => _options = _options.copyWith(scope: v)),
               ),
+              if (format == ExportFormat.pdf) ...[
+                const SizedBox(height: Space.lg),
+                const _Label('PDF type'),
+                SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: true,
+                      label: Text('Vector'),
+                      tooltip:
+                          'Sharp at any zoom, selectable text, small files',
+                    ),
+                    ButtonSegment(
+                      value: false,
+                      label: Text('Image'),
+                      tooltip:
+                          'Each page as a picture: looks exactly like the canvas',
+                    ),
+                  ],
+                  selected: {_options.vectorPdf},
+                  onSelectionChanged:
+                      (v) => setState(
+                        () => _options = _options.copyWith(vectorPdf: v.single),
+                      ),
+                ),
+                const SizedBox(height: Space.xs),
+                Text(
+                  _options.vectorPdf
+                      ? 'Text stays text in its fonts; shapes stay sharp. '
+                          'Photos keep their pixels.'
+                      : 'Best when the look must match the canvas exactly.',
+                  style: OcxText.caption(context).copyWith(
+                    color: c.textTertiary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
               if (!format.isVector) ...[
                 const SizedBox(height: Space.lg),
                 _Label(format == ExportFormat.pdf ? 'Quality' : 'Size'),
@@ -309,6 +355,29 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
         ),
       ),
     );
+  }
+}
+
+/// The font file for [family] at [weight]/[italic]: the bundled family
+/// first, then the closest installed face. Collections (.ttc) cannot be
+/// embedded and fall back to the PDF's built-in font.
+Future<Uint8List?> resolvePdfFont(
+  WidgetRef ref,
+  String family, {
+  required int weight,
+  required bool italic,
+}) async {
+  final bundled = await loadBundledFontFile(rootBundle, family);
+  if (bundled != null) return bundled;
+  final faces = await ref.read(systemFontFacesProvider.future);
+  final face = bestFace(faces, family, weight: weight, italic: italic);
+  if (face == null) return null;
+  final path = face.path.toLowerCase();
+  if (!path.endsWith('.ttf') && !path.endsWith('.otf')) return null;
+  try {
+    return await File(face.path).readAsBytes();
+  } on FileSystemException {
+    return null;
   }
 }
 

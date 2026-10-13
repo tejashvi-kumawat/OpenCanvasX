@@ -10,8 +10,15 @@ import '../providers.dart';
 import '../theme/ocx_theme.dart';
 
 /// Scans the computer's font folders; tests replace it.
-final fontDiscoveryProvider = Provider<Future<List<String>> Function()>(
-  (ref) => () => Isolate.run(discoverSystemFontFamilies),
+final fontDiscoveryProvider = Provider<Future<List<FontFace>> Function()>(
+  (ref) => () => Isolate.run(discoverSystemFontFaces),
+);
+
+/// Every installed font face (family, weight, style, file), scanned once
+/// per run in the background; used for the font list and to embed fonts
+/// in vector PDFs.
+final systemFontFacesProvider = FutureProvider<List<FontFace>>(
+  (ref) => ref.read(fontDiscoveryProvider)(),
 );
 
 /// Font families installed on this computer (P1.5.5). Starts with the
@@ -38,7 +45,7 @@ class SystemFontsController extends Notifier<List<String>> {
     if (_refreshing) return;
     _refreshing = true;
     try {
-      final fresh = await ref.read(fontDiscoveryProvider)();
+      final fresh = familiesOf(await ref.read(systemFontFacesProvider.future));
       if (!ref.mounted) return;
       if (fresh.isNotEmpty && fresh.join('\n') != state.join('\n')) {
         ref.read(appIndexProvider).settings.set(_key, fresh.join('\n'));

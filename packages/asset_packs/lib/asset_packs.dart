@@ -90,3 +90,34 @@ Future<List<BundledFont>> _loadFonts(AssetBundle bundle) async {
   }
   return fonts;
 }
+
+/// The font file of bundled family [family] (case-insensitive), for
+/// embedding in PDFs; `null` if it is not bundled.
+Future<Uint8List?> loadBundledFontFile(
+  AssetBundle bundle,
+  String family,
+) async {
+  const base = 'packages/asset_packs/assets/fonts';
+  try {
+    final index =
+        jsonDecode(await bundle.loadString('$base/index.json'))
+            as Map<String, Object?>;
+    for (final entry
+        in (index['families']! as List).cast<Map<String, Object?>>()) {
+      if ((entry['family']! as String).toLowerCase() != family.toLowerCase()) {
+        continue;
+      }
+      final dir = entry['dir']! as String;
+      final meta =
+          jsonDecode(await bundle.loadString('$base/$dir/font.json'))
+              as Map<String, Object?>;
+      final file =
+          (meta['files']! as List).cast<Map<String, Object?>>().first['file'];
+      final data = await bundle.load('$base/$dir/$file');
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    }
+  } on Object {
+    return null;
+  }
+  return null;
+}

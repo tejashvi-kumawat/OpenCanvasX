@@ -68,3 +68,12 @@ Pages are rendered one at a time on the UI isolate (Flutter's canvas requires it
 ## WebP (P1.9.2)
 
 WebP export uses the pure-Dart encoder in `image` 4.12 (VP8L lossless / VP8 lossy in a RIFF container) on a background isolate. It keeps transparency; quality 100 is lossless, lower values are lossy with full-quality alpha. The quality slider is shared with JPEG.
+
+## Vector PDF (P1.9.4)
+
+PDF export defaults to **Vector**; **Image** keeps the previous page-image PDF for pixel-exact output.
+
+- Each page goes through the SVG writer and is drawn with the `pdf` package's SVG support (`encodeVectorPdf`), on a background isolate: rectangles, ellipses, polygons, paths, lines, gradients, clipping (frames, masks, rounded images, crops), opacity and transforms stay vectors; text stays selectable text.
+- **Fonts**: for every (family, weight, style) the text uses, the app supplies a TrueType/OpenType file: the bundled family first, otherwise the closest installed face (`bestFace` over the discovered faces: italic match, then nearest weight). Text without a family uses the platform UI font (Segoe UI on Windows), matching the canvas. Fonts are subset by the PDF writer. Collections (`.ttc`) cannot be embedded and fall back to Helvetica.
+- **Images** the PDF writer cannot reproduce (SVG icons, photos with adjustments) are rendered to PNG at the export resolution (at most 3000 px) with their colour and adjustments and embedded in their place; other photos are embedded as they are.
+- Known limits: letter spacing is ignored by the PDF writer; text uses the SVG writer's line breaks (Flutter layout) and baseline estimate.

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:document_model/document_model.dart';
@@ -402,6 +403,42 @@ void main() {
       expect(site['index.html'], contains('href="page-2.html">Next'));
       expect(site['page-2.html'], contains('href="index.html">← Previous'));
       expect(site['page-2.html'], contains('2 / 2'));
+    });
+  });
+
+  group('vector PDF', () {
+    test('keeps shapes as vectors and embeds the text font', () async {
+      const svg =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" '
+          'viewBox="0 0 200 100"> '
+          '<rect x="10" y="10" width="80" height="40" fill="#2E5BFF"/> '
+          '<text x="10" y="80" font-size="20" font-weight="700" '
+          "font-family=\"'Bebas Neue', system-ui, sans-serif\"> "
+          '<tspan x="10" y="80">HELLO PDF</tspan></text></svg>';
+      final asked = <(String, int, bool)>[];
+      final bytes = await encodeVectorPdf(
+        [(svg: svg, widthPt: 150, heightPt: 75)],
+        title: 'Vector',
+        fonts: (family, {required weight, required italic}) {
+          asked.add((family, weight, italic));
+          return File(
+            '../asset_packs/assets/fonts/bebasneue/BebasNeue-Regular.ttf',
+          ).readAsBytesSync();
+        },
+      );
+      final text = latin1.decode(bytes);
+      expect(text, startsWith('%PDF-'));
+      expect(asked, contains(('Bebas Neue', 700, false)));
+      expect(text, contains('/FontFile2'));
+      expect(text, isNot(contains('/Subtype /Image')));
+    });
+
+    test('font list and weight parsing', () {
+      expect(firstFontFamily("'Inter', system-ui, sans-serif"), 'Inter');
+      expect(firstFontFamily('system-ui, sans-serif'), isNull);
+      expect(parseFontWeight('bold'), 700);
+      expect(parseFontWeight('650'), 650);
+      expect(parseFontWeight('nonsense'), 400);
     });
   });
 }

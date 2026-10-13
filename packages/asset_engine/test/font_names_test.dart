@@ -35,4 +35,21 @@ void main() {
       );
     }
   }, skip: !Platform.isWindows);
+
+  test('faces carry weight and italic; bestFace picks the closest', () {
+    final faces = [
+      ...fontFacesOfFile(r'C:\Windows\Fonts\arial.ttf'),
+      ...fontFacesOfFile(r'C:\Windows\Fonts\arialbd.ttf'),
+      ...fontFacesOfFile(r'C:\Windows\Fonts\ariali.ttf'),
+    ];
+    expect(faces.map((f) => (f.family, f.weight, f.italic)), [
+      ('Arial', 400, false),
+      ('Arial', 700, false),
+      ('Arial', 400, true),
+    ]);
+    expect(bestFace(faces, 'arial', weight: 800)!.weight, 700);
+    expect(bestFace(faces, 'Arial', italic: true)!.italic, isTrue);
+    expect(bestFace(faces, 'Arial', weight: 500)!.weight, 400);
+    expect(bestFace(faces, 'Comic Sans'), isNull);
+  }, skip: !File(r'C:\Windows\Fonts\arialbd.ttf').existsSync());
 }

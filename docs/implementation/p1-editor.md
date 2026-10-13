@@ -62,7 +62,7 @@ Engineering log for the first usable editor. Normative design: [ux-spec.md](../p
 
 ## Not done yet (still open in the checklist)
 
-Vector PDF export (P1.9.4), snapping and smart guides (P1.4.4), character-level text formatting (P1.5.4), images/SVG (P1.6), full colour picker and gradients (P1.7), export (P1.9).
+snapping and smart guides (P1.4.4), character-level text formatting (P1.5.4), images/SVG (P1.6), full colour picker and gradients (P1.7), export (P1.9).
 
 ## Testing
 

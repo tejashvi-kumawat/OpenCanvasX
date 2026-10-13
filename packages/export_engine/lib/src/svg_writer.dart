@@ -17,6 +17,12 @@ List<String> explicitLines(DesignObject text) => switch (text.payload) {
   _ => const [],
 };
 
+/// Replacement bytes for an image object, e.g. a pre-rendered PNG of an
+/// adjusted photo or an icon for consumers that cannot apply SVG filters
+/// or nested SVG (vector PDF). `null` keeps the original.
+typedef ImageOverride =
+    ({String mime, Uint8List bytes})? Function(DesignObject image);
+
 /// Writes [target] as a standalone SVG 1.1 document (P1.9.3): shapes,
 /// paths, lines and frames stay vectors; text stays text (fonts by family
 /// name); images are embedded as data URIs. The canvas size is the
@@ -28,11 +34,12 @@ String exportSvg(
   TextLineBreaker lines = explicitLines,
   double scale = 1,
   bool transparent = false,
+  ImageOverride? imageOverride,
 }) {
   final page = document.pages.firstWhere((p) => p.id == target.pageId);
   final size = exportPixelSize(page, target, scale: scale);
   final r = target.region;
-  final w = _SvgWriter(document, assets, lines);
+  final w = _SvgWriter(document, assets, lines, imageOverride);
   final out =
       StringBuffer()
         ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
@@ -73,11 +80,12 @@ String exportSvg(
 }
 
 class _SvgWriter {
-  _SvgWriter(this.document, this.assets, this.lines);
+  _SvgWriter(this.document, this.assets, this.lines, this.imageOverride);
 
   final DesignDocument document;
   final Map<String, Uint8List> assets;
   final TextLineBreaker lines;
+  final ImageOverride? imageOverride;
   final StringBuffer defs = StringBuffer();
   int _clips = 0;
 
@@ -343,8 +351,14 @@ class _SvgWriter {
     final info = document.assets[payload.assetHash];
     var bytes = assets[payload.assetHash];
     if (info == null || bytes == null) return;
+    var mime = info.mime;
     final t = o.transform;
-    if (info.mime == 'image/svg+xml') {
+    final override = imageOverride?.call(o);
+    if (override != null) {
+      // Already rendered with its colour and adjustments.
+      mime = override.mime;
+      bytes = override.bytes;
+    } else if (mime == 'image/svg+xml') {
       // Bake the icon colour in: currentColor does not cross <image>.
       if (style.fill?.representative case final color?) {
         bytes = Uint8List.fromList(
@@ -368,7 +382,7 @@ class _SvgWriter {
       );
       clipAttr = ' clip-path="url(#$id)"';
     }
-    final filter = _adjustFilter(payload.adjust, t);
+    final filter = override != null ? '' : _adjustFilter(payload.adjust, t);
     // The whole image, placed so its crop fills the box (P1.6.3).
     final crop = payload.crop;
     final fw = t.width / crop.width;
@@ -381,7 +395,7 @@ class _SvgWriter {
     out.writeln(
       '<g$clipAttr><image $place '
       'preserveAspectRatio="none"$filter '
-      'xlink:href="data:${info.mime};base64,${base64Encode(bytes)}"/></g>',
+      'xlink:href="data:$mime;base64,${base64Encode(bytes)}"/></g>',
     );
     if (style.stroke case final stroke? when stroke.width > 0) {
       out.writeln(

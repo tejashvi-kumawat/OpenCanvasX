@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:document_model/document_model.dart';
 import 'package:export_engine/export_engine.dart';
@@ -46,6 +47,7 @@ class ExportOptions {
     this.scale = 2,
     this.transparent = false,
     this.jpegQuality = 90,
+    this.vectorPdf = true,
   });
 
   final ExportFormat format;
@@ -56,18 +58,23 @@ class ExportOptions {
   final bool transparent;
   final int jpegQuality;
 
+  /// PDF as vectors with real text (P1.9.4) instead of page images.
+  final bool vectorPdf;
+
   ExportOptions copyWith({
     ExportFormat? format,
     ExportScope? scope,
     double? scale,
     bool? transparent,
     int? jpegQuality,
+    bool? vectorPdf,
   }) => ExportOptions(
     format: format ?? this.format,
     scope: scope ?? this.scope,
     scale: scale ?? this.scale,
     transparent: transparent ?? this.transparent,
     jpegQuality: jpegQuality ?? this.jpegQuality,
+    vectorPdf: vectorPdf ?? this.vectorPdf,
   );
 }
 
@@ -126,6 +133,15 @@ Future<String?> _saveWithDialogs(
   return folder;
 }
 
+/// Font file for a family, weight and style (bundled or installed), for
+/// embedding in vector PDFs; `null` when none is available.
+typedef PdfFontResolver =
+    Future<Uint8List?> Function(
+      String family, {
+      required int weight,
+      required bool italic,
+    });
+
 /// Reports export progress: [done] of [total] pages rendered.
 typedef ExportProgress = void Function(int done, int total);
 
@@ -140,6 +156,7 @@ Future<List<ExportedFile>> buildExport(
   required Set<ObjectId> selection,
   required MediaCache media,
   ExportProgress? onProgress,
+  PdfFontResolver? pdfFonts,
 }) async {
   final targets = exportTargets(
     document,
@@ -168,6 +185,19 @@ Future<List<ExportedFile>> buildExport(
     return [
       for (final MapEntry(key: name, value: html) in site.entries)
         (name: name, bytes: Uint8List.fromList(utf8.encode(html))),
+    ];
+  }
+
+  if (format == ExportFormat.pdf && options.vectorPdf) {
+    return [
+      await _vectorPdf(
+        document,
+        targets,
+        options: options,
+        media: media,
+        fonts: pdfFonts,
+        onProgress: onProgress,
+      ),
     ];
   }
 
@@ -325,3 +355,138 @@ final coverRendererProvider =
     Provider<Future<Uint8List?> Function(DesignDocument, MediaCache)>(
       (ref) => renderCoverPng,
     );
+
+/// A vector PDF (P1.9.4): every page goes through the SVG writer and is
+/// drawn as PDF vectors with real, selectable text in embedded fonts.
+/// Images the PDF writer cannot draw as they look (SVG icons, adjusted
+/// photos) are rendered to PNG at the export resolution first.
+Future<ExportedFile> _vectorPdf(
+  DesignDocument document,
+  List<ExportTarget> targets, {
+  required ExportOptions options,
+  required MediaCache media,
+  PdfFontResolver? fonts,
+  ExportProgress? onProgress,
+}) async {
+  final pages = <VectorPdfPage>[];
+  for (final (done, target) in targets.indexed) {
+    onProgress?.call(done, targets.length);
+    await Future<void>.delayed(Duration.zero);
+    final page = document.pages.firstWhere((p) => p.id == target.pageId);
+    final pixels = exportPixelSize(page, target, scale: options.scale);
+    final ppu = pixels.width / math.max(target.region.width, 1e-6);
+    final overrides = <ObjectId, ({String mime, Uint8List bytes})>{};
+    for (final o in _subtree(document, target.roots)) {
+      if (o.payload case final ImagePayload payload
+          when !payload.adjust.isNone ||
+              document.assets[payload.assetHash]?.mime == 'image/svg+xml') {
+        final png = await _renderImageObject(document, o, media, ppu);
+        if (png != null) overrides[o.id] = (mime: 'image/png', bytes: png);
+      }
+    }
+    final points = exportPointSize(page, target);
+    pages.add((
+      svg: exportSvg(
+        document,
+        target,
+        assets: media.allBytes,
+        lines: textLines,
+        imageOverride: (o) => overrides[o.id],
+      ),
+      widthPt: points.width,
+      heightPt: points.height,
+    ));
+  }
+  onProgress?.call(targets.length, targets.length);
+
+  // The font files the text needs, keyed like the lookup below.
+  final faces = <String, Uint8List>{};
+  // Text without a family is drawn in the platform's UI font on canvas.
+  final defaultFamily = Platform.isWindows ? 'Segoe UI' : 'Inter';
+  if (fonts != null) {
+    for (final o in document.objects.values) {
+      if (o.payload case TextPayload(
+        :final fontFamily,
+        :final fontWeight,
+        :final italic,
+      )) {
+        final family = fontFamily ?? defaultFamily;
+        final key = _faceKey(family, fontWeight, italic: italic);
+        if (faces.containsKey(key)) continue;
+        final bytes = await fonts(family, weight: fontWeight, italic: italic);
+        if (bytes != null) faces[key] = bytes;
+      }
+    }
+  }
+  final meta = document.metadata;
+  final title = meta.title;
+  final author = meta.author;
+  final bytes = await Isolate.run(
+    () => encodeVectorPdf(
+      pages,
+      title: title,
+      author: author,
+      defaultFamily: defaultFamily,
+      fonts:
+          (family, {required weight, required italic}) =>
+              faces[_faceKey(family, weight, italic: italic)],
+    ),
+  );
+  return (name: exportFileName(title, 'pdf'), bytes: bytes);
+}
+
+String _faceKey(String family, int weight, {required bool italic}) =>
+    '${family.toLowerCase()}|$weight|$italic';
+
+/// [roots] and everything inside them.
+Iterable<DesignObject> _subtree(
+  DesignDocument document,
+  List<ObjectId> roots,
+) sync* {
+  final stack = [...roots];
+  while (stack.isNotEmpty) {
+    final o = document.objects[stack.removeLast()];
+    if (o == null) continue;
+    yield o;
+    stack.addAll(o.childIds);
+  }
+}
+
+/// The whole (uncropped) image of [o] with its colour and adjustments, at
+/// [ppu] pixels per page unit (at most 3000 px on its longer side).
+Future<Uint8List?> _renderImageObject(
+  DesignDocument document,
+  DesignObject o,
+  MediaCache media,
+  double ppu,
+) async {
+  final payload = o.payload as ImagePayload;
+  final t = o.transform;
+  final fw = t.width / payload.crop.width;
+  final fh = t.height / payload.crop.height;
+  if (fw <= 0 || fh <= 0) return null;
+  var scale = ppu;
+  final longest = math.max(fw, fh) * scale;
+  if (longest > 3000) scale *= 3000 / longest;
+  final width = math.max(1, (fw * scale).round());
+  final height = math.max(1, (fh * scale).round());
+  final alone = DesignObject(
+    id: o.id,
+    type: o.type,
+    pageId: const PageId('render'),
+    transform: ObjectTransform(width: fw, height: fh),
+    style: ObjectStyle(fill: o.style?.fill),
+    payload: payload.copyWith(crop: ImagePayload.fullCrop),
+  );
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder)..scale(width / fw, height / fh);
+  paintObject(canvas, document, alone, media: media);
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(width, height);
+  picture.dispose();
+  try {
+    return await imagePng(image);
+  } finally {
+    image.dispose();
+  }
+}

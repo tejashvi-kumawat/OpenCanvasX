@@ -19,7 +19,7 @@ Rect2D fullImageRect(DesignObject image) {
   return Rect2D.fromLTWH(-c.left * w, -c.top * h, w, h);
 }
 
-/// [image] with its box set to local rectangle [box] (of the box at
+/// `start` with its box set to local rectangle [box] (of the box at
 /// [start]), and the crop following it so the image does not move.
 DesignObject _withBox(DesignObject start, Rect2D box) {
   final full = fullImageRect(start);

@@ -1265,6 +1265,48 @@ void main() {
       );
     });
 
+    testWidgets('performance: dragging on a 1,000-object page stays fast', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier);
+      final page = session().activePage;
+      for (var i = 0; i < 1000; i++) {
+        editor.insertShape(
+          i.isEven ? ObjectType.rect : ObjectType.ellipse,
+          at: Point2D((i % 40) / 40 * page.width, (i ~/ 40) / 25 * page.height),
+        );
+      }
+      await tester.pumpAndSettle();
+      expect(roots(), hasLength(1000));
+      final id = roots().last;
+      editor.select({id});
+      await tester.pumpAndSettle();
+
+      // A move gesture: preview each pointer step, then commit.
+      final start = session().document.objects[id]!;
+      final frames = <int>[];
+      editor.beginGesture();
+      for (var step = 1; step <= 20; step++) {
+        final w = Stopwatch()..start();
+        editor.previewObjects([
+          shiftedInPage(session().document, start, step * 2.0, step * 1.0),
+        ]);
+        await tester.pump();
+        frames.add(w.elapsedMicroseconds);
+      }
+      editor.endGesture('Move');
+      await tester.pumpAndSettle();
+      frames.sort();
+      final medianMs = frames[frames.length ~/ 2] / 1000;
+      // A regression guard for accidental O(n²) work per frame: this is a
+      // debug-mode test (unoptimised, with assertions), several times
+      // slower than release. The engine benchmarks (design_engine
+      // performance_test) check the per-frame operations themselves.
+      expect(medianMs, lessThan(400), reason: 'median frame $medianMs ms');
+      expect(session().undoLabel, 'Move');
+    });
+
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {
       await openFirstDesign(tester);
       container.read(editorProvider.notifier)

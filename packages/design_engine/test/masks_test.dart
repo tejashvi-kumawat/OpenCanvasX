@@ -12,7 +12,7 @@ void main() {
 
   test('use as mask groups siblings with the bottom one as mask', () {
     final doc = documentWith([
-      rect('shape', x: 0, y: 0, w: 100, h: 100, type: ObjectType.ellipse),
+      rect('shape', h: 100, type: ObjectType.ellipse),
       rect('photo', x: -20, y: -20, w: 200, h: 150),
     ]);
     final (change, id) = useAsMask(doc, const [

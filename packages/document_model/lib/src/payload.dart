@@ -3,6 +3,7 @@ import 'package:meta/meta.dart';
 import 'geometry.dart';
 import 'ids.dart';
 import 'object_type.dart';
+import 'text_runs.dart';
 import 'validation.dart';
 
 /// Type-specific data carried by an object.
@@ -59,7 +60,7 @@ enum TextSizing {
 enum TextAlignment { left, center, right, justify }
 
 /// Text content and its formatting (P1.5.1–P1.5.3). The text colour is the
-/// object's fill. Character-level runs arrive with P1.5.4.
+/// object's fill; [runs] override the style of character ranges (P1.5.4).
 final class TextPayload extends ObjectPayload {
   factory TextPayload(
     String text, {
@@ -71,6 +72,7 @@ final class TextPayload extends ObjectPayload {
     double lineHeight = 1.2,
     double letterSpacing = 0,
     TextSizing sizing = TextSizing.autoWidth,
+    Iterable<TextRun> runs = const [],
   }) {
     checkPositive(fontSize, 'fontSize');
     if (fontWeight < 100 || fontWeight > 900 || fontWeight % 100 != 0) {
@@ -93,6 +95,7 @@ final class TextPayload extends ObjectPayload {
       lineHeight,
       letterSpacing,
       sizing,
+      List.unmodifiable(normalizeRuns(runs, text.length)),
     );
   }
 
@@ -106,6 +109,7 @@ final class TextPayload extends ObjectPayload {
     this.lineHeight,
     this.letterSpacing,
     this.sizing,
+    this.runs,
   );
 
   final String text;
@@ -126,6 +130,9 @@ final class TextPayload extends ObjectPayload {
   final double letterSpacing;
   final TextSizing sizing;
 
+  /// Character-level overrides, sorted, non-overlapping, within the text.
+  final List<TextRun> runs;
+
   TextPayload copyWith({
     String? text,
     Object? fontFamily = _keep,
@@ -136,6 +143,7 @@ final class TextPayload extends ObjectPayload {
     double? lineHeight,
     double? letterSpacing,
     TextSizing? sizing,
+    Iterable<TextRun>? runs,
   }) => TextPayload(
     text ?? this.text,
     fontFamily: fontFamily == _keep ? this.fontFamily : fontFamily as String?,
@@ -146,6 +154,7 @@ final class TextPayload extends ObjectPayload {
     lineHeight: lineHeight ?? this.lineHeight,
     letterSpacing: letterSpacing ?? this.letterSpacing,
     sizing: sizing ?? this.sizing,
+    runs: runs ?? this.runs,
   );
 
   @override
@@ -159,7 +168,8 @@ final class TextPayload extends ObjectPayload {
       other.align == align &&
       other.lineHeight == lineHeight &&
       other.letterSpacing == letterSpacing &&
-      other.sizing == sizing;
+      other.sizing == sizing &&
+      _sameRuns(other.runs, runs);
 
   @override
   int get hashCode => Object.hash(
@@ -172,7 +182,16 @@ final class TextPayload extends ObjectPayload {
     lineHeight,
     letterSpacing,
     sizing,
+    Object.hashAll(runs),
   );
+
+  static bool _sameRuns(List<TextRun> a, List<TextRun> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   @override
   String toString() => 'TextPayload(${text.length} chars, $fontSize)';

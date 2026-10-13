@@ -128,7 +128,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.5.1 Text box (auto width/height, fixed)
 - [x] P1.5.2 Font family/weight/style/size, color
 - [x] P1.5.3 Letter spacing, line height, alignment
-- [ ] P1.5.4 Character-level formatting
+- [x] P1.5.4 Character-level formatting
 - [x] P1.5.5 Local font discovery + fallback/substitution
 - [x] P1.5.6 Font license metadata check (no unlicensed bundling)
 

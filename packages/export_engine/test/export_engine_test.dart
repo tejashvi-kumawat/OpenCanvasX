@@ -189,6 +189,62 @@ void main() {
       ),
     );
 
+    test('mixed-style text is written as positioned pieces', () {
+      final target =
+          exportTargets(
+            doc,
+            scope: ExportScope.currentPage,
+            activePage: pageId,
+          ).single;
+      final rich = {
+        for (final MapEntry(:key, :value) in doc.objects.entries)
+          key: switch (value.payload) {
+            final TextPayload t => value.copyWith(
+              payload: t.copyWith(
+                runs: [TextRun(0, 5, fontWeight: 700, underline: true)],
+              ),
+            ),
+            _ => value,
+          },
+      };
+      final richDoc = DesignDocument(
+        id: doc.id,
+        metadata: doc.metadata,
+        pages: doc.pages,
+        objects: rich,
+        assets: doc.assets,
+      );
+      final svg = exportSvg(
+        richDoc,
+        target,
+        assets: {hash: icon},
+        segments:
+            (o) => [
+              (
+                text: 'Hello',
+                x: 0,
+                baseline: 20,
+                style: textRunPatch(fontWeight: 700, underline: true),
+              ),
+              (
+                text: ' <world>',
+                x: 52.5,
+                baseline: 20,
+                style: TextRunStyles.none,
+              ),
+            ],
+      );
+      expect(
+        svg,
+        contains(
+          '<tspan x="0" y="20" font-weight="700" '
+          'text-decoration="underline">Hello</tspan>',
+        ),
+      );
+      expect(svg, contains('<tspan x="52.5" y="20"> &lt;world&gt;</tspan>'));
+      expect(svg, contains('text-anchor="start"'));
+    });
+
     test('writes shapes, text and tinted images', () {
       final target =
           exportTargets(

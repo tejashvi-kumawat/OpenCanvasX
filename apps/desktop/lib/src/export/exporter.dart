@@ -181,6 +181,7 @@ Future<List<ExportedFile>> buildExport(
       targets,
       assets: media.allBytes,
       lines: textLines,
+      segments: textSegments,
     );
     return [
       for (final MapEntry(key: name, value: html) in site.entries)
@@ -213,6 +214,7 @@ Future<List<ExportedFile>> buildExport(
                 target,
                 assets: media.allBytes,
                 lines: textLines,
+                segments: textSegments,
                 transparent: transparent,
               ),
             ),
@@ -391,6 +393,7 @@ Future<ExportedFile> _vectorPdf(
         target,
         assets: media.allBytes,
         lines: textLines,
+        segments: textSegments,
         imageOverride: (o) => overrides[o.id],
       ),
       widthPt: points.width,
@@ -405,16 +408,23 @@ Future<ExportedFile> _vectorPdf(
   final defaultFamily = Platform.isWindows ? 'Segoe UI' : 'Inter';
   if (fonts != null) {
     for (final o in document.objects.values) {
-      if (o.payload case TextPayload(
-        :final fontFamily,
-        :final fontWeight,
-        :final italic,
-      )) {
-        final family = fontFamily ?? defaultFamily;
-        final key = _faceKey(family, fontWeight, italic: italic);
-        if (faces.containsKey(key)) continue;
-        final bytes = await fonts(family, weight: fontWeight, italic: italic);
-        if (bytes != null) faces[key] = bytes;
+      if (o.payload case final TextPayload t) {
+        // The box style and every run's overrides (P1.5.4).
+        final wanted = {
+          (t.fontFamily ?? defaultFamily, t.fontWeight, t.italic),
+          for (final r in t.runs)
+            (
+              r.fontFamily ?? t.fontFamily ?? defaultFamily,
+              r.fontWeight ?? t.fontWeight,
+              r.italic ?? t.italic,
+            ),
+        };
+        for (final (family, weight, italic) in wanted) {
+          final key = _faceKey(family, weight, italic: italic);
+          if (faces.containsKey(key)) continue;
+          final bytes = await fonts(family, weight: weight, italic: italic);
+          if (bytes != null) faces[key] = bytes;
+        }
       }
     }
   }

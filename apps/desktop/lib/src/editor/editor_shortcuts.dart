@@ -53,7 +53,10 @@ enum ShortcutId {
   bringForward('Bring forward'),
   sendBackward('Send backward'),
   bringToFront('Bring to front'),
-  sendToBack('Send to back');
+  sendToBack('Send to back'),
+  bold('Bold'),
+  italic('Italic'),
+  underline('Underline');
 
   const ShortcutId(this.label);
 
@@ -94,6 +97,9 @@ final Map<ShortcutId, SingleActivator> defaultShortcuts = {
   ShortcutId.sendBackward: cmd(LogicalKeyboardKey.bracketLeft),
   ShortcutId.bringToFront: cmd(LogicalKeyboardKey.bracketRight, shift: true),
   ShortcutId.sendToBack: cmd(LogicalKeyboardKey.bracketLeft, shift: true),
+  ShortcutId.bold: cmd(LogicalKeyboardKey.keyB),
+  ShortcutId.italic: cmd(LogicalKeyboardKey.keyI),
+  ShortcutId.underline: cmd(LogicalKeyboardKey.keyU),
 };
 
 /// Every editor shortcut. Menus show the same activators so labels and
@@ -129,6 +135,9 @@ abstract final class EditorKeys {
   static SingleActivator get sendBackward => _key(ShortcutId.sendBackward);
   static SingleActivator get bringToFront => _key(ShortcutId.bringToFront);
   static SingleActivator get sendToBack => _key(ShortcutId.sendToBack);
+  static SingleActivator get bold => _key(ShortcutId.bold);
+  static SingleActivator get italic => _key(ShortcutId.italic);
+  static SingleActivator get underline => _key(ShortcutId.underline);
   static final redoAlt = cmd(LogicalKeyboardKey.keyY);
   static const delete = SingleActivator(LogicalKeyboardKey.delete);
   static const backspace = SingleActivator(LogicalKeyboardKey.backspace);
@@ -367,6 +376,9 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     if (onPresent != null) EditorKeys.present: onPresent,
     if (onCommandPalette != null) EditorKeys.commandPalette: onCommandPalette,
     EditorKeys.frameSelection: editor.frameSelection,
+    EditorKeys.bold: () => editor.toggleTextFormat(TextToggle.bold),
+    EditorKeys.italic: () => editor.toggleTextFormat(TextToggle.italic),
+    EditorKeys.underline: () => editor.toggleTextFormat(TextToggle.underline),
     EditorKeys.rulers: unlessTyping(
       ref.read(canvasAidsProvider.notifier).toggleRulers,
     ),

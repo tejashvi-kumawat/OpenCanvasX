@@ -706,30 +706,68 @@ class _TextSection extends ConsumerWidget {
     final editor = ref.read(editorProvider.notifier);
     void update(TextPayload Function(TextPayload t) f, String label) =>
         editor.updateSelectedText(f, label: label);
-    final family = _common((t) => t.fontFamily ?? fallbackFontFamilies.first);
-    final weight = _common((t) => t.fontWeight);
-    final size = _common((t) => t.fontSize);
+    // Characters selected while editing: the controls show and change
+    // their style (P1.5.4).
+    final range = ref.watch(editedRangeProvider);
+    final ranged =
+        ref.watch(textEditingProvider) != null &&
+        range != null &&
+        range.isValid &&
+        !range.isCollapsed;
+    final fmt = ranged ? editor.editedFormat() : null;
+    final family =
+        fmt != null
+            ? fmt.family ?? fallbackFontFamilies.first
+            : _common((t) => t.fontFamily ?? fallbackFontFamilies.first);
+    final weight = fmt?.weight ?? _common((t) => t.fontWeight);
+    final size = fmt?.size ?? _common((t) => t.fontSize);
     final align = _common((t) => t.align);
     final sizing = _common((t) => t.sizing);
     final lineHeight = _common((t) => t.lineHeight);
     final spacing = _common((t) => t.letterSpacing);
-    final italic = _common((t) => t.italic) ?? false;
+    final italic = fmt?.italic ?? _common((t) => t.italic) ?? false;
+    bool everywhere(bool? Function(TextRunStyle s) f) => texts.every(
+      (t) =>
+          t.text.isNotEmpty &&
+          [
+            for (var i = 0; i < t.text.length; i++)
+              f(runStyleAt(t.runs, i)) ?? false,
+          ].every((v) => v),
+    );
+    final underline = fmt?.underline ?? everywhere((s) => s.underline);
+    final strike = fmt?.strikethrough ?? everywhere((s) => s.strikethrough);
 
     return PanelSection(
-      title: 'Text',
+      title: ranged ? 'Text · selected characters' : 'Text',
       trailing: [
         OcxIconButton(
           icon: Icons.format_italic,
           tooltip: 'Italic',
           selected: italic,
-          onPressed: () => update((t) => t.copyWith(italic: !italic), 'Italic'),
+          onPressed: () => editor.toggleTextFormat(TextToggle.italic),
+        ),
+        OcxIconButton(
+          icon: Icons.format_underlined,
+          tooltip: 'Underline',
+          selected: underline,
+          onPressed: () => editor.toggleTextFormat(TextToggle.underline),
+        ),
+        OcxIconButton(
+          icon: Icons.format_strikethrough,
+          tooltip: 'Strikethrough',
+          selected: strike,
+          onPressed: () => editor.toggleTextFormat(TextToggle.strikethrough),
         ),
       ],
       child: FieldColumn(
         children: [
           FontPickerField(
             value: family,
-            onChanged: (f) => update((t) => t.copyWith(fontFamily: f), 'Font'),
+            onChanged:
+                (f) =>
+                    ranged
+                        ? editor.formatEditedText(textRunPatch(fontFamily: f))
+                        : update((t) => t.copyWith(fontFamily: f), 'Font'),
           ),
           if (family != null &&
               !isFontAvailable(availableFontFamilies(ref), family))
@@ -764,7 +802,15 @@ class _TextSection extends ConsumerWidget {
                   for (final (w, name) in _weights) SelectOption(w, name),
                 ],
                 onChanged:
-                    (w) => update((t) => t.copyWith(fontWeight: w), 'Weight'),
+                    (w) =>
+                        ranged
+                            ? editor.formatEditedText(
+                              textRunPatch(fontWeight: w),
+                            )
+                            : update(
+                              (t) => t.copyWith(fontWeight: w),
+                              'Weight',
+                            ),
               ),
               NumberField(
                 icon: Icons.format_size,
@@ -772,10 +818,22 @@ class _TextSection extends ConsumerWidget {
                 min: 1,
                 tooltip: 'Font size ($unit)',
                 onChanged:
-                    (v) => update((t) => t.copyWith(fontSize: v), 'Font size'),
+                    (v) =>
+                        ranged
+                            ? editor.formatEditedText(textRunPatch(fontSize: v))
+                            : update(
+                              (t) => t.copyWith(fontSize: v),
+                              'Font size',
+                            ),
               ),
             ],
           ),
+          if (ranged)
+            ColorRow(
+              color: fmt?.color ?? ArgbColor(0xFF16181D),
+              onPreview: (c) => editor.formatEditedText(textRunPatch(color: c)),
+              onChanged: (c) => editor.formatEditedText(textRunPatch(color: c)),
+            ),
           FieldRow(
             children: [
               OcxSegmented<TextAlignment>(

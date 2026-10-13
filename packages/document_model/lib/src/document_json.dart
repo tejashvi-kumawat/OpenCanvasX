@@ -9,6 +9,7 @@ import 'page.dart';
 import 'prototype.dart';
 import 'payload.dart';
 import 'style.dart';
+import 'text_runs.dart';
 import 'transform.dart';
 import 'units.dart';
 
@@ -226,6 +227,21 @@ Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
     'line_height': t.lineHeight,
     'letter_spacing': t.letterSpacing,
     'sizing': _snake(t.sizing.name),
+    if (t.runs.isNotEmpty)
+      'runs': [
+        for (final r in t.runs)
+          {
+            'start': r.start,
+            'end': r.end,
+            if (r.fontWeight != null) 'font_weight': r.fontWeight,
+            if (r.italic != null) 'italic': r.italic,
+            if (r.underline != null) 'underline': r.underline,
+            if (r.strikethrough != null) 'strikethrough': r.strikethrough,
+            if (r.color != null) 'color': _encodeColor(r.color!),
+            if (r.fontSize != null) 'font_size': r.fontSize,
+            if (r.fontFamily != null) 'font_family': r.fontFamily,
+          },
+      ],
   },
   FramePayload(:final clipContent, :final component) => {
     'clip_content': clipContent,
@@ -483,6 +499,10 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
               p.has('sizing')
                   ? _enumByName(TextSizing.values, p, 'sizing')
                   : TextSizing.autoWidth,
+          runs: [
+            for (final (i, raw) in p.optList('runs').indexed)
+              _decodeRun(_Json.root(raw, '${p.path}.runs[$i]')),
+          ],
         ),
       );
     case ObjectType.frame:
@@ -601,6 +621,20 @@ AssetInfo _decodeAsset(_Json j) => j.guard(
 );
 
 final _cssColor = RegExp(r'^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$');
+
+TextRun _decodeRun(_Json r) => r.guard(
+  () => TextRun(
+    r.integer('start'),
+    r.integer('end'),
+    fontWeight: r.has('font_weight') ? r.integer('font_weight') : null,
+    italic: r.optBool('italic'),
+    underline: r.optBool('underline'),
+    strikethrough: r.optBool('strikethrough'),
+    color: r.has('color') ? _decodeColor(r, 'color') : null,
+    fontSize: r.optNumber('font_size'),
+    fontFamily: r.optString('font_family'),
+  ),
+);
 
 ArgbColor _decodeColor(_Json j, String key) {
   final raw = j.string(key);

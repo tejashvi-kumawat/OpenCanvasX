@@ -248,7 +248,14 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                         key: ValueKey(editingText),
                         object: session.document.objects[editingText]!,
                         matrix: matrix,
-                        onChanged: _editor.updateEditedText,
+                        onChanged:
+                            (text, runs) =>
+                                _editor.updateEditedText(text, runs: runs),
+                        onSelection:
+                            (range) =>
+                                ref.read(editedRangeProvider.notifier).range =
+                                    range,
+                        onToggle: _editor.toggleTextFormat,
                         onDone: () {
                           _editor.finishTextEdit();
                           widget.focusNode.requestFocus();

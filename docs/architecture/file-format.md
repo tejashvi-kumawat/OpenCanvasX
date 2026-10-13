@@ -61,7 +61,7 @@ Encoding rules (schema version 1, implemented in `document_model/lib/src/documen
 | Object `transform` | `{ x, y, width, height, rotation, scale_x, scale_y, anchor_x, anchor_y }` | |
 | Object `payload` | text `{ "text" }`, image `{ "asset" }`, path `{ "segments": [["M",x,y], ["L",x,y], ["Q",cx,cy,x,y], ["C",c1x,c1y,c2x,c2y,x,y], ["Z"]] }`; omitted for shapes and groups | |
 | Object id | key in `objects`; not repeated inside the object | |
-| Text payload | `{ text, font_family?, font_size, font_weight, italic?, align, line_height, letter_spacing, sizing }`; `align` ∈ left/center/right/justify, `sizing` ∈ auto_width/auto_height/fixed | `"sizing": "auto_height"` |
+| Text payload | `{ text, font_family?, font_size, font_weight, italic?, align, line_height, letter_spacing, sizing, runs? }`; `runs` (P1.5.4) is a sorted, non-overlapping list of `{ start, end, font_weight?, italic?, underline?, strikethrough?, color?, font_size?, font_family? }` character ranges (UTF-16 offsets, `end` exclusive) overriding the box style; `align` ∈ left/center/right/justify, `sizing` ∈ auto_width/auto_height/fixed | `"sizing": "auto_height"` |
 | Polygon / star payload | `{ "sides" }` / `{ "points", "inner_ratio" }` | `{"points": 5, "inner_ratio": 0.5}` |
 | Stroke | `{ color, width, dash? }`; `dash` ∈ dashed/dotted, omitted for solid | |
 | Page kind | `kind: "board"` for unbounded boards; omitted for fixed pages (schema 2) | `"kind": "board"` |

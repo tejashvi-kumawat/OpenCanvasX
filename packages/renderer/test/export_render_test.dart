@@ -178,4 +178,25 @@ void main() {
       expect(rgba[at(0, 0) + 3], 0); // corner: outside the circle
     });
   });
+
+  test('textSegments split lines at runs with real positions', () {
+    final text = DesignObject(
+      id: const ObjectId('t'),
+      type: ObjectType.text,
+      pageId: pageId,
+      transform: ObjectTransform(width: 300, height: 60),
+      payload: TextPayload(
+        'Hello bold\nnext',
+        fontSize: 20,
+        runs: [TextRun(6, 10, fontWeight: 700)],
+      ),
+    );
+    final segs = textSegments(text);
+    expect(segs.map((s) => s.text), ['Hello ', 'bold', 'next']);
+    expect(segs[1].style.fontWeight, 700);
+    expect(segs[1].x, greaterThan(segs[0].x));
+    expect(segs[1].baseline, segs[0].baseline);
+    expect(segs[2].baseline, greaterThan(segs[0].baseline));
+    expect(segs[2].x, 0);
+  });
 }

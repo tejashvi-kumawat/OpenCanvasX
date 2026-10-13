@@ -17,6 +17,7 @@ Map<String, String> exportHtmlSite(
   List<ExportTarget> targets, {
   required Map<String, Uint8List> assets,
   TextLineBreaker lines = explicitLines,
+  TextSegmenter? segments,
 }) {
   if (targets.isEmpty) return const {};
   // Stable, unique file names: index.html, then slugs of target names.
@@ -50,6 +51,7 @@ Map<String, String> exportHtmlSite(
       target,
       assets: assets,
       lines: lines,
+      segments: segments,
     ).replaceFirst(RegExp(r'^<\?xml[^>]*\?>\s*'), '');
     final background = switch (page.background) {
       SolidBackground(:final color) when page.isBoard => _css(color),

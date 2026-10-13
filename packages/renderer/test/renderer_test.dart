@@ -278,4 +278,13 @@ void main() {
     );
     expect(shapePath(_object('l', ObjectType.line), style), isNull);
   });
+
+  test('character runs change layout (P1.5.4)', () {
+    final plain = TextPayload('Small BIG small', fontSize: 10);
+    final mixed = plain.copyWith(runs: [TextRun(6, 9, fontSize: 40)]);
+    final a = measureText(plain);
+    final b = measureText(mixed);
+    expect(b.y, greaterThan(a.y));
+    expect(b.x, greaterThan(a.x));
+  });
 }

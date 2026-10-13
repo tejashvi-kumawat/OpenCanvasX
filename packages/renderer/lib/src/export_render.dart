@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -116,4 +117,67 @@ Affine2D _parentMatrix(DesignDocument document, DesignObject object) {
     parentId = parent.parentId;
   }
   return matrix;
+}
+
+/// The styled pieces of [object]'s text as laid out on the canvas: one
+/// per line and character run, with its x and baseline (P1.5.4). Used by
+/// the SVG writer for text with mixed styles.
+List<({String text, double x, double baseline, TextRunStyle style})>
+textSegments(DesignObject object) {
+  final payload = object.payload;
+  if (payload is! TextPayload || payload.text.isEmpty) return const [];
+  final text = payload.text;
+  final autoWidth = payload.sizing == TextSizing.autoWidth;
+  final paragraph = layoutText(
+    payload,
+    width: autoWidth ? null : math.max(object.transform.width, 1),
+  );
+  if (autoWidth) {
+    // Lay out at the natural width so alignment matches the box.
+    paragraph.layout(
+      ui.ParagraphConstraints(
+        width: math.max(paragraph.maxIntrinsicWidth.ceilToDouble(), 1),
+      ),
+    );
+  }
+  final metrics = paragraph.computeLineMetrics();
+  final cuts = <int>{
+    for (final r in payload.runs) ...[r.start, r.end],
+  };
+  final out =
+      <({String text, double x, double baseline, TextRunStyle style})>[];
+  var offset = 0;
+  var line = 0;
+  while (offset < text.length && line < metrics.length) {
+    final range = paragraph.getLineBoundary(ui.TextPosition(offset: offset));
+    if (range.end <= offset) break;
+    final baseline = metrics[line].baseline;
+    final points =
+        {
+            range.start,
+            range.end,
+            for (final c in cuts)
+              if (c > range.start && c < range.end) c,
+          }.toList()
+          ..sort();
+    for (var i = 0; i + 1 < points.length; i++) {
+      final a = points[i];
+      final b = points[i + 1];
+      final piece = text.substring(a, b).replaceAll('\n', '');
+      if (piece.isEmpty) continue;
+      final boxes = paragraph.getBoxesForRange(a, b);
+      if (boxes.isEmpty) continue;
+      out.add((
+        text: piece,
+        x: boxes.map((box) => box.left).reduce(math.min),
+        baseline: baseline,
+        style: runStyleAt(payload.runs, a),
+      ));
+    }
+    offset = range.end;
+    if (offset < text.length && text[offset] == '\n') offset++;
+    line++;
+  }
+  paragraph.dispose();
+  return out;
 }

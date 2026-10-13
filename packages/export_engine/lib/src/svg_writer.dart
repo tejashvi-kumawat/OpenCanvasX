@@ -11,6 +11,16 @@ import 'export_targets.dart';
 /// from its text layout so wrapping matches the canvas).
 typedef TextLineBreaker = List<String> Function(DesignObject text);
 
+/// A piece of laid-out text in one style: its characters, where it
+/// starts (x) and its baseline (y), in the text box's coordinates, and
+/// the run overrides that apply (P1.5.4).
+typedef TextSegment =
+    ({String text, double x, double baseline, TextRunStyle style});
+
+/// Positions the styled pieces of a text with character runs (the app
+/// supplies this from its text layout).
+typedef TextSegmenter = List<TextSegment> Function(DesignObject text);
+
 /// Lines broken only at explicit newlines (no wrapping).
 List<String> explicitLines(DesignObject text) => switch (text.payload) {
   TextPayload(:final text) => text.split('\n'),
@@ -35,11 +45,12 @@ String exportSvg(
   double scale = 1,
   bool transparent = false,
   ImageOverride? imageOverride,
+  TextSegmenter? segments,
 }) {
   final page = document.pages.firstWhere((p) => p.id == target.pageId);
   final size = exportPixelSize(page, target, scale: scale);
   final r = target.region;
-  final w = _SvgWriter(document, assets, lines, imageOverride);
+  final w = _SvgWriter(document, assets, lines, imageOverride, segments);
   final out =
       StringBuffer()
         ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
@@ -80,12 +91,19 @@ String exportSvg(
 }
 
 class _SvgWriter {
-  _SvgWriter(this.document, this.assets, this.lines, this.imageOverride);
+  _SvgWriter(
+    this.document,
+    this.assets,
+    this.lines,
+    this.imageOverride,
+    this.segments,
+  );
 
   final DesignDocument document;
   final Map<String, Uint8List> assets;
   final TextLineBreaker lines;
   final ImageOverride? imageOverride;
+  final TextSegmenter? segments;
   final StringBuffer defs = StringBuffer();
   int _clips = 0;
 
@@ -331,6 +349,22 @@ class _SvgWriter {
       attrs.write(' letter-spacing="${_n(payload.letterSpacing)}"');
     }
     if (style.fill != null) attrs.write(_fill(style));
+    // Mixed styles: every piece at its laid-out position (P1.5.4).
+    if (payload.runs.isNotEmpty && segments != null) {
+      final base = attrs.toString().replaceFirst(
+        RegExp(' text-anchor="[a-z]+"'),
+        ' text-anchor="start"',
+      );
+      out.writeln('<text$base xml:space="preserve">');
+      for (final seg in segments!(o)) {
+        out.writeln(
+          '<tspan x="${_n(seg.x)}" y="${_n(seg.baseline)}"'
+          '${_runAttrs(seg.style)}>${_esc(seg.text)}</tspan>',
+        );
+      }
+      out.writeln('</text>');
+      return;
+    }
     final lineHeight = payload.fontSize * payload.lineHeight;
     // Baseline of the first line: half leading plus the ascent (~0.8 em).
     final first = (lineHeight - payload.fontSize) / 2 + payload.fontSize * 0.8;
@@ -482,6 +516,28 @@ String _stroke(Stroke stroke, {bool roundCap = false}) {
   final cap = stroke.dash == StrokeDash.dotted || roundCap ? 'round' : 'butt';
   return '${_paint('stroke', stroke.color)} stroke-width="${_n(w)}"'
       ' stroke-linejoin="round" stroke-linecap="$cap"$dash';
+}
+
+/// SVG attributes for a run's overrides.
+String _runAttrs(TextRunStyle s) {
+  final out = StringBuffer();
+  if (s.fontWeight case final w?) out.write(' font-weight="$w"');
+  if (s.italic case final i?) {
+    out.write(' font-style="${i ? 'italic' : 'normal'}"');
+  }
+  if (s.fontSize case final size?) out.write(' font-size="${_n(size)}"');
+  if (s.fontFamily case final f?) {
+    out.write(' font-family="${_esc("'$f', ")}system-ui, sans-serif"');
+  }
+  if (s.color case final c?) out.write(_paint('fill', c));
+  final decorations = [
+    if (s.underline ?? false) 'underline',
+    if (s.strikethrough ?? false) 'line-through',
+  ];
+  if (decorations.isNotEmpty) {
+    out.write(' text-decoration="${decorations.join(' ')}"');
+  }
+  return out.toString();
 }
 
 String _paint(String attr, ArgbColor color) {

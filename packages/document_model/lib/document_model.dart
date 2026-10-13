@@ -20,6 +20,7 @@ export 'src/payload.dart';
 export 'src/presets.dart';
 export 'src/prototype.dart';
 export 'src/style.dart';
+export 'src/text_runs.dart';
 export 'src/transform.dart';
 export 'src/units.dart';
 

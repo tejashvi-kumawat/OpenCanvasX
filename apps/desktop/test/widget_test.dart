@@ -21,7 +21,9 @@ import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
 import 'package:opencanvasx/src/editor/editor_shortcuts.dart';
 import 'package:opencanvasx/src/editor/font_picker.dart';
+import 'package:opencanvasx/src/editor/inspector_panel.dart';
 import 'package:opencanvasx/src/editor/rulers.dart';
+import 'package:opencanvasx/src/editor/text_overlay.dart';
 import 'package:opencanvasx/src/editor/side_rail.dart';
 import 'package:opencanvasx/src/editor/tools.dart';
 import 'package:opencanvasx/src/editor/viewport.dart';
@@ -1328,6 +1330,67 @@ void main() {
       // performance_test) check the per-frame operations themselves.
       expect(medianMs, lessThan(400), reason: 'median frame $medianMs ms');
       expect(session().undoLabel, 'Move');
+    });
+
+    testWidgets('rich text: format selected characters while editing', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier);
+      final id = editor.insertText(TextRole.body, text: 'Hello bold world');
+      await tester.pumpAndSettle();
+      editor.startTextEdit(id);
+      await tester.pumpAndSettle();
+      final field = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byType(TextEditOverlay),
+          matching: find.byType(EditableText),
+        ),
+      );
+      field.controller.selection = const TextSelection(
+        baseOffset: 6,
+        extentOffset: 10,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Text · selected characters'), findsOneWidget);
+
+      TextPayload text() =>
+          session().document.objects[id]!.payload as TextPayload;
+      await chord(tester, LogicalKeyboardKey.keyB);
+      expect(text().runs.single.fontWeight, 700);
+      expect((text().runs.single.start, text().runs.single.end), (6, 10));
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(InspectorPanel),
+          matching: find.byTooltip('Underline'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(text().runs.single.underline, isTrue);
+
+      // Typing right after the bold word continues it.
+      field.controller.value = const TextEditingValue(
+        text: 'Hello bolder world',
+        selection: TextSelection.collapsed(offset: 12),
+      );
+      await tester.pumpAndSettle();
+      expect((text().runs.single.start, text().runs.single.end), (6, 12));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(container.read(textEditingProvider), isNull);
+      expect(session().undoLabel, 'Edit text');
+      expect(text().text, 'Hello bolder world');
+      expect(text().runs.single.fontWeight, 700);
+
+      // Ctrl+B on the selected box makes the whole text bold.
+      editor.select({id});
+      await tester.pumpAndSettle();
+      await chord(tester, LogicalKeyboardKey.keyB);
+      expect(text().fontWeight, 700);
+      expect(text().runs.single.fontWeight, isNull);
+      expect(session().undoLabel, 'Bold');
     });
 
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {

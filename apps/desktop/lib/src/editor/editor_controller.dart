@@ -21,6 +21,7 @@ import 'package:design_engine/design_engine.dart'
         updatePage;
 import 'package:document_model/document_model.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show TextRange;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:plugins_sdk/plugins_sdk.dart' show PluginEffect;
 import 'package:storage/storage.dart';
@@ -159,6 +160,23 @@ final textMeasurerProvider = Provider<TextMeasurer>(
 );
 
 /// The text object being edited inline on the canvas, if any.
+/// Characters selected in the text being edited inline (P1.5.4), or
+/// `null`; formatting applies to them when not collapsed.
+final editedRangeProvider = NotifierProvider<EditedRangeController, TextRange?>(
+  EditedRangeController.new,
+);
+
+class EditedRangeController extends Notifier<TextRange?> {
+  @override
+  TextRange? build() => null;
+
+  TextRange? get range => state;
+  set range(TextRange? value) => state = value;
+}
+
+/// On/off character formats (Ctrl+B, Ctrl+I, Ctrl+U).
+enum TextToggle { bold, italic, underline, strikethrough }
+
 final textEditingProvider = NotifierProvider<TextEditingTarget, ObjectId?>(
   TextEditingTarget.new,
 );
@@ -1149,13 +1167,244 @@ class EditorController extends Notifier<EditorSession?> {
     ref.read(textEditingProvider.notifier).id = id;
   }
 
-  /// Live update while typing; resizes auto-sized boxes.
-  void updateEditedText(String text) {
+  /// Live update while typing; resizes auto-sized boxes. [runs] are the
+  /// character formats after the edit (P1.5.4).
+  void updateEditedText(String text, {List<TextRun>? runs}) {
     final id = ref.read(textEditingProvider);
     final object = id == null ? null : _editor.document.objects[id];
     final payload = object?.payload;
     if (object == null || payload is! TextPayload) return;
-    previewObjects([_withText(object, payload.copyWith(text: text))]);
+    previewObjects([
+      _withText(
+        object,
+        payload.copyWith(
+          text: text,
+          runs: runs ?? shiftRunsForEdit(payload.runs, payload.text, text),
+        ),
+      ),
+    ]);
+  }
+
+  /// The text being edited and the range formatting applies to: the
+  /// selected characters, or the whole text when nothing is selected.
+  (DesignObject, TextPayload, int, int)? _formatTarget() {
+    final id = ref.read(textEditingProvider);
+    final object = id == null ? null : _editor.document.objects[id];
+    final payload = object?.payload;
+    if (object == null || payload is! TextPayload) return null;
+    final range = ref.read(editedRangeProvider);
+    final length = payload.text.length;
+    if (range == null || range.isCollapsed || !range.isValid) {
+      return (object, payload, 0, length);
+    }
+    return (
+      object,
+      payload,
+      range.start.clamp(0, length),
+      range.end.clamp(0, length),
+    );
+  }
+
+  /// Whether a text is being edited with characters selected.
+  bool get hasEditedRange {
+    final range = ref.read(editedRangeProvider);
+    return ref.read(textEditingProvider) != null &&
+        range != null &&
+        range.isValid &&
+        !range.isCollapsed;
+  }
+
+  /// Applies [patch] to the edited text's selected characters (or all of
+  /// it), as part of the editing step (P1.5.4).
+  void formatEditedText(TextRunStyle patch) {
+    final target = _formatTarget();
+    if (target == null) return;
+    final (object, payload, start, end) = target;
+    final runs = applyRunPatch(
+      payload.runs,
+      start,
+      end,
+      patch,
+      payload.text.length,
+    );
+    previewObjects([_withText(object, payload.copyWith(runs: runs))]);
+  }
+
+  /// Formatting in effect at the start of the edited range: the box style
+  /// with the runs' overrides.
+  ({
+    int weight,
+    bool italic,
+    bool underline,
+    bool strikethrough,
+    double size,
+    String? family,
+    ArgbColor? color,
+  })?
+  editedFormat() {
+    final target = _formatTarget();
+    if (target == null) return null;
+    final (_, p, start, _) = target;
+    final s = runStyleAt(p.runs, start);
+    return (
+      weight: s.fontWeight ?? p.fontWeight,
+      italic: s.italic ?? p.italic,
+      underline: s.underline ?? false,
+      strikethrough: s.strikethrough ?? false,
+      size: s.fontSize ?? p.fontSize,
+      family: s.fontFamily ?? p.fontFamily,
+      color: s.color,
+    );
+  }
+
+  /// Turns [toggle] on for the range unless every character already has
+  /// it, then off. Without inline editing it applies to the selected text
+  /// boxes as a whole.
+  void toggleTextFormat(TextToggle toggle) {
+    final target = _formatTarget();
+    if (target == null) {
+      _toggleBoxes(toggle);
+      return;
+    }
+    final (object, p, start, end) = target;
+    if (end <= start) return;
+    bool has(int i) {
+      final s = runStyleAt(p.runs, i);
+      return switch (toggle) {
+        TextToggle.bold => (s.fontWeight ?? p.fontWeight) >= 600,
+        TextToggle.italic => s.italic ?? p.italic,
+        TextToggle.underline => s.underline ?? false,
+        TextToggle.strikethrough => s.strikethrough ?? false,
+      };
+    }
+
+    var all = true;
+    for (var i = start; i < end && all; i++) {
+      all = has(i);
+    }
+    final on = !all;
+    final patch = switch (toggle) {
+      TextToggle.bold => textRunPatch(
+        fontWeight: on ? math.max(700, p.fontWeight) : 400,
+      ),
+      TextToggle.italic => textRunPatch(italic: on),
+      TextToggle.underline => textRunPatch(underline: on),
+      TextToggle.strikethrough => textRunPatch(strikethrough: on),
+    };
+    var runs = applyRunPatch(p.runs, start, end, patch, p.text.length);
+    // Back to the box style: drop the override instead of storing it.
+    final matchesBox = switch (toggle) {
+      TextToggle.bold => !on && p.fontWeight < 600,
+      TextToggle.italic => on == p.italic,
+      TextToggle.underline || TextToggle.strikethrough => !on,
+    };
+    if (matchesBox) {
+      runs = clearRunFields(
+        runs,
+        start,
+        end,
+        p.text.length,
+        fontWeight: toggle == TextToggle.bold,
+        italic: toggle == TextToggle.italic,
+        underline: toggle == TextToggle.underline,
+        strikethrough: toggle == TextToggle.strikethrough,
+      );
+    }
+    previewObjects([_withText(object, p.copyWith(runs: runs))]);
+  }
+
+  void _toggleBoxes(TextToggle toggle) {
+    final texts = [
+      for (final o in _editor.selectedObjects)
+        if (o.payload case final TextPayload p) (o, p),
+    ];
+    if (texts.isEmpty) return;
+    bool has(TextPayload p) => switch (toggle) {
+      TextToggle.bold => p.fontWeight >= 600,
+      TextToggle.italic => p.italic,
+      TextToggle.underline =>
+        p.text.isNotEmpty &&
+            [
+              for (var i = 0; i < p.text.length; i++)
+                runStyleAt(p.runs, i).underline ?? false,
+            ].every((u) => u),
+      TextToggle.strikethrough =>
+        p.text.isNotEmpty &&
+            [
+              for (var i = 0; i < p.text.length; i++)
+                runStyleAt(p.runs, i).strikethrough ?? false,
+            ].every((u) => u),
+    };
+    final on = !texts.every((t) => has(t.$2));
+    final label = switch (toggle) {
+      TextToggle.bold => 'Bold',
+      TextToggle.italic => 'Italic',
+      TextToggle.underline => 'Underline',
+      TextToggle.strikethrough => 'Strikethrough',
+    };
+    _commit(
+      updateObjects(_editor.document, [
+        for (final (o, p) in texts)
+          _withText(o, switch (toggle) {
+            TextToggle.bold => p.copyWith(
+              fontWeight: on ? math.max(700, p.fontWeight) : 400,
+              runs: clearRunFields(
+                p.runs,
+                0,
+                p.text.length,
+                p.text.length,
+                fontWeight: true,
+              ),
+            ),
+            TextToggle.italic => p.copyWith(
+              italic: on,
+              runs: clearRunFields(
+                p.runs,
+                0,
+                p.text.length,
+                p.text.length,
+                italic: true,
+              ),
+            ),
+            TextToggle.underline => p.copyWith(
+              runs:
+                  on
+                      ? applyRunPatch(
+                        p.runs,
+                        0,
+                        p.text.length,
+                        textRunPatch(underline: true),
+                        p.text.length,
+                      )
+                      : clearRunFields(
+                        p.runs,
+                        0,
+                        p.text.length,
+                        p.text.length,
+                        underline: true,
+                      ),
+            ),
+            TextToggle.strikethrough => p.copyWith(
+              runs:
+                  on
+                      ? applyRunPatch(
+                        p.runs,
+                        0,
+                        p.text.length,
+                        textRunPatch(strikethrough: true),
+                        p.text.length,
+                      )
+                      : clearRunFields(
+                        p.runs,
+                        0,
+                        p.text.length,
+                        p.text.length,
+                        strikethrough: true,
+                      ),
+            ),
+          }),
+      ], label: label),
+    );
   }
 
   /// Ends inline editing. Empty text boxes are removed.
@@ -1163,6 +1412,7 @@ class EditorController extends Notifier<EditorSession?> {
     final id = ref.read(textEditingProvider);
     if (id == null) return;
     ref.read(textEditingProvider.notifier).id = null;
+    ref.read(editedRangeProvider.notifier).range = null;
     final payload = _editor.document.objects[id]?.payload;
     endGesture('Edit text');
     if (payload is TextPayload && payload.text.trim().isEmpty) {
@@ -1174,10 +1424,18 @@ class EditorController extends Notifier<EditorSession?> {
   }
 
   /// Changes the formatting of every selected text object (P1.5.2–P1.5.3).
+  /// While a text is edited inline the change joins the editing step.
   void updateSelectedText(
     TextPayload Function(TextPayload text) update, {
     required String label,
   }) {
+    if (ref.read(textEditingProvider) case final id?) {
+      final object = _editor.document.objects[id];
+      if (object?.payload case final TextPayload payload) {
+        previewObjects([_withText(object!, update(payload))]);
+        return;
+      }
+    }
     _commit(
       updateObjects(_editor.document, [
         for (final o in _editor.selectedObjects)

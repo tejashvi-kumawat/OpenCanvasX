@@ -512,40 +512,75 @@ ui.Paragraph layoutText(
   ui.Color? color,
   ui.Paint? foreground,
 }) {
-  final builder =
-      ui.ParagraphBuilder(
-          ui.ParagraphStyle(
-            textAlign: switch (text.align) {
-              TextAlignment.left => ui.TextAlign.left,
-              TextAlignment.center => ui.TextAlign.center,
-              TextAlignment.right => ui.TextAlign.right,
-              TextAlignment.justify => ui.TextAlign.justify,
-            },
-            fontFamily: text.fontFamily ?? defaultFontFamily,
-            fontSize: text.fontSize,
-            height: text.lineHeight,
-            fontWeight: ui.FontWeight.values[(text.fontWeight ~/ 100) - 1],
-            fontStyle: text.italic ? ui.FontStyle.italic : ui.FontStyle.normal,
-          ),
-        )
-        ..pushStyle(
-          ui.TextStyle(
-            color:
-                foreground == null ? color ?? const ui.Color(0xFF16181D) : null,
-            foreground: foreground,
-            fontFamily: text.fontFamily ?? defaultFontFamily,
-            fontSize: text.fontSize,
-            height: text.lineHeight,
-            letterSpacing: text.letterSpacing,
-            fontWeight: ui.FontWeight.values[(text.fontWeight ~/ 100) - 1],
-            fontStyle: text.italic ? ui.FontStyle.italic : ui.FontStyle.normal,
-          ),
-        )
-        // An empty paragraph still has the height of one line.
-        ..addText(text.text.isEmpty ? ' ' : text.text);
+  final builder = ui.ParagraphBuilder(
+    ui.ParagraphStyle(
+      textAlign: switch (text.align) {
+        TextAlignment.left => ui.TextAlign.left,
+        TextAlignment.center => ui.TextAlign.center,
+        TextAlignment.right => ui.TextAlign.right,
+        TextAlignment.justify => ui.TextAlign.justify,
+      },
+      fontFamily: text.fontFamily ?? defaultFontFamily,
+      fontSize: text.fontSize,
+      height: text.lineHeight,
+      fontWeight: ui.FontWeight.values[(text.fontWeight ~/ 100) - 1],
+      fontStyle: text.italic ? ui.FontStyle.italic : ui.FontStyle.normal,
+    ),
+  )..pushStyle(
+    ui.TextStyle(
+      color: foreground == null ? color ?? const ui.Color(0xFF16181D) : null,
+      foreground: foreground,
+      fontFamily: text.fontFamily ?? defaultFontFamily,
+      fontSize: text.fontSize,
+      height: text.lineHeight,
+      letterSpacing: text.letterSpacing,
+      fontWeight: ui.FontWeight.values[(text.fontWeight ~/ 100) - 1],
+      fontStyle: text.italic ? ui.FontStyle.italic : ui.FontStyle.normal,
+    ),
+  );
+  if (text.text.isEmpty) {
+    // An empty paragraph still has the height of one line.
+    builder.addText(' ');
+  } else {
+    // Character-level runs (P1.5.4) push their overrides over the base.
+    var at = 0;
+    for (final run in text.runs) {
+      if (run.start > at) builder.addText(text.text.substring(at, run.start));
+      builder
+        ..pushStyle(runTextStyle(run))
+        ..addText(text.text.substring(run.start, run.end))
+        ..pop();
+      at = run.end;
+    }
+    if (at < text.text.length) builder.addText(text.text.substring(at));
+  }
   return builder.build()
     ..layout(ui.ParagraphConstraints(width: width ?? double.infinity));
 }
+
+/// The overrides of [run] as a paint style (unset fields inherit).
+ui.TextStyle runTextStyle(TextRun run) => ui.TextStyle(
+  color: run.color == null ? null : toUiColor(run.color!),
+  fontWeight:
+      run.fontWeight == null
+          ? null
+          : ui.FontWeight.values[(run.fontWeight! ~/ 100) - 1],
+  fontStyle:
+      run.italic == null
+          ? null
+          : (run.italic! ? ui.FontStyle.italic : ui.FontStyle.normal),
+  decoration: switch ((run.underline ?? false, run.strikethrough ?? false)) {
+    (true, true) => ui.TextDecoration.combine([
+      ui.TextDecoration.underline,
+      ui.TextDecoration.lineThrough,
+    ]),
+    (true, false) => ui.TextDecoration.underline,
+    (false, true) => ui.TextDecoration.lineThrough,
+    (false, false) => null,
+  },
+  fontSize: run.fontSize,
+  fontFamily: run.fontFamily,
+);
 
 /// Box size of [text] in its own units: natural size for auto width, the
 /// wrapped height at [width] otherwise (P1.5.1).

@@ -19,6 +19,7 @@ import 'package:opencanvasx/src/plugins/plugins.dart';
 import 'package:opencanvasx/src/present/present_page.dart';
 import 'package:opencanvasx/src/templates/template_gallery.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
+import 'package:opencanvasx/src/editor/editor_shortcuts.dart';
 import 'package:opencanvasx/src/editor/rulers.dart';
 import 'package:opencanvasx/src/editor/side_rail.dart';
 import 'package:opencanvasx/src/editor/tools.dart';
@@ -1068,6 +1069,85 @@ void main() {
       editor.undo();
       await tester.pumpAndSettle();
       expect(roots(), isEmpty);
+    });
+
+    testWidgets('command palette: Ctrl+K, fuzzy search, Enter runs', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      await chord(tester, LogicalKeyboardKey.keyK);
+      expect(find.text('Type a command…'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, 'shw rlr');
+      await tester.pumpAndSettle();
+      expect(find.text('Show rulers'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Type a command…'), findsNothing);
+      expect(container.read(canvasAidsProvider).rulers, isTrue);
+
+      // Arrow keys move through results; Enter runs the highlighted one.
+      await chord(tester, LogicalKeyboardKey.keyK);
+      await tester.enterText(find.byType(TextField).last, 'add page');
+      await tester.pumpAndSettle();
+      final pages = session().document.pages.length;
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(session().document.pages, hasLength(pages + 1));
+    });
+
+    testWidgets('shortcuts: rebind Group, refuse a taken key, reset', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      await chord(tester, LogicalKeyboardKey.keyK);
+      await tester.enterText(find.byType(TextField).last, 'keyboard');
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Keyboard shortcuts'), findsOneWidget);
+
+      Future<void> press(LogicalKeyboardKey key, {bool shift = false}) async {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        if (shift) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.sendKeyEvent(key);
+        if (shift) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.scrollUntilVisible(
+        find.text('Group'),
+        120,
+        scrollable: find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.ensureVisible(find.text('Group'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Group'));
+      await tester.pumpAndSettle();
+      expect(find.text('Press keys…'), findsOneWidget);
+      await press(LogicalKeyboardKey.keyZ);
+      expect(find.textContaining('already used by Undo'), findsOneWidget);
+      await press(LogicalKeyboardKey.keyU, shift: true);
+      expect(find.text('Ctrl+Shift+U'), findsOneWidget);
+      expect(index.settings.get('shortcuts'), contains('group'));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      container.read(editorProvider.notifier)
+        ..insertShape(ObjectType.rect)
+        ..insertShape(ObjectType.ellipse)
+        ..selectAll();
+      await tester.pumpAndSettle();
+      await chord(tester, LogicalKeyboardKey.keyU, shift: true);
+      expect(roots(), hasLength(1));
+      expect(session().undoLabel, 'Group');
+
+      container.read(shortcutOverridesProvider.notifier).resetAll();
+      expect(index.settings.get('shortcuts'), isNull);
+      expect(describeActivator(EditorKeys.group), 'Ctrl+G');
     });
 
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {

@@ -5,6 +5,7 @@ import '../theme/ocx_theme.dart';
 import '../export/export_dialog.dart';
 import '../present/present_page.dart';
 import 'canvas_view.dart';
+import 'command_palette.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
 import 'inspector_panel.dart';
@@ -53,6 +54,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final c = context.ocx;
+    // Rebind keys when the user changes a shortcut.
+    ref.watch(shortcutOverridesProvider);
     return PopScope(
       canPop: _closing,
       onPopInvokedWithResult: (didPop, _) {
@@ -63,6 +66,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           ref,
           onExport: () => showExportDialog(context),
           onPresent: () => presentDesign(context),
+          onCommandPalette: () => showCommandPalette(context, ref),
         ),
         child: Focus(
           focusNode: _focus,

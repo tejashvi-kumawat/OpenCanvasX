@@ -161,8 +161,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.10.1 Main layout: top menu, left panel, canvas, right inspector, bottom bar
 - [x] P1.10.2 Inspector / properties panel
 - [x] P1.10.3 Dark + light theme
-- [ ] P1.10.4 Keyboard shortcuts (core set) + customization
-- [ ] P1.10.5 Command palette (Ctrl/Cmd+K) with fuzzy search
+- [x] P1.10.4 Keyboard shortcuts (core set) + customization
+- [x] P1.10.5 Command palette (Ctrl/Cmd+K) with fuzzy search
 - [ ] P1.10.6 Onboarding: create identity, choose storage directory, privacy explanation
 
 ## P1.11 Offline & Privacy Baseline

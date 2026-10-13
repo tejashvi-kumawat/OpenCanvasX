@@ -12,6 +12,7 @@ import '../widgets/controls.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
 import 'rulers.dart';
+import 'shortcuts_dialog.dart';
 import 'viewport.dart';
 
 /// Editor toolbar (design-system.md §5): menu and tools on the left, title
@@ -319,6 +320,7 @@ class _MainMenu extends ConsumerWidget {
     final hasSelection = sel.isNotEmpty;
     final themeMode = ref.watch(themeModeProvider);
     final aids = ref.watch(canvasAidsProvider);
+    ref.watch(shortcutOverridesProvider);
     final aidsCtl = ref.read(canvasAidsProvider.notifier);
 
     MenuItemButton item(
@@ -341,6 +343,8 @@ class _MainMenu extends ConsumerWidget {
               () => showExportDialog(context),
               shortcut: EditorKeys.export,
             ),
+            const Divider(),
+            item('Keyboard shortcuts…', () => showShortcutsDialog(context)),
             const Divider(),
             item('Close design', onHome),
           ],

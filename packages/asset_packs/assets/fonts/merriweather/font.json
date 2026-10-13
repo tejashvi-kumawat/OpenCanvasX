@@ -1,0 +1,13 @@
+{
+ "family": "Merriweather",
+ "category": "serif",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/merriweather",
+ "files": [
+  {
+   "file": "Merriweather_opsz_wdth_wght.ttf",
+   "sha256": "d0ed0e359e396af7ad05e73dffd11a3a4c326ea0d0283c56bd9361cb2cc86a96"
+  }
+ ]
+}

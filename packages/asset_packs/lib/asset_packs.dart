@@ -46,3 +46,47 @@ Future<Uint8List> loadItemBytes(AssetBundle bundle, AssetItem item) async {
   final data = await bundle.load(packAssetKey(item.packId, item.file));
   return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
+
+/// A bundled open-licence font family (OFL, from Google Fonts).
+typedef BundledFont = ({String family, String category});
+
+Future<List<BundledFont>>? _fonts;
+
+/// Registers the bundled fonts in `assets/fonts/` with the engine and
+/// returns their families. Runs once; later calls return the same result.
+/// Families whose files fail to load are left out.
+Future<List<BundledFont>> loadBundledFonts(AssetBundle bundle) =>
+    _fonts ??= _loadFonts(bundle);
+
+Future<List<BundledFont>> _loadFonts(AssetBundle bundle) async {
+  const base = 'packages/asset_packs/assets/fonts';
+  final Map<String, Object?> index;
+  try {
+    index =
+        jsonDecode(await bundle.loadString('$base/index.json'))
+            as Map<String, Object?>;
+  } on Object {
+    return const [];
+  }
+  final fonts = <BundledFont>[];
+  for (final entry
+      in (index['families']! as List).cast<Map<String, Object?>>()) {
+    final dir = entry['dir']! as String;
+    final family = entry['family']! as String;
+    try {
+      final meta =
+          jsonDecode(await bundle.loadString('$base/$dir/font.json'))
+              as Map<String, Object?>;
+      final loader = FontLoader(family);
+      for (final file
+          in (meta['files']! as List).cast<Map<String, Object?>>()) {
+        loader.addFont(bundle.load('$base/$dir/${file['file']}'));
+      }
+      await loader.load();
+      fonts.add((family: family, category: entry['category']! as String));
+    } on Object {
+      // Skipped; the family falls back to the default font.
+    }
+  }
+  return fonts;
+}

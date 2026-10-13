@@ -1,0 +1,13 @@
+{
+ "family": "Raleway",
+ "category": "sans",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/raleway",
+ "files": [
+  {
+   "file": "Raleway_wght.ttf",
+   "sha256": "8bbcc3eb8275c388f4bcd998832f8a4b943eadbaf6a595205312774b5951aefb"
+  }
+ ]
+}

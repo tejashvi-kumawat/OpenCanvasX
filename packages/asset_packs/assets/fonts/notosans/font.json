@@ -1,0 +1,13 @@
+{
+ "family": "Noto Sans",
+ "category": "sans",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/notosans",
+ "files": [
+  {
+   "file": "NotoSans_wdth_wght.ttf",
+   "sha256": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d"
+  }
+ ]
+}

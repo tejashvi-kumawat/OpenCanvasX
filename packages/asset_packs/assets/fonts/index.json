@@ -1,0 +1,104 @@
+{
+ "families": [
+  {
+   "dir": "inter",
+   "family": "Inter",
+   "category": "sans"
+  },
+  {
+   "dir": "roboto",
+   "family": "Roboto",
+   "category": "sans"
+  },
+  {
+   "dir": "montserrat",
+   "family": "Montserrat",
+   "category": "sans"
+  },
+  {
+   "dir": "poppins",
+   "family": "Poppins",
+   "category": "sans"
+  },
+  {
+   "dir": "playfairdisplay",
+   "family": "Playfair Display",
+   "category": "serif"
+  },
+  {
+   "dir": "lora",
+   "family": "Lora",
+   "category": "serif"
+  },
+  {
+   "dir": "merriweather",
+   "family": "Merriweather",
+   "category": "serif"
+  },
+  {
+   "dir": "oswald",
+   "family": "Oswald",
+   "category": "display"
+  },
+  {
+   "dir": "raleway",
+   "family": "Raleway",
+   "category": "sans"
+  },
+  {
+   "dir": "nunito",
+   "family": "Nunito",
+   "category": "sans"
+  },
+  {
+   "dir": "worksans",
+   "family": "Work Sans",
+   "category": "sans"
+  },
+  {
+   "dir": "dmsans",
+   "family": "DM Sans",
+   "category": "sans"
+  },
+  {
+   "dir": "spacegrotesk",
+   "family": "Space Grotesk",
+   "category": "sans"
+  },
+  {
+   "dir": "bebasneue",
+   "family": "Bebas Neue",
+   "category": "display"
+  },
+  {
+   "dir": "pacifico",
+   "family": "Pacifico",
+   "category": "handwriting"
+  },
+  {
+   "dir": "caveat",
+   "family": "Caveat",
+   "category": "handwriting"
+  },
+  {
+   "dir": "lobster",
+   "family": "Lobster",
+   "category": "display"
+  },
+  {
+   "dir": "sourceserif4",
+   "family": "Source Serif 4",
+   "category": "serif"
+  },
+  {
+   "dir": "jetbrainsmono",
+   "family": "JetBrains Mono",
+   "category": "mono"
+  },
+  {
+   "dir": "notosans",
+   "family": "Noto Sans",
+   "category": "sans"
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+ "family": "Bebas Neue",
+ "category": "display",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/bebasneue",
+ "files": [
+  {
+   "file": "BebasNeue-Regular.ttf",
+   "sha256": "08e4623805102d819f58601e46e345648846075e363b2ceb23313c2d1c83ec73"
+  }
+ ]
+}

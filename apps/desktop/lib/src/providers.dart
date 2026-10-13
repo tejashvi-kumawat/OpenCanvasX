@@ -222,3 +222,8 @@ class ThemeModeController extends Notifier<ThemeMode> {
     state = mode;
   }
 }
+
+/// Bundled open-licence font families, registered with the engine.
+final bundledFontsProvider = FutureProvider<List<BundledFont>>(
+  (ref) => loadBundledFonts(rootBundle),
+);

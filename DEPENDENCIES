@@ -29,3 +29,4 @@ Phosphor Icons core | 2.1.1 | MIT | https://www.npmjs.com/package/@phosphor-icon
 Twemoji graphics | 15.0.0 | CC-BY-4.0 | https://www.npmjs.com/package/@twemoji/svg | bundled sticker pack; attribution shown in app
 flutter_secure_storage (+ _windows, _linux, _darwin, _web, _platform_interface) | ^11.2.0 (11.2.0; windows 4.2.2) | BSD-3-Clause | https://pub.dev/packages/flutter_secure_storage | AI API keys in the OS credential store (P5.1.6)
 win32, ffi_leak_tracker | 6.4.0 / 0.1.2 | BSD-3-Clause | https://pub.dev/packages/win32 | transitive via flutter_secure_storage_windows
+Fonts: Inter, Roboto, Montserrat, Poppins, Playfair Display, Lora, Merriweather, Oswald, Raleway, Nunito, Work Sans, DM Sans, Space Grotesk, Bebas Neue, Pacifico, Caveat, Lobster, Source Serif 4, JetBrains Mono, Noto Sans | google/fonts main | OFL-1.1 | https://github.com/google/fonts | bundled fonts (packages/asset_packs/assets/fonts)

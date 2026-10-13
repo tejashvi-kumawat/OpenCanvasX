@@ -1,0 +1,13 @@
+{
+ "family": "JetBrains Mono",
+ "category": "mono",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/jetbrainsmono",
+ "files": [
+  {
+   "file": "JetBrainsMono_wght.ttf",
+   "sha256": "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda"
+  }
+ ]
+}

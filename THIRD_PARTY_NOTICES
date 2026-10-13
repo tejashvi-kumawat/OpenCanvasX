@@ -41,3 +41,4 @@ scripts/asset_packs/build_packs.py):
 - Twemoji 15.0.0 graphics — CC-BY 4.0, Copyright 2019 Twitter, Inc and other contributors (https://github.com/jdecked/twemoji). Attribution: "Twemoji by Twitter, Inc and other contributors, licensed under CC-BY 4.0" — shown in the Stickers panel and About.
 
 Update this file and DEPENDENCIES when adding bundled assets, fonts, or libraries.
+- Fonts (Inter, Roboto, Montserrat, Poppins, Playfair Display, Lora, Merriweather, Oswald, Raleway, Nunito, Work Sans, DM Sans, Space Grotesk, Bebas Neue, Pacifico, Caveat, Lobster, Source Serif 4, JetBrains Mono, Noto Sans) — SIL Open Font License 1.1, from https://github.com/google/fonts (ofl/). Each family ships with its OFL.txt in packages/asset_packs/assets/fonts/<family>/.

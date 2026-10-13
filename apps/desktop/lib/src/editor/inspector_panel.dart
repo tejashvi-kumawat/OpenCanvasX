@@ -12,8 +12,9 @@ import '../widgets/color_picker.dart';
 import 'fill_editor.dart';
 import 'editor_controller.dart';
 
-/// Fonts offered until local font discovery lands (P1.5.5). Families that
-/// are not installed fall back to the default UI font.
+/// System fonts offered after the bundled ones until local font discovery
+/// lands (P1.5.5). Families that are not installed fall back to the
+/// default UI font.
 const fontFamilies = [
   'Segoe UI',
   'Arial',
@@ -745,7 +746,13 @@ class _TextSection extends ConsumerWidget {
             value: family,
             label: 'Mixed',
             tooltip: 'Font',
-            options: [for (final f in fontFamilies) SelectOption(f, f)],
+            options: [
+              for (final f in [
+                ...?ref.watch(bundledFontsProvider).value?.map((f) => f.family),
+                ...fontFamilies,
+              ])
+                SelectOption(f, f),
+            ],
             onChanged: (f) => update((t) => t.copyWith(fontFamily: f), 'Font'),
           ),
           FieldRow(

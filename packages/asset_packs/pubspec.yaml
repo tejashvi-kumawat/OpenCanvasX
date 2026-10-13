@@ -21,6 +21,27 @@ dev_dependencies:
 
 flutter:
   assets:
+    - assets/fonts/
+    - assets/fonts/inter/
+    - assets/fonts/roboto/
+    - assets/fonts/montserrat/
+    - assets/fonts/poppins/
+    - assets/fonts/playfairdisplay/
+    - assets/fonts/lora/
+    - assets/fonts/merriweather/
+    - assets/fonts/oswald/
+    - assets/fonts/raleway/
+    - assets/fonts/nunito/
+    - assets/fonts/worksans/
+    - assets/fonts/dmsans/
+    - assets/fonts/spacegrotesk/
+    - assets/fonts/bebasneue/
+    - assets/fonts/pacifico/
+    - assets/fonts/caveat/
+    - assets/fonts/lobster/
+    - assets/fonts/sourceserif4/
+    - assets/fonts/jetbrainsmono/
+    - assets/fonts/notosans/
     - assets/packs/
     - assets/packs/lucide/
     - assets/packs/lucide/svg/

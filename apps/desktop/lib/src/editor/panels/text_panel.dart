@@ -40,12 +40,12 @@ final List<TextPreset> textPresets = [
     TextRole.heading,
     const TextStyle(
       fontSize: 18,
-      fontFamily: 'Georgia',
+      fontFamily: 'Playfair Display',
       fontStyle: FontStyle.italic,
     ),
     (p) => p.copyWith(
       text: 'Elegant serif',
-      fontFamily: 'Georgia',
+      fontFamily: 'Playfair Display',
       italic: true,
       fontWeight: 400,
     ),
@@ -69,12 +69,12 @@ final List<TextPreset> textPresets = [
     TextRole.body,
     const TextStyle(
       fontSize: 14,
-      fontFamily: 'Georgia',
+      fontFamily: 'Lora',
       fontStyle: FontStyle.italic,
     ),
     (p) => p.copyWith(
       text: '“A short quote that matters.”',
-      fontFamily: 'Georgia',
+      fontFamily: 'Lora',
       italic: true,
       fontSize: p.fontSize * 1.3,
       lineHeight: 1.4,
@@ -83,8 +83,41 @@ final List<TextPreset> textPresets = [
   TextPreset(
     'Code label',
     TextRole.body,
-    const TextStyle(fontSize: 12, fontFamily: 'Consolas'),
-    (p) => p.copyWith(text: 'code_label', fontFamily: 'Consolas'),
+    const TextStyle(fontSize: 12, fontFamily: 'JetBrains Mono'),
+    (p) => p.copyWith(text: 'code_label', fontFamily: 'JetBrains Mono'),
+  ),
+  TextPreset(
+    'BOLD POSTER',
+    TextRole.heading,
+    const TextStyle(fontSize: 22, fontFamily: 'Bebas Neue'),
+    (p) => p.copyWith(
+      text: 'BOLD POSTER',
+      fontFamily: 'Bebas Neue',
+      fontWeight: 400,
+      fontSize: p.fontSize * 1.5,
+      lineHeight: 1,
+    ),
+  ),
+  TextPreset(
+    'Handwritten note',
+    TextRole.subheading,
+    const TextStyle(fontSize: 20, fontFamily: 'Caveat'),
+    (p) => p.copyWith(
+      text: 'Handwritten note',
+      fontFamily: 'Caveat',
+      fontWeight: 500,
+      fontSize: p.fontSize * 1.3,
+    ),
+  ),
+  TextPreset(
+    'Retro script',
+    TextRole.heading,
+    const TextStyle(fontSize: 18, fontFamily: 'Pacifico'),
+    (p) => p.copyWith(
+      text: 'Retro script',
+      fontFamily: 'Pacifico',
+      fontWeight: 400,
+    ),
   ),
   TextPreset(
     'Caption',

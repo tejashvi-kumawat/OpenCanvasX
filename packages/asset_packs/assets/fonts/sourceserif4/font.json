@@ -1,0 +1,13 @@
+{
+ "family": "Source Serif 4",
+ "category": "serif",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/sourceserif4",
+ "files": [
+  {
+   "file": "SourceSerif4_opsz_wght.ttf",
+   "sha256": "97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b"
+  }
+ ]
+}

@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'dart:io';
+
+import 'package:asset_packs/asset_packs.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +26,10 @@ Future<void> main(List<String> args) async {
   final index = AppIndex.open(
     '${dataDir.path}${Platform.pathSeparator}index.sqlite',
   );
+
+  // Bundled fonts register in the background; text re-lays out when
+  // they arrive.
+  unawaited(loadBundledFonts(rootBundle));
 
   log.info('OpenCanvasX starting (native=${OcxNativeBridge.nativeVersion()})');
   runApp(

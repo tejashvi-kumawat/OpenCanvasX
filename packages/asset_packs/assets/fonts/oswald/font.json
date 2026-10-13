@@ -1,0 +1,13 @@
+{
+ "family": "Oswald",
+ "category": "display",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/oswald",
+ "files": [
+  {
+   "file": "Oswald_wght.ttf",
+   "sha256": "5b38c246e255a12f5712d640d56bcced0472466fc68983d2d0410ec0457c2817"
+  }
+ ]
+}

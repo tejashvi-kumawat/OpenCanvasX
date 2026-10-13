@@ -1,0 +1,13 @@
+{
+ "family": "Pacifico",
+ "category": "handwriting",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/pacifico",
+ "files": [
+  {
+   "file": "Pacifico-Regular.ttf",
+   "sha256": "5b6c0d5334a7bf77dea52b975c5a0c408878c0f7115ed5b6fb151f634b7bf701"
+  }
+ ]
+}

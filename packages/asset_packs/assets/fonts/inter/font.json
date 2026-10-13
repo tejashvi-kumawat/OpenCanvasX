@@ -1,0 +1,13 @@
+{
+ "family": "Inter",
+ "category": "sans",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/inter",
+ "files": [
+  {
+   "file": "Inter_opsz_wght.ttf",
+   "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+  }
+ ]
+}

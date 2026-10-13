@@ -1,0 +1,13 @@
+{
+ "family": "Caveat",
+ "category": "handwriting",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/caveat",
+ "files": [
+  {
+   "file": "Caveat_wght.ttf",
+   "sha256": "0bdb6b660482d31531b3945849fba5916b3ef8695da7024a9e6b9ee3c4157988"
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+ "family": "Space Grotesk",
+ "category": "sans",
+ "license": "OFL-1.1",
+ "license_url": "https://openfontlicense.org",
+ "source": "https://github.com/google/fonts/tree/main/ofl/spacegrotesk",
+ "files": [
+  {
+   "file": "SpaceGrotesk_wght.ttf",
+   "sha256": "acad6de1fc93436f5c0f1f4137751ef04f1aea3063e7036535970ffcfbd79f72"
+  }
+ ]
+}

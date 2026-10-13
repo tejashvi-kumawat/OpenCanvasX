@@ -52,7 +52,8 @@ Future<void> createDesign(
   required String title,
   required DesignPage page,
 }) async {
-  final folder = ref.read(projectsFolderProvider);
+  final folder =
+      ref.read(currentProjectProvider) ?? ref.read(projectsFolderProvider);
   if (folder == null) return;
   final messenger = ScaffoldMessenger.of(context);
   try {
@@ -76,7 +77,8 @@ Future<void> createFromTemplate(
   required String name,
   required ProjectContents contents,
 }) async {
-  final folder = ref.read(projectsFolderProvider);
+  final folder =
+      ref.read(currentProjectProvider) ?? ref.read(projectsFolderProvider);
   if (folder == null) return;
   final messenger = ScaffoldMessenger.of(context);
   try {

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:document_model/document_model.dart';
@@ -84,6 +85,61 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _setQuery(String value) => setState(() => _query = value.trim());
 
+  static String _folderName(String path) =>
+      path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
+
+  Future<void> _newProject() async {
+    final root = ref.read(projectsFolderProvider);
+    if (root == null) return;
+    final name = await _askText(context, 'New project', 'Project name', '');
+    if (name == null || name.trim().isEmpty) return;
+    final folder = await ref
+        .read(designLibraryProvider)
+        .createProjectFolder(root, name.trim());
+    ref
+      ..invalidate(workspaceProjectsProvider)
+      ..read(currentProjectProvider.notifier).folder = folder;
+    setState(() => _section = _Section.designs);
+  }
+
+  /// Rename, duplicate, move or trash a design from its card menu.
+  Future<void> _designAction(DesignSummary design, String action) async {
+    final library = ref.read(designLibraryProvider);
+    final root = ref.read(projectsFolderProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (action == 'rename') {
+        final title = await _askText(
+          context,
+          'Rename design',
+          'Name',
+          design.title,
+        );
+        if (title == null || title.trim().isEmpty) return;
+        await library.rename(design.path, title.trim());
+      } else if (action == 'duplicate') {
+        await library.duplicate(design.path);
+      } else if (action == 'trash' && root != null) {
+        await library.trash(root, design.path);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('"${design.title}" moved to the trash folder.'),
+          ),
+        );
+      } else if (action.startsWith('move:')) {
+        final target = action.substring(5);
+        final folder = target.isEmpty ? root : target;
+        if (folder == null) return;
+        await library.move(design.path, folder);
+      }
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('That did not work: $e')));
+    }
+    ref
+      ..invalidate(designsProvider)
+      ..invalidate(workspaceProjectsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,8 +152,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                   _section = s;
                   _search.clear();
                   _query = '';
+                  ref.read(currentProjectProvider.notifier).folder = null;
                 }),
             onCreate: _create,
+            onProject:
+                (folder) => setState(() {
+                  _section = _Section.designs;
+                  _search.clear();
+                  _query = '';
+                  ref.read(currentProjectProvider.notifier).folder = folder;
+                }),
+            onNewProject: _newProject,
           ),
           const VerticalDivider(width: 1),
           Expanded(child: _content(context)),
@@ -111,7 +176,18 @@ class _HomePageState extends ConsumerState<HomePage> {
     final folderProblem = ref.watch(projectsFolderStatusProvider).asData?.value;
     final c = context.ocx;
 
-    final list = designs.asData?.value ?? const <DesignSummary>[];
+    final project = ref.watch(currentProjectProvider);
+    final sep = Platform.pathSeparator;
+    final all = designs.asData?.value ?? const <DesignSummary>[];
+    final list =
+        project == null || _section != _Section.designs
+            ? all
+            : [
+              for (final d in all)
+                if (d.path.startsWith('$project$sep') ||
+                    d.path.startsWith('$project/'))
+                  d,
+            ];
     final shown =
         _query.isEmpty
             ? list
@@ -159,7 +235,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             Expanded(
               child: Text(
-                _section == _Section.templates ? 'Templates' : 'Your designs',
+                _section == _Section.templates
+                    ? 'Templates'
+                    : (project == null ? 'Your designs' : _folderName(project)),
                 style: OcxText.display(context),
               ),
             ),
@@ -357,6 +435,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                           summary: recent[i],
                           onOpen:
                               () => openDesign(context, ref, recent[i].path),
+                          onAction:
+                              (action) => _designAction(recent[i], action),
                         ),
                   ),
                 ),
@@ -533,11 +613,15 @@ class _Sidebar extends StatelessWidget {
     required this.section,
     required this.onSection,
     required this.onCreate,
+    required this.onProject,
+    required this.onNewProject,
   });
 
   final _Section section;
   final ValueChanged<_Section> onSection;
   final VoidCallback onCreate;
+  final ValueChanged<String> onProject;
+  final VoidCallback onNewProject;
 
   @override
   Widget build(BuildContext context) {
@@ -582,6 +666,12 @@ class _Sidebar extends StatelessWidget {
             label: 'Your designs',
             selected: section == _Section.designs,
             onTap: () => onSection(_Section.designs),
+          ),
+          const SizedBox(height: Space.md),
+          _ProjectsList(
+            selected: section == _Section.designs,
+            onProject: onProject,
+            onNewProject: onNewProject,
           ),
           const Spacer(),
           const _StorageStatus(),
@@ -904,10 +994,15 @@ class _PresetCard extends StatelessWidget {
 }
 
 class _DesignCard extends StatelessWidget {
-  const _DesignCard({required this.summary, required this.onOpen});
+  const _DesignCard({
+    required this.summary,
+    required this.onOpen,
+    required this.onAction,
+  });
 
   final DesignSummary summary;
   final VoidCallback onOpen;
+  final ValueChanged<String> onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -990,6 +1085,7 @@ class _DesignCard extends StatelessWidget {
                       message: 'Last edited',
                       child: Text(relativeTime(summary.modified), style: meta),
                     ),
+                    _CardMenu(onAction: onAction),
                   ],
                 ),
               ],
@@ -1096,4 +1192,164 @@ class _Notice extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Projects (workspace folders) in the sidebar.
+class _ProjectsList extends ConsumerWidget {
+  const _ProjectsList({
+    required this.selected,
+    required this.onProject,
+    required this.onNewProject,
+  });
+
+  final bool selected;
+  final ValueChanged<String> onProject;
+  final VoidCallback onNewProject;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ocx;
+    final projects = ref.watch(workspaceProjectsProvider).value ?? const [];
+    final current = ref.watch(currentProjectProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: Space.sm),
+                child: Text(
+                  'Projects',
+                  style: OcxText.caption(
+                    context,
+                  ).copyWith(color: c.textSecondary),
+                ),
+              ),
+            ),
+            OcxIconButton(
+              icon: Icons.add,
+              tooltip: 'New project',
+              onPressed: onNewProject,
+            ),
+          ],
+        ),
+        if (projects.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.sm, 2, Space.sm, 0),
+            child: Text(
+              'Group designs into projects.',
+              style: OcxText.caption(
+                context,
+              ).copyWith(color: c.textTertiary, fontWeight: FontWeight.w400),
+            ),
+          ),
+        for (final folder in projects)
+          _NavItem(
+            icon: Icons.folder_outlined,
+            label:
+                folder.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last,
+            selected: selected && current == folder,
+            onTap: () => onProject(folder),
+          ),
+      ],
+    );
+  }
+}
+
+/// Card actions: rename, duplicate, move to a project, trash.
+class _CardMenu extends ConsumerWidget {
+  const _CardMenu({required this.onAction});
+
+  final ValueChanged<String> onAction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final projects = ref.watch(workspaceProjectsProvider).value ?? const [];
+    return PopupMenuButton<String>(
+      tooltip: 'Design actions',
+      iconSize: 16,
+      padding: EdgeInsets.zero,
+      icon: const Icon(Icons.more_horiz),
+      onSelected: onAction,
+      itemBuilder:
+          (_) => [
+            const PopupMenuItem(value: 'rename', child: Text('Rename')),
+            const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'move:',
+              child: Text('Move out of project'),
+            ),
+            for (final p in projects)
+              PopupMenuItem(
+                value: 'move:$p',
+                child: Text(
+                  'Move to ${p.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last}',
+                ),
+              ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(value: 'trash', child: Text('Move to trash')),
+          ],
+    );
+  }
+}
+
+/// A small text prompt; returns the text or `null` if cancelled.
+Future<String?> _askText(
+  BuildContext context,
+  String title,
+  String label,
+  String initial,
+) => showDialog<String>(
+  context: context,
+  builder: (_) => _TextPrompt(title: title, label: label, initial: initial),
+);
+
+class _TextPrompt extends StatefulWidget {
+  const _TextPrompt({
+    required this.title,
+    required this.label,
+    required this.initial,
+  });
+
+  final String title;
+  final String label;
+  final String initial;
+
+  @override
+  State<_TextPrompt> createState() => _TextPromptState();
+}
+
+class _TextPromptState extends State<_TextPrompt> {
+  late final TextEditingController _text = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _text,
+      autofocus: true,
+      decoration: InputDecoration(labelText: widget.label),
+      onSubmitted: (v) => Navigator.pop(context, v),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _text.text),
+        child: const Text('OK'),
+      ),
+    ],
+  );
 }

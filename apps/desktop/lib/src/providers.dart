@@ -90,6 +90,28 @@ class CustomPaletteController extends Notifier<List<ArgbColor>> {
   }
 }
 
+/// The project (workspace folder) chosen on Home; new designs go there.
+final currentProjectProvider =
+    NotifierProvider<CurrentProjectController, String?>(
+      CurrentProjectController.new,
+    );
+
+class CurrentProjectController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  String? get folder => state;
+  set folder(String? value) => state = value;
+}
+
+/// Project folders in the projects root (P2.5.3).
+final workspaceProjectsProvider = FutureProvider<List<String>>((ref) async {
+  final root = ref.watch(projectsFolderProvider);
+  if (root == null) return const [];
+  ref.watch(designsProvider);
+  return ref.watch(designLibraryProvider).listProjectFolders(root);
+});
+
 /// Bundled asset packs (icons, stickers) with licence metadata (P2.1).
 final assetCatalogProvider = FutureProvider<AssetCatalog>(
   (ref) => loadBundledCatalog(rootBundle),

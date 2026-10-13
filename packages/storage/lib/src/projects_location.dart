@@ -47,7 +47,7 @@ Future<ProjectsFolderProblem?> checkProjectsFolder(String path) async {
 /// stops after [limit] results. Unreadable folders are skipped silently.
 Future<List<String>> findProjects(
   String root, {
-  int maxDepth = 2,
+  int maxDepth = 3,
   int limit = 500,
 }) async {
   final found = <String>[];

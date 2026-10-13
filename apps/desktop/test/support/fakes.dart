@@ -89,6 +89,68 @@ class InMemoryDesignLibrary implements DesignLibrary {
     return path;
   }
 
+  final Set<String> projects = {};
+
+  @override
+  Future<List<String>> listProjectFolders(String root) async => [
+    for (final p in projects)
+      if (p.startsWith('$root/')) p,
+  ]..sort();
+
+  @override
+  Future<String> createProjectFolder(String root, String name) async {
+    var path = '$root/$name';
+    for (var n = 2; projects.contains(path); n++) {
+      path = '$root/$name $n';
+    }
+    projects.add(path);
+    return path;
+  }
+
+  @override
+  Future<String> move(String path, String folder) async {
+    final name = path.split('/').last;
+    final target = '$folder/$name';
+    files[target] = files.remove(path)!;
+    modified[target] = modified.remove(path)!;
+    return target;
+  }
+
+  @override
+  Future<void> trash(String root, String path) async {
+    files.remove(path);
+    modified.remove(path);
+  }
+
+  @override
+  Future<String> duplicate(String path) async {
+    final doc = files[path]!;
+    final title = '${doc.metadata.title} copy';
+    final target = path.replaceFirst(
+      RegExp(r'[^/]+$'),
+      '$title$projectFileExtension',
+    );
+    files[target] = DesignDocument(
+      id: DocumentId.generate(),
+      metadata: DocumentMetadata(title: title),
+      pages: doc.pages,
+      objects: doc.objects,
+    );
+    modified[target] = _tick();
+    return target;
+  }
+
+  @override
+  Future<void> rename(String path, String title) async {
+    final doc = files[path]!;
+    files[path] = DesignDocument(
+      id: doc.id,
+      metadata: doc.metadata.copyWith(title: title),
+      pages: doc.pages,
+      objects: doc.objects,
+    );
+  }
+
   @override
   Future<OpenedProject> open(String path) async {
     final doc = files[path];

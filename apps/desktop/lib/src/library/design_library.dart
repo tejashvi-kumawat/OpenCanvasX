@@ -53,6 +53,24 @@ abstract interface class DesignLibrary {
   /// Opens a design, with crash recovery (see `openProject`).
   Future<OpenedProject> open(String path);
 
+  /// Project folders in [root] (workspaces, P2.5.3).
+  Future<List<String>> listProjectFolders(String root);
+
+  /// Creates a project folder named [name] in [root]; returns its path.
+  Future<String> createProjectFolder(String root, String name);
+
+  /// Moves the design at [path] into [folder]; returns its new path.
+  Future<String> move(String path, String folder);
+
+  /// Moves the design at [path] to the root's trash (recoverable).
+  Future<void> trash(String root, String path);
+
+  /// Copies the design at [path] as "<title> copy"; returns the new path.
+  Future<String> duplicate(String path);
+
+  /// Renames the design at [path].
+  Future<void> rename(String path, String title);
+
   /// Saves atomically, with the bytes of the document's assets.
   Future<void> save(
     String path,
@@ -130,6 +148,26 @@ class FileDesignLibrary implements DesignLibrary {
 
   @override
   Future<OpenedProject> open(String path) => openProject(path);
+
+  @override
+  Future<List<String>> listProjectFolders(String root) async =>
+      listWorkspaceProjects(root);
+
+  @override
+  Future<String> createProjectFolder(String root, String name) =>
+      createWorkspaceProject(root, name);
+
+  @override
+  Future<String> move(String path, String folder) => moveDesign(path, folder);
+
+  @override
+  Future<void> trash(String root, String path) => trashDesign(root, path);
+
+  @override
+  Future<String> duplicate(String path) => duplicateDesign(path);
+
+  @override
+  Future<void> rename(String path, String title) => renameDesign(path, title);
 
   @override
   Future<void> save(

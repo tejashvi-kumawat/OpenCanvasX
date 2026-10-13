@@ -217,6 +217,41 @@ void main() {
       expect(doc.objects.length, greaterThan(5));
     });
 
+    testWidgets('workspace: projects group designs; cards have actions', (
+      tester,
+    ) async {
+      library.seed(_folder, 'Menu');
+      await pumpApp(tester);
+      await tester.tap(find.byTooltip('New project'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'Launch');
+      await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+      await tester.pumpAndSettle();
+      expect(library.projects, {'$_folder/Launch'});
+      expect(container.read(currentProjectProvider), '$_folder/Launch');
+      // The project is empty; back to all designs.
+      await tester.tap(find.text('Your designs'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Design actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Move to Launch'));
+      await tester.pumpAndSettle();
+      expect(
+        library.files.keys.single,
+        '$_folder/Launch/Menu$projectFileExtension',
+      );
+      await tester.tap(find.byTooltip('Design actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate'));
+      await tester.pumpAndSettle();
+      expect(library.files, hasLength(2));
+      await tester.tap(find.byTooltip('Design actions').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Move to trash'));
+      await tester.pumpAndSettle();
+      expect(library.files, hasLength(1));
+    });
+
     testWidgets('the create dialog supports custom sizes', (tester) async {
       await pumpApp(tester);
       await tester.tap(find.text('Create design'));

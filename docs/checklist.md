@@ -211,7 +211,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 ## P2.5 Search & Project Management
 - [ ] P2.5.1 SQLite local index (documents, templates, assets, layers, text, fonts, commands)
 - [ ] P2.5.2 Global search UI
-- [ ] P2.5.3 Projects: create, rename, duplicate, archive, delete, import/export
+- [ ] P2.5.3 Projects: create, rename, duplicate, archive, delete, import/export (create/rename/duplicate/move/trash done; archive, import/export pending)
 - [ ] P2.5.4 Favorites, pinned projects
 - [ ] P2.5.5 Local backup + retention settings + restore
 

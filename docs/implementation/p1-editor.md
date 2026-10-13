@@ -59,7 +59,7 @@ Engineering log for the first usable editor. Normative design: [ux-spec.md](../p
 
 ## Not done yet (still open in the checklist)
 
-Vector PDF and WebP export (P1.9.2, P1.9.4), background export worker (P1.9.5), snapping and smart guides (P1.4.4), character-level text formatting and local font discovery (P1.5.4–P1.5.6), images/SVG (P1.6), full colour picker and gradients (P1.7), export (P1.9), identity in onboarding (P1.10.6), offline/telemetry verification (P1.11).
+Vector PDF and WebP export (P1.9.2, P1.9.4), background export worker (P1.9.5), snapping and smart guides (P1.4.4), character-level text formatting and local font discovery (P1.5.4–P1.5.6), images/SVG (P1.6), full colour picker and gradients (P1.7), export (P1.9), identity in onboarding (P1.10.6).
 
 ## Testing
 

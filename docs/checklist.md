@@ -166,8 +166,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.10.6 Onboarding: create identity, choose storage directory, privacy explanation
 
 ## P1.11 Offline & Privacy Baseline
-- [ ] P1.11.1 Verify zero network calls during core editing
-- [ ] P1.11.2 Telemetry absent/OFF; local crash logs only
+- [x] P1.11.1 Verify zero network calls during core editing
+- [x] P1.11.2 Telemetry absent/OFF; local crash logs only
 
 ### Exit Gate P1
 - [ ] User can create, edit, save, reopen, and export a multi-page design offline on all 3 OS

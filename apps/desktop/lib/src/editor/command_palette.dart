@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:design_engine/design_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../ai/ai_panel.dart';
 import '../export/export_dialog.dart';
@@ -437,6 +440,22 @@ List<PaletteCommand> editorCommands(BuildContext context, WidgetRef ref) {
       group: 'File',
       icon: Icons.keyboard_outlined,
       keywords: 'keys hotkeys customize',
+    ),
+    PaletteCommand(
+      'Open crash logs folder',
+      () async {
+        final dir = await getApplicationSupportDirectory();
+        final logs = Directory('${dir.path}${Platform.pathSeparator}logs')
+          ..createSync(recursive: true);
+        final opener =
+            Platform.isWindows
+                ? 'explorer'
+                : (Platform.isMacOS ? 'open' : 'xdg-open');
+        await Process.run(opener, [logs.path]);
+      },
+      group: 'Help',
+      icon: Icons.bug_report_outlined,
+      keywords: 'error report diagnostics',
     ),
     PaletteCommand(
       'AI settings…',

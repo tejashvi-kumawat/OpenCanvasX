@@ -1150,6 +1150,57 @@ void main() {
       expect(describeActivator(EditorKeys.group), 'Ctrl+G');
     });
 
+    testWidgets('offline: core editing and export make no network calls', (
+      tester,
+    ) async {
+      final attempts = <Uri>[];
+      final previous = HttpOverrides.current;
+      HttpOverrides.global = _NoNetwork(attempts);
+      addTearDown(() => HttpOverrides.global = previous);
+
+      await openFirstDesign(tester);
+      final editor =
+          container.read(editorProvider.notifier)
+            ..insertShape(ObjectType.rect)
+            ..insertShape(ObjectType.star)
+            ..insertText(TextRole.heading, text: 'Offline');
+      editor.insertImage(
+        Uint8List.fromList(
+          utf8.encode(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"> '
+            '<circle cx="4" cy="4" r="4"/></svg>',
+          ),
+        ),
+      );
+      await showTab(tester, RailTab.elements);
+      await showTab(tester, RailTab.text);
+      await showTab(tester, RailTab.ai);
+      await showTab(tester, RailTab.history);
+      await tester.pumpAndSettle();
+      final s = session();
+      await tester.runAsync(() async {
+        for (final format in ExportFormat.values) {
+          final files = await buildExport(
+            s.document,
+            options: ExportOptions(format: format, scale: 0.25),
+            activePage: s.state.activePageId,
+            selection: const {},
+            media: container.read(mediaCacheProvider),
+          );
+          expect(files, isNotEmpty, reason: '$format');
+        }
+      });
+      await editor.saveNow();
+      await tester.pumpAndSettle();
+      expect(attempts, isEmpty);
+      // The guard itself works: a real attempt is caught.
+      expect(
+        () => HttpClient().getUrl(Uri.parse('https://example.com')),
+        throwsA(isA<SocketException>()),
+      );
+      expect(attempts, hasLength(1));
+    });
+
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {
       await openFirstDesign(tester);
       container.read(editorProvider.notifier)
@@ -1274,4 +1325,39 @@ void main() {
       expect(defaultShapeFill, isNotNull);
     });
   });
+}
+
+/// Records and refuses every HTTP connection.
+class _NoNetwork extends HttpOverrides {
+  _NoNetwork(this.attempts);
+
+  final List<Uri> attempts;
+
+  @override
+  HttpClient createHttpClient(SecurityContext? context) =>
+      _RefusingClient(attempts);
+}
+
+class _RefusingClient implements HttpClient {
+  _RefusingClient(this.attempts);
+
+  final List<Uri> attempts;
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) {
+    attempts.add(url);
+    throw const SocketException('network disabled in test');
+  }
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) => openUrl('GET', url);
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) => openUrl('POST', url);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    attempts.add(Uri(path: invocation.memberName.toString()));
+    return null;
+  }
 }

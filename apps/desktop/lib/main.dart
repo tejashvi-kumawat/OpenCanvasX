@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:storage/storage.dart';
 
 import 'src/app.dart';
+import 'src/crash_log.dart';
 import 'src/providers.dart';
 
 export 'src/app.dart' show OpenCanvasXApp;
@@ -23,6 +24,7 @@ Future<void> main(List<String> args) async {
 
   // Per-user data folder, e.g. %APPDATA%\OpenCanvasX\OpenCanvasX on Windows.
   final dataDir = await getApplicationSupportDirectory();
+  CrashLog('${dataDir.path}${Platform.pathSeparator}logs').install();
   final index = AppIndex.open(
     '${dataDir.path}${Platform.pathSeparator}index.sqlite',
   );

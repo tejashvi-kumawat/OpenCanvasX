@@ -11,6 +11,16 @@ void main() {
       expect(redactor.redact(raw), isNot(contains('sk-abc')));
     });
 
+    test('redacts bare provider keys with dashes', () {
+      for (final key in [
+        'sk-ant-api03-abcdefghijklmnopqrstuvwxyz',
+        'sk-proj-ABCDEFGHIJKLMNOPQRSTUVWX_yz12',
+      ]) {
+        final out = redactor.redact('request failed for $key today');
+        expect(out, 'request failed for [REDACTED] today');
+      }
+    });
+
     test('redacts bearer tokens', () {
       const raw = 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload';
       final out = redactor.redact(raw);

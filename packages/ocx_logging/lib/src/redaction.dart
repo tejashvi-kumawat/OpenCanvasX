@@ -17,7 +17,8 @@ class SecretRedactor {
       r'-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----',
       multiLine: true,
     ),
-    RegExp('sk-[a-zA-Z0-9]{20,}'),
+    // OpenAI- and Anthropic-style keys (sk-…, sk-proj-…, sk-ant-…).
+    RegExp(r'sk-[a-zA-Z0-9_\-]{20,}'),
     RegExp(
       'ocx://join/[^\\s]+',
       caseSensitive: false,

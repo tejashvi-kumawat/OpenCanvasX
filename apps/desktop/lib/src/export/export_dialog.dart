@@ -21,6 +21,7 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
   ExportOptions _options = const ExportOptions();
   bool _busy = false;
   String? _error;
+  (int, int)? _progress;
 
   @override
   void initState() {
@@ -47,6 +48,9 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
         activePage: session.state.activePageId,
         selection: session.selection,
         media: ref.read(mediaCacheProvider),
+        onProgress: (done, total) {
+          if (mounted) setState(() => _progress = (done, total));
+        },
       );
       if (files.isEmpty) {
         setState(() => _error = 'There is nothing to export here.');
@@ -67,7 +71,12 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
     } on Object catch (e) {
       setState(() => _error = 'Export failed: $e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = null;
+        });
+      }
     }
   }
 
@@ -259,7 +268,14 @@ class _ExportDialogState extends ConsumerState<_ExportDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      summary,
+                      switch (_progress) {
+                        (final done, final total) when _busy && total > 1 =>
+                          done < total
+                              ? 'Rendering page ${done + 1} of $total…'
+                              : 'Encoding…',
+                        _ when _busy => 'Exporting…',
+                        _ => summary,
+                      },
                       style: OcxText.caption(context).copyWith(
                         color: c.textSecondary,
                         fontWeight: FontWeight.w400,

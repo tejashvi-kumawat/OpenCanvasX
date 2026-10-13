@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -120,15 +121,20 @@ Future<String?> _saveWithDialogs(
   return folder;
 }
 
-/// Produces the files for [options] (P1.9.1–P1.9.4). Rendering happens on
-/// the UI isolate (Flutter's canvas); encoding is quick for typical sizes.
-/// Background workers (P1.9.5) come later.
+/// Reports export progress: [done] of [total] pages rendered.
+typedef ExportProgress = void Function(int done, int total);
+
+/// Produces the files for [options] (P1.9.1–P1.9.4). Pages render on the
+/// UI isolate (Flutter's canvas needs it) one at a time, yielding between
+/// pages so the app stays responsive; JPEG and PDF encoding run on a
+/// background isolate (P1.9.5) and PNG encoding in the engine.
 Future<List<ExportedFile>> buildExport(
   DesignDocument document, {
   required ExportOptions options,
   required PageId activePage,
   required Set<ObjectId> selection,
   required MediaCache media,
+  ExportProgress? onProgress,
 }) async {
   final targets = exportTargets(
     document,
@@ -182,7 +188,10 @@ Future<List<ExportedFile>> buildExport(
 
   final files = <ExportedFile>[];
   final pdfPages = <PdfPageImage>[];
-  for (final target in targets) {
+  for (final (done, target) in targets.indexed) {
+    onProgress?.call(done, targets.length);
+    // Let the frame that shows the progress paint before rendering.
+    await Future<void>.delayed(Duration.zero);
     final page = document.pages.firstWhere((p) => p.id == target.pageId);
     var size = exportPixelSize(page, target, scale: options.scale);
     final longest = math.max(size.width, size.height);
@@ -211,14 +220,17 @@ Future<List<ExportedFile>> buildExport(
             bytes: await imagePng(image),
           ));
         case ExportFormat.jpg:
-          final rgba = await imageRgba(image);
+          final pixels = (
+            rgba: await imageRgba(image),
+            width: size.width,
+            height: size.height,
+          );
+          final quality = options.jpegQuality;
           files.add((
             name: exportFileName(target.name, 'jpg'),
-            bytes: encodeJpeg((
-              rgba: rgba,
-              width: size.width,
-              height: size.height,
-            ), quality: options.jpegQuality),
+            bytes: await Isolate.run(
+              () => encodeJpeg(pixels, quality: quality),
+            ),
           ));
         case ExportFormat.pdf:
           final points = exportPointSize(page, target);
@@ -238,14 +250,15 @@ Future<List<ExportedFile>> buildExport(
       image.dispose();
     }
   }
+  onProgress?.call(targets.length, targets.length);
   if (format == ExportFormat.pdf) {
     final meta = document.metadata;
+    final title = meta.title;
+    final author = meta.author;
     files.add((
-      name: exportFileName(meta.title, 'pdf'),
-      bytes: await encodeRasterPdf(
-        pdfPages,
-        title: meta.title,
-        author: meta.author,
+      name: exportFileName(title, 'pdf'),
+      bytes: await Isolate.run(
+        () => encodeRasterPdf(pdfPages, title: title, author: author),
       ),
     ));
   }

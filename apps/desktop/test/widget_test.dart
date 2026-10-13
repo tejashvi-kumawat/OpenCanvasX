@@ -446,6 +446,7 @@ void main() {
         );
         expect(png.single.name, 'Page 1.png');
         expect(png.single.bytes.sublist(1, 4), 'PNG'.codeUnits);
+        final progress = <(int, int)>[];
         final pdf = await buildExport(
           s.document,
           options: const ExportOptions(
@@ -456,7 +457,11 @@ void main() {
           activePage: s.state.activePageId,
           selection: const {},
           media: container.read(mediaCacheProvider),
+          onProgress: (done, total) => progress.add((done, total)),
         );
+        final pages = s.document.pages.length;
+        expect(progress.first, (0, pages));
+        expect(progress.last, (pages, pages));
         expect(latin1.decode(pdf.single.bytes.sublist(0, 5)), '%PDF-');
         final jpg = await buildExport(
           s.document,

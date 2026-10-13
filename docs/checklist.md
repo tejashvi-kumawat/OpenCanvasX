@@ -155,7 +155,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [ ] P1.9.2 JPEG / WebP export
 - [x] P1.9.3 SVG export (native vector preserved)
 - [ ] P1.9.4 PDF export (vector, page size, metadata)
-- [ ] P1.9.5 Background export on worker thread
+- [x] P1.9.5 Background export on worker thread
 
 ## P1.10 App Shell UX
 - [x] P1.10.1 Main layout: top menu, left panel, canvas, right inspector, bottom bar

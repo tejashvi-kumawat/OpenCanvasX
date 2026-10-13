@@ -60,3 +60,7 @@ Office formats and HTML may lose layout nuance. Each importer documents a **know
 - App: `lib/src/export/` dialog and `buildExport`; images are decoded (`MediaCache.preload`) before rendering so nothing exports as a placeholder.
 - `exportHtmlSite` (early P3.9.2): static site, one HTML page per target with inline SVG, prototype links as `<a>` hotspots positioned in %, pager links for pages.
 - Next: vector PDF with embedded OFL fonts, WebP, an export worker isolate (P1.9.5), PPTX (Phase 3), HTML with real text/CSS layout.
+
+## Background export (P1.9.5)
+
+Pages are rendered one at a time on the UI isolate (Flutter's canvas requires it), yielding a frame between pages so the editor stays responsive; the export dialog shows "Rendering page n of m…". JPEG and PDF encoding run on a background isolate (`Isolate.run`), PNG encoding runs in the engine off the UI thread, and SVG/HTML are string building that needs the UI isolate's text layout.

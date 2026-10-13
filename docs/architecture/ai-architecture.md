@@ -63,9 +63,10 @@ When provider returns usage metadata, show approximate tokens/requests; user cap
   output is validated exactly like an untrusted plugin and is one undo
   step ("AI design").
 - App (`apps/desktop/lib/src/ai`): AI is **off** until set up (setting
-  `ai.config`). Keys are stored with `flutter_secure_storage` (Windows
-  Credential Manager / DPAPI, Keychain, libsecret) under
-  `opencanvasx.ai.<kind>`. Before a cloud call a dialog names the provider
+  `ai.config`). Keys are stored in Windows Credential Manager (generic
+  credentials, `windows_credentials.dart`, direct `advapi32` calls with no
+  native build step) under `opencanvasx.ai.<kind>`; macOS Keychain and
+  Linux libsecret come with those platforms. Before a cloud call a dialog names the provider
   and host and summarises what is sent (only the selected text, or the
   prompt and page size); local providers do not ask. "Don't ask again"
   lasts until the app closes. The AI rail tab shows Off / Local / Cloud,

@@ -1,12 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:ai_engine/ai_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../providers.dart';
 import '../theme/ocx_theme.dart';
+import 'windows_credentials.dart';
 
 /// Where API keys are kept (P5.1.6): the OS credential store, never the
 /// app index, design files or logs. Tests replace it.
@@ -16,20 +17,29 @@ abstract interface class SecretStore {
   Future<void> delete(String name);
 }
 
+/// Windows Credential Manager. Other platforms get their keychain later;
+/// until then AI keys cannot be saved there.
 class _OsSecretStore implements SecretStore {
   const _OsSecretStore();
 
-  static const _storage = FlutterSecureStorage();
+  @override
+  Future<String?> read(String name) async =>
+      Platform.isWindows ? readWindowsCredential(name) : null;
 
   @override
-  Future<String?> read(String name) => _storage.read(key: name);
+  Future<void> write(String name, String value) async {
+    if (!Platform.isWindows) {
+      throw const AiException(
+        'Saving API keys is only supported on Windows for now.',
+      );
+    }
+    writeWindowsCredential(name, value);
+  }
 
   @override
-  Future<void> write(String name, String value) =>
-      _storage.write(key: name, value: value);
-
-  @override
-  Future<void> delete(String name) => _storage.delete(key: name);
+  Future<void> delete(String name) async {
+    if (Platform.isWindows) deleteWindowsCredential(name);
+  }
 }
 
 final secretStoreProvider = Provider<SecretStore>(

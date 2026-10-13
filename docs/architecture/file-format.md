@@ -13,7 +13,7 @@ manifest.json
 document.json
 fonts.json             # {"families": [{"family": "Inter"}, …]} used by text
 assets/sha256/<hex>    # raw bytes, immutable
-meta/thumbnails/       # optional cache
+meta/thumbnails/cover.png  # optional cover (first page, ≤480 px, ≤2 MB, PNG only)
 snapshots/             # optional named checkpoints
 ```
 

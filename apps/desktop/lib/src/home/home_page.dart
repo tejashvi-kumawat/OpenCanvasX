@@ -1039,12 +1039,28 @@ class _DesignCard extends StatelessWidget {
                                 BoxShadow(color: c.pageShadow, blurRadius: 6),
                               ],
                             ),
-                            child: CustomPaint(
-                              painter: PageThumbnailPainter(
-                                document: summary.document!,
-                                page: cover,
+                            // The saved cover shows images too; designs
+                            // saved before covers existed are drawn live.
+                            child: switch (summary.thumbnail) {
+                              final png? => Image.memory(
+                                png,
+                                fit: BoxFit.contain,
+                                gaplessPlayback: true,
+                                errorBuilder:
+                                    (_, _, _) => CustomPaint(
+                                      painter: PageThumbnailPainter(
+                                        document: summary.document!,
+                                        page: cover,
+                                      ),
+                                    ),
                               ),
-                            ),
+                              null => CustomPaint(
+                                painter: PageThumbnailPainter(
+                                  document: summary.document!,
+                                  page: cover,
+                                ),
+                              ),
+                            },
                           ),
                         ),
               ),

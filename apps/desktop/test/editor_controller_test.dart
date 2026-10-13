@@ -7,6 +7,7 @@ import 'package:document_model/document_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:opencanvasx/src/editor/editor_controller.dart';
+import 'package:opencanvasx/src/export/exporter.dart';
 import 'package:opencanvasx/src/providers.dart';
 import 'package:storage/storage.dart';
 
@@ -32,6 +33,7 @@ void main() {
         appIndexProvider.overrideWithValue(index),
         designLibraryProvider.overrideWithValue(library),
         autosaveDelayProvider.overrideWithValue(Duration.zero),
+        coverRendererProvider.overrideWithValue((_, _) async => null),
         textMeasurerProvider.overrideWithValue(fakeMeasure),
       ],
     );

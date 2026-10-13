@@ -18,8 +18,14 @@ Future<void> writeProjectFile(
   DesignDocument document, {
   Map<String, Uint8List> assets = const {},
   String? appVersion,
+  Uint8List? thumbnail,
 }) async {
-  final bytes = encodeProject(document, assets: assets, appVersion: appVersion);
+  final bytes = encodeProject(
+    document,
+    assets: assets,
+    appVersion: appVersion,
+    thumbnail: thumbnail,
+  );
   final temp = File('$path.tmp');
   await temp.parent.create(recursive: true);
   await temp.writeAsBytes(bytes, flush: true);
@@ -37,6 +43,7 @@ Future<void> writeProjectFile(
 Future<ProjectContents> readProjectFile(
   String path, {
   ArchiveLimits limits = const ArchiveLimits(),
+  bool readAssets = true,
 }) async {
   final file = File(path);
   final length = await file.length();
@@ -45,7 +52,11 @@ Future<ProjectContents> readProjectFile(
       'Project file is larger than ${limits.maxArchiveBytes} bytes',
     );
   }
-  return decodeProject(await file.readAsBytes(), limits: limits);
+  return decodeProject(
+    await file.readAsBytes(),
+    limits: limits,
+    readAssets: readAssets,
+  );
 }
 
 /// Saves explicitly: writes [path] atomically, then removes the autosave
@@ -55,12 +66,14 @@ Future<void> saveProject(
   DesignDocument document, {
   Map<String, Uint8List> assets = const {},
   String? appVersion,
+  Uint8List? thumbnail,
 }) async {
   await writeProjectFile(
     path,
     document,
     assets: assets,
     appVersion: appVersion,
+    thumbnail: thumbnail,
   );
   final autosave = File(autosavePathFor(path));
   if (autosave.existsSync()) await autosave.delete();

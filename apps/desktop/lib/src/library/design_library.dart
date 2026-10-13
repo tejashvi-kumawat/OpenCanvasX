@@ -13,6 +13,7 @@ class DesignSummary {
     required this.modified,
     this.document,
     this.error,
+    this.thumbnail,
   });
 
   final String path;
@@ -24,6 +25,9 @@ class DesignSummary {
 
   /// Why the file could not be read, if it could not.
   final String? error;
+
+  /// The cover PNG saved with the design (P1.6.5), if any.
+  final Uint8List? thumbnail;
 
   DesignPage? get cover => document?.pages.firstOrNull;
   int get pageCount => document?.pages.length ?? 0;
@@ -76,6 +80,7 @@ abstract interface class DesignLibrary {
     String path,
     DesignDocument document, {
     Map<String, Uint8List> assets = const {},
+    Uint8List? thumbnail,
   });
 
   /// Named versions of the design at [path] (P1.8.3), newest first.
@@ -110,12 +115,13 @@ class FileDesignLibrary implements DesignLibrary {
     final file = File(path);
     final modified = file.lastModifiedSync();
     try {
-      final contents = await readProjectFile(path);
+      final contents = await readProjectFile(path, readAssets: false);
       return DesignSummary(
         path: path,
         title: contents.document.metadata.title,
         modified: modified,
         document: contents.document,
+        thumbnail: contents.thumbnail,
       );
     } on Object catch (error) {
       final name = path.split(Platform.pathSeparator).last;
@@ -190,7 +196,8 @@ class FileDesignLibrary implements DesignLibrary {
     String path,
     DesignDocument document, {
     Map<String, Uint8List> assets = const {},
-  }) => saveProject(path, document, assets: assets);
+    Uint8List? thumbnail,
+  }) => saveProject(path, document, assets: assets, thumbnail: thumbnail);
 
   @override
   Future<List<DesignVersion>> versions(String path) => listDesignVersions(path);

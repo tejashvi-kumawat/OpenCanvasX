@@ -264,3 +264,46 @@ Future<List<ExportedFile>> buildExport(
   }
   return files;
 }
+
+/// A PNG of the first page (or a board's first frame) whose longer side
+/// is [longest] pixels, saved inside the design as its cover (P1.6.5).
+/// `null` if there is nothing to draw.
+Future<Uint8List?> renderCoverPng(
+  DesignDocument document,
+  MediaCache media, {
+  int longest = 480,
+}) async {
+  final first = document.pages.firstOrNull;
+  if (first == null) return null;
+  final target =
+      exportTargets(
+        document,
+        scope: ExportScope.currentPage,
+        activePage: first.id,
+      ).firstOrNull;
+  if (target == null) return null;
+  final region = target.region;
+  if (region.width <= 0 || region.height <= 0) return null;
+  final scale = longest / math.max(region.width, region.height);
+  final image = await renderRegion(
+    document,
+    first,
+    region: region,
+    roots: target.roots,
+    background: target.includeBackground,
+    width: math.max(1, (region.width * scale).round()),
+    height: math.max(1, (region.height * scale).round()),
+    media: media,
+  );
+  try {
+    return await imagePng(image);
+  } finally {
+    image.dispose();
+  }
+}
+
+/// Renders covers on save; tests replace it (rendering needs the engine).
+final coverRendererProvider =
+    Provider<Future<Uint8List?> Function(DesignDocument, MediaCache)>(
+      (ref) => renderCoverPng,
+    );

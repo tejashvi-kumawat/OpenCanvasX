@@ -51,6 +51,7 @@ class InMemoryDesignLibrary implements DesignLibrary {
           title: doc.metadata.title,
           modified: modified[path]!,
           document: doc,
+          thumbnail: savedThumbnails[path],
         ),
   ]..sort((a, b) => b.modified.compareTo(a.modified));
 
@@ -222,12 +223,17 @@ class InMemoryDesignLibrary implements DesignLibrary {
   /// Asset bytes from the last save of each path.
   final Map<String, Map<String, Uint8List>> savedAssets = {};
 
+  /// Cover thumbnails from the last save of each path.
+  final Map<String, Uint8List?> savedThumbnails = {};
+
   @override
   Future<void> save(
     String path,
     DesignDocument document, {
     Map<String, Uint8List> assets = const {},
+    Uint8List? thumbnail,
   }) async {
+    savedThumbnails[path] = thumbnail;
     savedAssets[path] = assets;
     files[path] = document;
     modified[path] = _tick();

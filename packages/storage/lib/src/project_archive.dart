@@ -13,6 +13,8 @@ const _manifestName = 'manifest.json';
 const _documentName = 'document.json';
 const _fontsName = 'fonts.json';
 const _assetPrefix = 'assets/sha256/';
+const _thumbnailName = 'meta/thumbnails/cover.png';
+const _maxThumbnailBytes = 2 << 20;
 
 /// Bounds applied when opening a project file, which is untrusted input
 /// (input-validation-policy.md: size limits, archive depth and file count).
@@ -54,11 +56,16 @@ final class ProjectContents {
     required Map<String, Uint8List> assets,
     required Iterable<String> missingAssets,
     required Iterable<ModelIssue> issues,
+    this.thumbnail,
   }) : assets = Map.unmodifiable(assets),
        missingAssets = List.unmodifiable(missingAssets),
        issues = List.unmodifiable(issues);
 
   final DesignDocument document;
+
+  /// A small PNG of the first page saved with the file (P1.6.5), if any.
+  /// Only a cache: never trusted beyond being shown as an image.
+  final Uint8List? thumbnail;
 
   /// Verified asset bytes by SHA-256 hex.
   final Map<String, Uint8List> assets;
@@ -82,6 +89,7 @@ Uint8List encodeProject(
   DesignDocument document, {
   Map<String, Uint8List> assets = const {},
   String? appVersion,
+  Uint8List? thumbnail,
 }) {
   for (final MapEntry(:key, :value) in assets.entries) {
     if (sha256Hex(value) != key) {
@@ -122,6 +130,9 @@ Uint8List encodeProject(
       archive.add(ArchiveFile.bytes('$_assetPrefix$hash', bytes));
     }
   }
+  if (thumbnail != null && thumbnail.length <= _maxThumbnailBytes) {
+    archive.add(ArchiveFile.bytes(_thumbnailName, thumbnail));
+  }
   return ZipEncoder().encodeBytes(archive);
 }
 
@@ -135,6 +146,7 @@ Uint8List encodeProject(
 ProjectContents decodeProject(
   Uint8List bytes, {
   ArchiveLimits limits = const ArchiveLimits(),
+  bool readAssets = true,
 }) {
   if (bytes.length > limits.maxArchiveBytes) {
     throw FormatException(
@@ -184,6 +196,7 @@ ProjectContents decodeProject(
   final assets = <String, Uint8List>{};
   final missing = <String>[];
   for (final MapEntry(key: hash, value: info) in document.assets.entries) {
+    if (!readAssets) break;
     final entry = members['$_assetPrefix$hash'];
     if (entry == null) {
       missing.add(hash);
@@ -196,11 +209,24 @@ ProjectContents decodeProject(
     assets[hash] = data;
   }
 
+  Uint8List? thumbnail;
+  if (members[_thumbnailName] case final entry?
+      when entry.size <= _maxThumbnailBytes) {
+    final data = _readBytes(entry);
+    const png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    var isPng = data.length > png.length;
+    for (var i = 0; isPng && i < png.length; i++) {
+      isPng = data[i] == png[i];
+    }
+    if (isPng) thumbnail = data;
+  }
+
   return ProjectContents(
     document: document,
     assets: assets,
     missingAssets: missing,
     issues: document.validate(),
+    thumbnail: thumbnail,
   );
 }
 

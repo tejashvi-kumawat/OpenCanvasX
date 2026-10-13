@@ -315,4 +315,25 @@ void main() {
     );
     expect(usedFontFamilies(doc), ['Inter', 'Lora']);
   });
+
+  test('a cover thumbnail is stored; assets can be skipped when listing', () {
+    final doc = _doc();
+    final png = Uint8List.fromList([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, //
+    ]);
+    final bytes = encodeProject(doc, assets: {_pngHash: _png}, thumbnail: png);
+    final light = decodeProject(bytes, readAssets: false);
+    expect(light.thumbnail, png);
+    expect(light.assets, isEmpty);
+    expect(light.document, doc);
+    final full = decodeProject(bytes);
+    expect(full.assets, isNotEmpty);
+    // Anything that is not a PNG is ignored.
+    final bogus = encodeProject(
+      doc,
+      assets: {_pngHash: _png},
+      thumbnail: Uint8List.fromList('<svg/>'.codeUnits),
+    );
+    expect(decodeProject(bogus).thumbnail, isNull);
+  });
 }

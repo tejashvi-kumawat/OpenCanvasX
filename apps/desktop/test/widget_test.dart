@@ -33,6 +33,11 @@ import 'support/fakes.dart';
 
 const _folder = '/home/me/Documents/OpenCanvasX';
 
+/// A 1×1 transparent PNG standing in for rendered covers.
+final _coverPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
 void main() {
   late AppIndex index;
   late InMemoryDesignLibrary library;
@@ -86,6 +91,7 @@ void main() {
           (ref) async => Directory.systemTemp.path,
         ),
         secretStoreProvider.overrideWithValue(secrets),
+        coverRendererProvider.overrideWithValue((_, _) async => _coverPng),
         fontDiscoveryProvider.overrideWithValue(
           () async => const ['Arial', 'Georgia', 'Segoe UI'],
         ),
@@ -1364,6 +1370,33 @@ void main() {
       final saved = library.files.values.single;
       expect(saved.objects.values.single.type, ObjectType.rect);
       expect(defaultShapeFill, isNotNull);
+      // The saved cover is what the home card shows.
+      expect(library.savedThumbnails.values.single, _coverPng);
+      expect(
+        find.byWidgetPredicate((w) => w is Image && w.image is MemoryImage),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('covers render the first page as a small PNG', (tester) async {
+      await openFirstDesign(tester);
+      container.read(editorProvider.notifier).insertShape(ObjectType.star);
+      await tester.pumpAndSettle();
+      final s = session();
+      await tester.runAsync(() async {
+        final png = await renderCoverPng(
+          s.document,
+          container.read(mediaCacheProvider),
+          longest: 120,
+        );
+        expect(png!.sublist(1, 4), 'PNG'.codeUnits);
+        // Width is in the IHDR chunk at byte 16 (big-endian).
+        final width =
+            (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+        final height =
+            (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+        expect(width == 120 || height == 120, isTrue);
+      });
     });
   });
 }

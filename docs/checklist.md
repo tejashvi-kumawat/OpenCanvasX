@@ -137,7 +137,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 - [x] P1.6.2 Import SVG (validated, sanitized)
 - [x] P1.6.3 Crop, resize, rotate, flip
 - [x] P1.6.4 Rounded corners, mask, clipping
-- [ ] P1.6.5 Content-hash asset storage + thumbnail cache
+- [x] P1.6.5 Content-hash asset storage + thumbnail cache
 
 ## P1.7 Color (Basic)
 - [x] P1.7.1 Color picker (RGB, HEX, HSL, HSV) + eyedropper

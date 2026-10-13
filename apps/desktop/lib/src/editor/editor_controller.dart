@@ -28,6 +28,7 @@ import 'package:template_engine/template_engine.dart' as tpl;
 
 import 'package:renderer/renderer.dart' as renderer;
 
+import '../export/exporter.dart';
 import '../providers.dart';
 import 'viewport.dart';
 
@@ -309,11 +310,18 @@ class EditorController extends Notifier<EditorSession?> {
       assets: document.assets,
     );
     final media = ref.read(mediaCacheProvider);
+    Uint8List? cover;
+    try {
+      cover = await ref.read(coverRendererProvider)(stamped, media);
+    } on Object {
+      cover = null; // The cover is only a preview; save without it.
+    }
     await ref
         .read(designLibraryProvider)
         .save(
           session.path,
           stamped,
+          thumbnail: cover,
           assets: {
             for (final hash in stamped.assets.keys)
               if (media.bytesOf(hash) case final bytes?) hash: bytes,

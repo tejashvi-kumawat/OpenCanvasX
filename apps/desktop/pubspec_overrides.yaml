@@ -4,12 +4,12 @@ dependency_overrides:
   design_engine:
     path: ../../packages/design_engine
   document_model:
-    path: ..\\..\\packages\\document_model
+    path: ../../packages/document_model
   ocx_logging:
     path: ../../packages/ocx_logging
   ocx_native_bridge:
     path: ../../packages/ocx_native_bridge
   renderer:
-    path: ..\\..\\packages\\renderer
+    path: ../../packages/renderer
   storage:
-    path: ..\\..\\packages\\storage
+    path: ../../packages/storage

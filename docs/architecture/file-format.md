@@ -66,7 +66,7 @@ Encoding rules (schema version 1, implemented in `document_model/lib/src/documen
 | Stroke | `{ color, width, dash? }`; `dash` ∈ dashed/dotted, omitted for solid | |
 | Page kind | `kind: "board"` for unbounded boards; omitted for fixed pages (schema 2) | `"kind": "board"` |
 | Frame payload | `{ clip_content, component? }` (schema 2); `component: true` marks a main component | `{"clip_content": true}` |
-| Image payload | `{ asset, adjust? }`; `adjust` holds non-zero values of brightness, contrast, saturation, exposure, temperature, tint (−100…100), hue (−180…180), grayscale, sepia, blur (0…100) | `{"asset": "…", "adjust": {"saturation": -100}}` |
+| Image payload | `{ asset, adjust?, crop? }`; `crop` is `[left, top, right, bottom]` as fractions of the image (omitted when the whole image shows; P1.6.3); `adjust` holds non-zero values of brightness, contrast, saturation, exposure, temperature, tint (−100…100), hue (−180…180), grayscale, sepia, blur (0…100) | `{"asset": "…", "adjust": {"saturation": -100}}` |
 | Mask group | group payload `{ mask: true }`: the first child clips the others | |
 | Instance payload | `{ component }` — id of a component frame; drawn scaled to the instance box | `{"component": "card"}` |
 | Fill | `{type: "solid", color}`, `{type: "linear", angle, stops: [{offset, color}]}` (angle in degrees, 0 = left→right) or `{type: "radial", center_x, center_y, radius, stops}` (fractions of the box) | `{"type":"linear","angle":90,"stops":[{"offset":0,"color":"#ff0000ff"},{"offset":1,"color":"#0000ffff"}]}` |

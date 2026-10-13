@@ -135,7 +135,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked
 ## P1.6 Images & SVG (Basic)
 - [x] P1.6.1 Import PNG, JPEG, WebP, GIF, BMP
 - [x] P1.6.2 Import SVG (validated, sanitized)
-- [ ] P1.6.3 Crop, resize, rotate, flip
+- [x] P1.6.3 Crop, resize, rotate, flip
 - [x] P1.6.4 Rounded corners, mask, clipping
 - [ ] P1.6.5 Content-hash asset storage + thumbnail cache
 

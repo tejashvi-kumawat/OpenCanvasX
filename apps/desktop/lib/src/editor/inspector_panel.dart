@@ -194,6 +194,8 @@ class _SelectionInspectorState extends ConsumerState<_SelectionInspector> {
           _frameSection(single!, frame),
         if (single != null && isMaskGroup(single))
           _ImageFrameNote(object: single, document: widget.session.document),
+        if (single != null && single.payload is ImagePayload)
+          _CropSection(object: single),
         if (objects.every(
           (o) =>
               o.payload is ImagePayload &&
@@ -1415,6 +1417,99 @@ class _ComponentSection extends ConsumerWidget {
 
 /// Image adjustments (P3.3.1, P3.3.2): one-click looks and sliders,
 /// previewed live while dragging and recorded as one undo step.
+/// Crop (P1.6.3): crop mode on the canvas, aspect presets and reset.
+class _CropSection extends ConsumerWidget {
+  const _CropSection({required this.object});
+
+  final DesignObject object;
+
+  static const _ratios = [
+    ('1:1', 1.0),
+    ('4:5', 4 / 5),
+    ('3:2', 3 / 2),
+    ('16:9', 16 / 9),
+    ('9:16', 9 / 16),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final editor = ref.read(editorProvider.notifier);
+    final cropping = ref.watch(cropModeProvider) == object.id;
+    final payload = object.payload as ImagePayload;
+    return PanelSection(
+      title: 'Crop',
+      trailing: [
+        if (payload.isCropped)
+          OcxIconButton(
+            icon: Icons.restart_alt,
+            tooltip: 'Reset crop',
+            onPressed:
+                () => editor.updateObject(
+                  object.id,
+                  resetCrop,
+                  label: 'Reset crop',
+                ),
+          ),
+      ],
+      child: FieldColumn(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child:
+                cropping
+                    ? FilledButton.icon(
+                      onPressed:
+                          () =>
+                              ref.read(cropModeProvider.notifier).value = null,
+                      icon: const Icon(Icons.check, size: 16),
+                      label: const Text('Done cropping'),
+                    )
+                    : OutlinedButton.icon(
+                      onPressed:
+                          object.locked
+                              ? null
+                              : () =>
+                                  ref.read(cropModeProvider.notifier).value =
+                                      object.id,
+                      icon: const Icon(Icons.crop, size: 16),
+                      label: const Text('Crop'),
+                    ),
+          ),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final (name, ratio) in _ratios)
+                ActionChip(
+                  label: Text(name),
+                  labelStyle: OcxText.caption(context),
+                  visualDensity: VisualDensity.compact,
+                  onPressed:
+                      object.locked
+                          ? null
+                          : () => editor.updateObject(
+                            object.id,
+                            (o) => cropToAspect(o, ratio),
+                            label: 'Crop $name',
+                          ),
+                ),
+            ],
+          ),
+          if (cropping)
+            Text(
+              'Drag the handles to crop and the image to reposition it. '
+              'Press Esc or Enter when done.',
+              style: OcxText.caption(context).copyWith(
+                color: context.ocx.textTertiary,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AdjustSection extends ConsumerWidget {
   const _AdjustSection({required this.objects});
 

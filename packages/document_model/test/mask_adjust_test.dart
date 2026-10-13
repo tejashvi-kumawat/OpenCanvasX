@@ -6,6 +6,11 @@ void main() {
 
   test('adjustments validate their ranges', () {
     expect(ImageAdjustments().isNone, isTrue);
+    expect(
+      () => ImagePayload(hash, crop: const Rect2D.fromLTRB(0, 0, 1.5, 1)),
+      throwsArgumentError,
+    );
+    expect(ImagePayload(hash).isCropped, isFalse);
     expect(() => ImageAdjustments(brightness: 101), throwsArgumentError);
     expect(() => ImageAdjustments(hue: -181), throwsArgumentError);
     expect(() => ImageAdjustments(blur: -1), throwsArgumentError);
@@ -37,6 +42,7 @@ void main() {
       payload: ImagePayload(
         hash,
         adjust: ImageAdjustments(saturation: -100, hue: 30, blur: 2),
+        crop: const Rect2D.fromLTRB(0.1, 0.2, 0.6, 0.9),
       ),
     );
     final doc = DesignDocument(

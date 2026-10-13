@@ -361,7 +361,7 @@ class _SvgWriter {
       math.min(t.width, t.height) / 2,
     );
     var clipAttr = '';
-    if (radius > 0) {
+    if (radius > 0 || payload.isCropped) {
       final id = 'clip${_clips++}';
       defs.writeln(
         '<clipPath id="$id"><${_roundedRect(t.width, t.height, radius)}/></clipPath>',
@@ -369,10 +369,19 @@ class _SvgWriter {
       clipAttr = ' clip-path="url(#$id)"';
     }
     final filter = _adjustFilter(payload.adjust, t);
+    // The whole image, placed so its crop fills the box (P1.6.3).
+    final crop = payload.crop;
+    final fw = t.width / crop.width;
+    final fh = t.height / crop.height;
+    final place =
+        payload.isCropped
+            ? 'x="${_n(-crop.left * fw)}" y="${_n(-crop.top * fh)}" '
+                'width="${_n(fw)}" height="${_n(fh)}"'
+            : 'width="${_n(t.width)}" height="${_n(t.height)}"';
     out.writeln(
-      '<image width="${_n(t.width)}" height="${_n(t.height)}" '
-      'preserveAspectRatio="none"$clipAttr$filter '
-      'xlink:href="data:${info.mime};base64,${base64Encode(bytes)}"/>',
+      '<g$clipAttr><image $place '
+      'preserveAspectRatio="none"$filter '
+      'xlink:href="data:${info.mime};base64,${base64Encode(bytes)}"/></g>',
     );
     if (style.stroke case final stroke? when stroke.width > 0) {
       out.writeln(

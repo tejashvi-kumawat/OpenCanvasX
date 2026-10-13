@@ -75,6 +75,20 @@ class NodeEditController extends Notifier<NodeEdit?> {
   set value(NodeEdit? next) => state = next;
 }
 
+/// The image being cropped (P1.6.3): its handles crop instead of resize
+/// and dragging moves the image inside the crop.
+final cropModeProvider = NotifierProvider<CropModeController, ObjectId?>(
+  CropModeController.new,
+);
+
+class CropModeController extends Notifier<ObjectId?> {
+  @override
+  ObjectId? build() => null;
+
+  ObjectId? get value => state;
+  set value(ObjectId? next) => state = next;
+}
+
 /// Where the open design stands relative to its file.
 enum SaveStatus {
   /// Everything is on disk.

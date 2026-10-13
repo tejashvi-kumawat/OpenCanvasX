@@ -967,6 +967,66 @@ void main() {
       expect(index.settings.get('canvas.aids'), contains('grid'));
     });
 
+    testWidgets('crop: double-click an image, drag a handle, Esc', (
+      tester,
+    ) async {
+      await openFirstDesign(tester);
+      final editor = container.read(editorProvider.notifier);
+      final id = editor.insertImage(
+        Uint8List.fromList(
+          utf8.encode(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"> '
+            '<rect width="24" height="24"/></svg>',
+          ),
+        ),
+        size: 400,
+      );
+      await tester.pumpAndSettle();
+      final canvas = tester.getRect(find.byType(DesignCanvas));
+      final viewport = container.read(viewportProvider);
+      final frame = layoutPages(session().document.pages).first;
+      Offset screenOf(Point2D p) =>
+          canvas.topLeft + viewport.toScreen(frame.toWorkspace(p));
+      final t = session().document.objects[id]!.transform;
+      final centre = screenOf(Point2D(t.x + t.width / 2, t.y + t.height / 2));
+      await tester.tapAt(centre, kind: PointerDeviceKind.mouse);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tapAt(centre, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+      expect(container.read(cropModeProvider), id);
+      expect(find.text('Done cropping'), findsOneWidget);
+
+      // Drag the right edge handle in by a quarter.
+      final right = screenOf(Point2D(t.x + t.width, t.y + t.height / 2));
+      final g = await tester.startGesture(right, kind: PointerDeviceKind.mouse);
+      await g.moveTo(
+        screenOf(Point2D(t.x + t.width * 0.75, t.y + t.height / 2)),
+      );
+      await g.up();
+      await tester.pumpAndSettle();
+      final cropped = session().document.objects[id]!;
+      expect(session().undoLabel, 'Crop');
+      expect(cropped.transform.width, closeTo(t.width * 0.75, t.width * 0.02));
+      expect((cropped.payload as ImagePayload).crop.width, closeTo(0.75, 0.02));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(container.read(cropModeProvider), isNull);
+      expect(session().selection, {id});
+
+      // Aspect preset from the inspector, then reset.
+      await tester.tap(find.widgetWithText(ActionChip, '1:1'));
+      await tester.pumpAndSettle();
+      final square = session().document.objects[id]!.transform;
+      expect(square.width, closeTo(square.height, 0.01));
+      await tester.tap(find.byTooltip('Reset crop'));
+      await tester.pumpAndSettle();
+      expect(
+        (session().document.objects[id]!.payload as ImagePayload).isCropped,
+        isFalse,
+      );
+    });
+
     testWidgets('components: Ctrl+Alt+K makes a component', (tester) async {
       await openFirstDesign(tester);
       container.read(editorProvider.notifier)

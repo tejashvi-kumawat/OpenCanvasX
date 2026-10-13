@@ -205,6 +205,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
                             guides: _drag == _Drag.none ? const [] : _guides,
                             links: _linkArrows(session, frames, viewport),
                             media: ref.watch(mediaCacheProvider),
+                            cropping: _croppingIn(session),
                           ),
                         ),
                       ),
@@ -448,6 +449,28 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
       guides: aids.guides,
       grid: aids.grid ? gridStep(page) : null,
     );
+  }
+
+  ObjectId? _croppingIn(EditorSession session) {
+    final id = ref.watch(cropModeProvider);
+    return id != null &&
+            session.selection.length == 1 &&
+            session.selection.first == id &&
+            session.document.objects[id]?.payload is ImagePayload
+        ? id
+        : null;
+  }
+
+  /// The image in crop mode, if it is still the only selected object.
+  ObjectId? _cropping() {
+    final id = ref.read(cropModeProvider);
+    final session = ref.read(editorProvider);
+    if (id == null || session == null) return null;
+    final ok =
+        session.selection.length == 1 &&
+        session.selection.first == id &&
+        session.document.objects[id]?.payload is ImagePayload;
+    return ok ? id : null;
   }
 
   /// The ruler guide of the active page within a few pixels of [screen].
@@ -773,6 +796,17 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
         _drag = _Drag.none;
         return;
       }
+      if (document.objects[hit] case final o?
+          when o.payload is ImagePayload && !o.locked) {
+        _editor.select({hit});
+        ref.read(cropModeProvider.notifier).value = hit;
+        _drag = _Drag.none;
+        return;
+      }
+    }
+    // Clicking away from the image being cropped leaves crop mode.
+    if (ref.read(cropModeProvider) case final cropping? when hit != cropping) {
+      ref.read(cropModeProvider.notifier).value = null;
     }
 
     final current = ref.read(editorProvider)!;
@@ -865,6 +899,11 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
     final shift = HardwareKeyboard.instance.isShiftPressed;
 
     switch (_drag) {
+      case _Drag.move when _cropping() != null:
+        final o = _dragStart.values.first;
+        final a = pageToParent(_dragDocument, o.id, _downPage);
+        final b = pageToParent(_dragDocument, o.id, p);
+        _editor.previewObjects([panCrop(o, b - a)]);
       case _Drag.move:
         var dx = p.x - _downPage.x;
         var dy = p.y - _downPage.y;
@@ -923,6 +962,12 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           _guides = snap.guides;
         }
         final local = pageToParent(_dragDocument, o.id, point);
+        if (_cropping() == o.id) {
+          _editor.previewObjects([
+            cropImage(o, _handle!, local, minSize: 8 * _unitsPerPixel(frame)),
+          ]);
+          break;
+        }
         final transform = resizeTransform(
           o.transform,
           _handle!,
@@ -972,6 +1017,8 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
 
   void _pointerUp(PointerUpEvent event, List<PageFrame> frames) {
     switch (_drag) {
+      case _Drag.move when _cropping() != null:
+        _editor.endGesture('Crop');
       case _Drag.move:
         final frame = _dragFrame;
         if (frame == null) {
@@ -980,7 +1027,7 @@ class _DesignCanvasState extends ConsumerState<DesignCanvas> {
           _editor.endMoveGesture(_pagePoint(event.localPosition, frame));
         }
       case _Drag.resize:
-        _editor.endGesture('Resize');
+        _editor.endGesture(_cropping() != null ? 'Crop' : 'Resize');
       case _Drag.rotate:
         _editor.endGesture('Rotate');
       case _Drag.marquee:
@@ -1624,7 +1671,11 @@ class _WorkspacePainter extends CustomPainter {
     this.guides = const [],
     this.vector,
     this.links = const [],
+    this.cropping,
   }) : super(repaint: media);
+
+  /// The image in crop mode: its whole image is shown dimmed around it.
+  final ObjectId? cropping;
 
   final List<_FrameTitle> titles;
   final List<SnapGuide> guides;
@@ -1675,6 +1726,7 @@ class _WorkspacePainter extends CustomPainter {
       canvas.restore();
     }
     if (active == null) return;
+    if (cropping case final id?) _paintCropGhost(canvas, active, id);
 
     for (final title in titles) {
       final selected = selection.contains(title.id);
@@ -1997,8 +2049,32 @@ class _WorkspacePainter extends CustomPainter {
     painter.paint(canvas, box.topLeft + const Offset(6, 3));
   }
 
+  void _paintCropGhost(Canvas canvas, PageFrame frame, ObjectId id) {
+    final object = document.objects[id];
+    if (object == null || object.payload is! ImagePayload) return;
+    final world =
+        object.parentId == null
+            ? Affine2D.identity
+            : worldMatrix(document, object.parentId!);
+    final rect = viewport.rectToScreen(frame.rect);
+    canvas
+      ..save()
+      ..translate(rect.left, rect.top)
+      ..scale(viewport.zoom * frame.unitScale)
+      ..transform(toUiMatrix(world));
+    paintObject(
+      canvas,
+      document,
+      resetCrop(object).copyWith(opacity: 0.35),
+      media: media,
+    );
+    paintObject(canvas, document, object, media: media);
+    canvas.restore();
+  }
+
   @override
   bool shouldRepaint(_WorkspacePainter old) =>
+      old.cropping != cropping ||
       !identical(old.document, document) ||
       old.viewport != viewport ||
       old.activePageId != activePageId ||

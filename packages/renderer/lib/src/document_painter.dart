@@ -147,6 +147,7 @@ void paintObject(
         currentColor: object.style?.fill?.representative.value,
       ),
       adjust: (object.payload as ImagePayload).adjust,
+      crop: (object.payload as ImagePayload).crop,
     );
   } else {
     _paintShape(canvas, object, effectiveStyle(object, document.styles));
@@ -603,14 +604,21 @@ void _paintImage(
   ObjectStyle style,
   MediaDrawable? drawable, {
   ImageAdjustments adjust = ImageAdjustments.none,
+  Rect2D crop = ImagePayload.fullCrop,
 }) {
   final t = object.transform;
   final box = ui.Rect.fromLTWH(0, 0, t.width, t.height);
   if (box.isEmpty) return;
   final radius = math.min(style.cornerRadius, math.min(t.width, t.height) / 2);
   final rounded = ui.RRect.fromRectAndRadius(box, ui.Radius.circular(radius));
+  // The whole image, placed so its [crop] part fills the box (P1.6.3).
+  final full = imageRectForCrop(t.width, t.height, crop);
   canvas.save();
-  if (radius > 0) canvas.clipRRect(rounded);
+  if (radius > 0) {
+    canvas.clipRRect(rounded);
+  } else if (crop != ImagePayload.fullCrop) {
+    canvas.clipRect(box);
+  }
   // Adjustments (P3.3) apply to the image through a layer.
   final adjusted = !adjust.isNone && drawable != null;
   if (adjusted) {
@@ -630,13 +638,14 @@ void _paintImage(
       canvas.drawImageRect(
         image,
         ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-        box,
+        full,
         ui.Paint()..filterQuality = ui.FilterQuality.medium,
       );
     case VectorMedia(:final picture, :final size):
       if (size.width > 0 && size.height > 0) {
         canvas
-          ..scale(t.width / size.width, t.height / size.height)
+          ..translate(full.left, full.top)
+          ..scale(full.width / size.width, full.height / size.height)
           ..drawPicture(picture);
       }
     case null:
@@ -704,6 +713,14 @@ ui.Paint? fillPaint(Fill? fill, ui.Rect box) {
 }
 
 /// Neutral box with a cross while an image decodes or is missing.
+/// Where the whole image goes, in a [width] × [height] box showing its
+/// [crop] part.
+ui.Rect imageRectForCrop(double width, double height, Rect2D crop) {
+  final w = width / crop.width;
+  final h = height / crop.height;
+  return ui.Rect.fromLTWH(-crop.left * w, -crop.top * h, w, h);
+}
+
 void _paintImagePlaceholder(ui.Canvas canvas, ui.Rect box) {
   canvas.drawRect(box, ui.Paint()..color = const ui.Color(0xFFE3E6EC));
   final lines =

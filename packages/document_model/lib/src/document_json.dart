@@ -1,5 +1,6 @@
 import 'color.dart';
 import 'design_object.dart';
+import 'geometry.dart';
 import 'document.dart';
 import 'ids.dart';
 import 'migration.dart';
@@ -236,8 +237,10 @@ Map<String, Object?> _encodePayload(ObjectPayload p) => switch (p) {
     'points': points,
     'inner_ratio': innerRatio,
   },
-  ImagePayload(:final assetHash, :final adjust) => {
+  ImagePayload(:final assetHash, :final adjust, :final crop) => {
     'asset': assetHash,
+    if (crop != ImagePayload.fullCrop)
+      'crop': [crop.left, crop.top, crop.right, crop.bottom],
     if (!adjust.isNone)
       'adjust': {
         for (final MapEntry(:key, :value) in adjust.toMap().entries)
@@ -506,8 +509,16 @@ ObjectPayload _decodePayload(ObjectType type, _Json object) {
       final p = object.object('payload');
       return p.guard(() {
         final adjust = p.child('adjust');
+        final crop = [
+          for (final v in p.optList('crop'))
+            if (v is num) v.toDouble(),
+        ];
         return ImagePayload(
           p.string('asset'),
+          crop:
+              crop.length != 4
+                  ? ImagePayload.fullCrop
+                  : Rect2D.fromLTRB(crop[0], crop[1], crop[2], crop[3]),
           adjust:
               adjust == null
                   ? ImageAdjustments.none

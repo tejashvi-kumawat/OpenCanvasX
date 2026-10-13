@@ -116,6 +116,11 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     if (!_typing()) action();
   };
   void editSelectedText() {
+    final crop = ref.read(cropModeProvider.notifier);
+    if (crop.value != null) {
+      crop.value = null;
+      return;
+    }
     final session = ref.read(editorProvider);
     if (session == null || session.selection.length != 1) return;
     final id = session.selection.first;
@@ -147,6 +152,11 @@ Map<ShortcutActivator, VoidCallback> editorShortcuts(
     EditorKeys.delete: deleteSelectionOrPoint,
     EditorKeys.backspace: deleteSelectionOrPoint,
     EditorKeys.escape: () {
+      final crop = ref.read(cropModeProvider.notifier);
+      if (crop.value != null) {
+        crop.value = null;
+        return;
+      }
       final nodes = ref.read(nodeEditProvider.notifier);
       if (nodes.value != null) {
         nodes.value = null;

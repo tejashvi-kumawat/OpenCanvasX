@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import 'geometry.dart';
 import 'ids.dart';
 import 'object_type.dart';
 import 'validation.dart';
@@ -283,29 +284,56 @@ final class ImagePayload extends ObjectPayload {
   factory ImagePayload(
     String assetHash, {
     ImageAdjustments adjust = ImageAdjustments.none,
+    Rect2D crop = fullCrop,
   }) {
     checkSha256Hex(assetHash, 'assetHash');
-    return ImagePayload._(assetHash, adjust);
+    checkCrop(crop);
+    return ImagePayload._(assetHash, adjust, crop);
   }
 
-  const ImagePayload._(this.assetHash, this.adjust);
+  const ImagePayload._(this.assetHash, this.adjust, this.crop);
+
+  /// The whole image.
+  static const Rect2D fullCrop = Rect2D.fromLTRB(0, 0, 1, 1);
+
+  /// Throws unless [crop] lies within the unit square with a positive size.
+  static void checkCrop(Rect2D crop) {
+    const e = 1e-9;
+    if (!(crop.left >= -e &&
+        crop.top >= -e &&
+        crop.right <= 1 + e &&
+        crop.bottom <= 1 + e &&
+        crop.width > 0 &&
+        crop.height > 0)) {
+      throw ArgumentError.value(crop, 'crop', 'must lie within 0…1');
+    }
+  }
 
   final String assetHash;
 
   /// Non-destructive colour adjustments and blur (P3.3.1, P3.3.2).
   final ImageAdjustments adjust;
 
-  ImagePayload copyWith({ImageAdjustments? adjust}) =>
-      ImagePayload._(assetHash, adjust ?? this.adjust);
+  /// The part of the image shown (P1.6.3), as fractions of its width and
+  /// height; it is stretched to the object's box.
+  final Rect2D crop;
+
+  bool get isCropped => crop != fullCrop;
+
+  ImagePayload copyWith({ImageAdjustments? adjust, Rect2D? crop}) {
+    if (crop != null) checkCrop(crop);
+    return ImagePayload._(assetHash, adjust ?? this.adjust, crop ?? this.crop);
+  }
 
   @override
   bool operator ==(Object other) =>
       other is ImagePayload &&
       other.assetHash == assetHash &&
-      other.adjust == adjust;
+      other.adjust == adjust &&
+      other.crop == crop;
 
   @override
-  int get hashCode => Object.hash(assetHash, adjust);
+  int get hashCode => Object.hash(assetHash, adjust, crop);
 
   @override
   String toString() => 'ImagePayload($assetHash)';
